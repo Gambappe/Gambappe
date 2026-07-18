@@ -164,7 +164,11 @@ describe('grade:followup (§6.5, §8.6)', () => {
     expect(rowAgain!.revealedAt).toEqual(at); // unchanged by the second run
   });
 
-  it('is a documented no-op for duo_bonus (SPEC-GAP: WS6/duo does not create these questions this wave)', async () => {
+  it('reveals a duo_bonus question immediately (§8.8.1) without touching percentiles/streaks (WS6-T2)', async () => {
+    // Was a documented no-op (SPEC-GAP: WS6/duo didn't create these questions yet) — WS6-T2 has
+    // since landed real duo_bonus completion handling in grade:followup itself; percentiles and
+    // streaks remain daily-only regardless (§6.6/§8.6), which is the part still worth asserting
+    // here (WS6-T2's own duo-match-lifecycle.test.ts covers the match-completion side in depth).
     const market = buildMarket({ status: 'resolved', outcome: 'yes' });
     await db.insert(markets).values(market);
     const bonusQuestion = buildQuestion(market.id as string, {
@@ -177,9 +181,9 @@ describe('grade:followup (§6.5, §8.6)', () => {
 
     await expect(runGradeFollowup(db, redis, boss, bonusQuestion.id as string, new Date())).resolves.toBeUndefined();
     const [row] = await db.select().from(questions).where(eq(questions.id, bonusQuestion.id as string));
-    expect(row!.status).toBe('locked'); // untouched
+    expect(row!.status).toBe('revealed'); // §8.8.1: no held reveal — immediate, unlike daily
     const hash = await redis.hgetall(revealHashKey(bonusQuestion.id as string));
-    expect(hash).toEqual({});
+    expect(hash).toEqual({}); // percentiles are daily-only — untouched either way
   });
 });
 
