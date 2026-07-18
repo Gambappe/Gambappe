@@ -8,3 +8,6 @@ export * from './repositories/profiles.js';
 export * from './repositories/questions.js';
 export * from './repositories/picks.js';
 export * from './repositories/heartbeats.js';
+export * from './repositories/merge.js';
+export * from './repositories/users.js';
+export * from './streak-replay.js';
