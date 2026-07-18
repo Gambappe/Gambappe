@@ -17,4 +17,5 @@ export * from './repositories/wallet-links.js';
 export * from './repositories/fingerprints.js';
 export * from './repositories/streaks.js';
 export * from './repositories/analytics.js';
+export * from './repositories/leaderboards.js';
 export * from './streak-replay.js';
