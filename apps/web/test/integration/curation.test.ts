@@ -9,6 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import type pg from 'pg';
+import { uuidv7 } from 'uuidv7';
 import { connect, insertMarket, type Db, type NewMarketRow } from '@receipts/db';
 
 const dbUrl =
@@ -44,6 +45,7 @@ beforeEach(async () => {
 
 async function seedMarket(overrides: Partial<NewMarketRow> = {}) {
   return insertMarket(db, {
+    id: uuidv7(),
     venue: 'kalshi',
     venueMarketId: `curation-test-${Math.random().toString(36).slice(2)}`,
     title: 'Will the Fed cut rates this month?',
@@ -51,9 +53,9 @@ async function seedMarket(overrides: Partial<NewMarketRow> = {}) {
     closeTime: new Date('2026-07-20T18:00:00Z'),
     expectedResolveTime: new Date('2026-07-21T06:00:00Z'),
     status: 'open',
-    yesPrice: '0.42',
+    yesPrice: 0.42,
     yesPriceUpdatedAt: new Date(),
-    liquidityUsd: '5000',
+    liquidityUsd: 5000,
     venueUrl: 'https://kalshi.com/markets/curation-test',
     nemesisEligible: false,
     raw: {},
@@ -111,14 +113,13 @@ describe('PATCH /api/admin/markets/[id] (§15.2)', () => {
       jsonRequest(`http://localhost/api/admin/markets/${market.id}`, 'PATCH', {
         nemesis_eligible: true,
       }),
-      { params: Promise.resolve({ id: market.id }) },
     );
     const body = (await res.json()) as { data: { nemesisEligible: boolean } };
     expect(res.status).toBe(200);
     expect(body.data.nemesisEligible).toBe(true);
 
     const rows = await listAuditLog(db, 1);
-    expect(rows[0]?.action).toBe('market.update');
+    expect(rows[0]?.action).toBe('market.tag');
   });
 
   it('404s for an unknown market id', async () => {
@@ -128,7 +129,6 @@ describe('PATCH /api/admin/markets/[id] (§15.2)', () => {
       jsonRequest(`http://localhost/api/admin/markets/${missingId}`, 'PATCH', {
         nemesis_eligible: true,
       }),
-      { params: Promise.resolve({ id: missingId }) },
     );
     expect(res.status).toBe(404);
   });
@@ -207,7 +207,7 @@ describe('POST /api/admin/questions (§15.2)', () => {
       }),
     );
     const body = (await res.json()) as { data: { slug: string; status: string } };
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(body.data.slug).toBe('2026-07-20-will-the-fed-cut-rates');
     expect(body.data.status).toBe('scheduled');
 
@@ -264,7 +264,7 @@ describe('POST /api/admin/questions (§15.2)', () => {
     });
 
     const ok = await POST(jsonRequest('http://localhost/api/admin/questions', 'POST', makeBody(first.id, 'First one')));
-    expect(ok.status).toBe(200);
+    expect(ok.status).toBe(201);
 
     const dup = await POST(jsonRequest('http://localhost/api/admin/questions', 'POST', makeBody(second.id, 'Second one')));
     const dupBody = (await dup.json()) as { error: { code: string } };

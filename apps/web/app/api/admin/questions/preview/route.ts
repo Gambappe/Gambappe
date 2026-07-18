@@ -19,6 +19,7 @@ import {
   composerBodySchema,
   resolveComposerTimes,
   validateComposerInput,
+  type ComposerBody,
 } from '@/lib/curation';
 
 export const dynamic = 'force-dynamic';
@@ -54,14 +55,18 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   // Fill in placeholders for fields not yet typed by the curator, so times/validation can
-  // still run — the preview is meant to update live as the form is filled in.
-  const body = composerBodySchema.parse({
+  // still run — the preview is meant to update live as the form is filled in. `parsed.data`
+  // already satisfied composerBodySchema's non-length constraints (only these four fields
+  // were made optional above), so this assigns defaults directly rather than re-validating
+  // through the full schema — headline/yes_label/no_label's `min(1)` is a real-submission
+  // rule, not something an untyped-so-far preview request should ever 500 on.
+  const body: ComposerBody = {
     ...parsed.data,
     headline: parsed.data.headline ?? '',
     yes_label: parsed.data.yes_label ?? '',
     no_label: parsed.data.no_label ?? '',
     question_date: parsed.data.question_date ?? new Date().toISOString().slice(0, 10),
-  });
+  };
 
   const times = resolveComposerTimes(body);
   const errors = validateComposerInput(
