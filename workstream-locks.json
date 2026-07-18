@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T09:21:51.790Z",
+  "updated_at": "2026-07-18T09:22:35.739Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -97,13 +97,13 @@
         "WS0-T6"
       ],
       "mock_start_ok": false,
-      "note": "test claim, released",
+      "note": null,
       "status": "available",
       "owner": null,
       "branch": null,
       "pr": null,
       "claimed_at": null,
-      "updated_at": "2026-07-18T09:21:20.524Z"
+      "updated_at": "2026-07-18T09:22:35.739Z"
     },
     "WS1-T2": {
       "title": "Kalshi adapter",
