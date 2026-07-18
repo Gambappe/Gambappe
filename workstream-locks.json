@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T20:23:07.582Z",
+  "updated_at": "2026-07-18T20:25:14.569Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -598,12 +598,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": "feat/ws6-t1-duo-queue",
       "pr": "https://github.com/suvarna4/Gambappe/pull/22",
       "claimed_at": "2026-07-18T19:04:15.794Z",
-      "updated_at": "2026-07-18T19:32:18.102Z"
+      "updated_at": "2026-07-18T20:25:14.569Z"
     },
     "WS6-T2": {
       "title": "Match lifecycle + scoring + chemistry",
