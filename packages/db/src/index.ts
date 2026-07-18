@@ -22,4 +22,5 @@ export * from './repositories/duplicate-accounts.js';
 export * from './repositories/wallet-links.js';
 export * from './repositories/fingerprints.js';
 export * from './repositories/moderation.js';
+export * from './repositories/profile-page.js';
 export * from './streak-replay.js';
