@@ -10,6 +10,16 @@ SEO pass — see `workstream-locks.json`). Those add code and copy this pass has
 audit is not a standing guarantee past its commit — re-run once the remaining WS1–WS13 tasks
 land, and before Gate P1.5 (duo behind flag) if duo copy changes materially.
 
+**Revision note:** an independent review after this doc's initial commit caught five accuracy
+defects in the original text — a false blanket claim under INV-5 (matchmaking does read a
+wallet-influenced fingerprint field for pairing selection; corrected below with the precise
+reasoning for why the invariant still holds), a wrong file citation for `toWalletBadge`, a
+copy-scan write-up that didn't match what its own stated grep command actually returns, and two
+minor overstatements under INV-9 and INV-8. The corrections are folded into the sections below in
+place, rather than kept as a separate errata list, since the whole point of this document is that
+its claims are individually verifiable — an errata list would just be a second, competing set of
+claims to check.
+
 ## INV-1 — never holds money, routes orders, sets odds, or takes positions
 
 **Evidence:**
@@ -78,16 +88,42 @@ land, and before Gate P1.5 (duo behind flag) if duo copy changes materially.
 
 **Evidence:**
 - `apps/worker/src/jobs/ratings-weekly.ts` imports nothing from the wallet or fingerprint
-  modules — confirmed by import scan (`grep wallet|fingerprint`: no matches). Its inputs are
-  `picks`/`questions`/`profiles` repositories only.
-- Wallet data's only two consumers: `packages/engine/src/fingerprint.ts` (feeds
-  `fingerprints.placement_prior`, a *seed* used solely to warm-start a new profile's fingerprint
-  before it has enough in-app picks — §8.7/§12.4) and `packages/db/src/repositories/profile-page.ts`
-  (renders the wallet-linked **badge** only, via `wallet-links.js`'s `toWalletBadge`).
-- Neither `nemesis-assign.ts`, `duo-matchmaker.ts`, nor `ratings-weekly.ts` reference wallet
-  tables — matchmaking and rating computation read only from `picks`/`questions`/`ratings`.
+  modules — confirmed by import scan (`grep wallet|fingerprint`: no matches). Its actual
+  repository imports are `applyDuoMatchRating`/`applyPairingRating`/`updateRating`/
+  `updateDuoRating` and friends (glicko rating + inflation bookkeeping) — not `picks`/`questions`
+  directly; those are read by the earlier grading/pairing jobs that produce the
+  pairing/duo-match rows this job consumes.
+- Wallet data's two direct consumers: `packages/engine/src/wallet-bucketing.ts`/
+  `apps/worker/src/jobs/wallet-ingest.ts` write a wallet-derived prior into
+  `fingerprints.placement_prior` (§8.7/§12.4), and `apps/web/lib/serialize-wallet.ts`'s
+  `toWalletBadge` (called from `apps/web/lib/profile-page.ts`, **not**
+  `packages/db/src/repositories/profile-page.ts` — that file only comments on where the wallet
+  badge logic lives) renders the wallet-linked **badge** only.
+- **A real transitive path exists and is worth stating precisely, not glossing over:**
+  `packages/engine/src/fingerprint.ts` blends `placement_prior.chalk` into the stored `chalk`
+  axis (`blendWithPrior`, weight `PRIOR_WEIGHT=5`, decaying but never zero — same function used
+  for the placement-only prior, wallet import is just one more source feeding the same field).
+  `apps/worker/src/jobs/duo-matchmaker.ts` then reads `fingerprints.chalk` and
+  `fingerprints.categoryShares` directly (lines 64–65) to score pairing `complementarity`. So a
+  wallet import *can* influence which profiles get paired as duo partners — it is not confined to
+  "seed the fingerprint and a badge" in the narrowest reading of that phrase.
+- Why this still satisfies INV-5 rather than violating it: the design doc's own gloss on prior
+  blending (line 843) is the operative boundary — "Priors never touch accuracy/edge/brier (INV-5
+  — skill comes only from in-app picks)." INV-5's "never affects ratings, streaks, matches, or
+  leaderboards" is about match *records and scoring* (accuracy/edge/brier/rating deltas), which
+  `ratings-weekly.ts` computes from `picks`/pairing outcomes alone and never touches a prior.
+  Duo-matchmaker's use of prior-blended `chalk` for *partner selection* is a different, explicitly
+  spec'd mechanism (§8.2/§8.5 complementarity; §8.7 prior blending) — it changes who you're
+  matched with, not how any match, streak, or rating is scored once it happens. `categoryShares`
+  used in that same complementarity formula is prior-free (computed purely from in-app picks) in
+  the no-wallet case, so a ghost/no-wallet profile's pairing is entirely in-app-derived; a
+  wallet-linked profile's pairing is derived from in-app picks blended with its own imported
+  history, at a weight that shrinks toward zero as its own pick count (`n`) grows — never a
+  strictly imported number.
 
-**Verdict: holds.**
+**Verdict: holds** — on the precise basis above (prior blending affects duo *pairing selection*,
+never accuracy/edge/brier/rating computation), not the blanket "matchmaking and rating
+computation read only from picks/questions/ratings" claimed in an earlier draft of this doc.
 
 ## INV-6 — public means public; pseudonymity is permanent
 
@@ -121,10 +157,14 @@ land, and before Gate P1.5 (duo behind flag) if duo copy changes materially.
 
 **Evidence:** see the copy scan below (clean) plus:
 - `markets.liquidity_usd` (markets.ts) is commented "Curation filters only — never displayed
-  (INV-8)"; confirmed by grep — its only consumer in `apps/web` is
-  `app/api/admin/markets/route.ts`'s `min_liquidity_usd` query-param filter (an admin curation
-  tool). No client-facing serializer (`serialize-question.ts`, `question-view.ts`, profile/duo/
-  nemesis serializers) exposes it.
+  (INV-8)"; confirmed by grep. It's used as a `min_liquidity_usd` query-param filter in
+  `app/api/admin/markets/route.ts` (an admin curation tool) — and that route's response body
+  does return whole `listMarkets` rows, so `liquidityUsd` is present in the admin JSON response,
+  not just the filter param. That route is auth-gated to admins (non-admin/no-token 404s, per
+  WS10-T1), and no *public-facing* serializer (`serialize-question.ts`, `question-view.ts`,
+  profile/duo/nemesis serializers) exposes it — the admin curation tool is the one place it's
+  meant to be visible, matching §15.2's "liquidity ≥ floor" curation-filter spec, not a display
+  to end users.
 
 **Verdict: holds.**
 
@@ -142,15 +182,17 @@ land, and before Gate P1.5 (duo behind flag) if duo copy changes materially.
   layout — every page gets it, there's no per-route opt-out.
 - **Gap found (flagging, not a violation):** §7.8's outbound deep-link builder ("Trade this on
   {Kalshi|Polymarket}" link, attested-only referral params `KALSHI_REF_PARAM`/
-  `POLYMARKET_REF_PARAM`, firing a `venue_outbound_click` analytics event) does not exist
-  anywhere in the codebase yet — `markets.venue_url` is serialized straight through
-  (`serialize-question.ts:97`, `question-view.ts:116`) with no ref-param attachment logic at
-  all, and no UI surface renders an outbound venue link. This isn't an INV-9 *violation* (no ref
-  param is ever attached to anyone, attested or not, so nothing leaks to an unattested session —
-  the invariant holds vacuously) but the feature §7.8 describes, and which INV-9's own
-  enforcement column cites as "link-out builder (§7.8)," is simply unbuilt. No WBS row in §19.3
-  explicitly owns it either. Recommend a follow-up task be added to the WBS before Gate P1
-  ships, since §7.8 also states this link is "the only money-adjacent surface" the product is
+  `POLYMARKET_REF_PARAM`) has no actual implementation anywhere in the codebase —
+  `markets.venue_url` is serialized straight through (`serialize-question.ts:97`,
+  `question-view.ts:116`) with no ref-param attachment logic at all, and no UI surface renders an
+  outbound venue link. The one piece that *does* exist: `venue_outbound_click` is declared in the
+  canonical analytics event-name union (`packages/core/src/types/analytics.ts:26`) but nothing in
+  the codebase ever emits it — a reserved name with no caller, not a built feature. This isn't an
+  INV-9 *violation* (no ref param is ever attached to anyone, attested or not, so nothing leaks to
+  an unattested session — the invariant holds vacuously) but the feature §7.8 describes, and which
+  INV-9's own enforcement column cites as "link-out builder (§7.8)," is simply unbuilt. No WBS row
+  in §19.3 explicitly owns it either. Recommend a follow-up task be added to the WBS before Gate
+  P1 ships, since §7.8 also states this link is "the only money-adjacent surface" the product is
   supposed to have at all — right now it has none, which is safe but incomplete relative to spec.
 
 **Verdict: holds (with one unbuilt-feature gap noted above, not a violation).**
@@ -173,23 +215,39 @@ land, and before Gate P1.5 (duo behind flag) if duo copy changes materially.
 ## Copy scan (§10.6, money words: `bet|stake|wager|\$`)
 
 Scanned `apps/web/lib/copy.ts` (the single source of every user-facing string, per §10.6) with
-`grep -niE '\b(bet|stake|wager)\b|\$'`.
+the AC's literal pattern: `grep -niE '\b(bet|stake|wager)\b|\$'`.
 
-**Matches, all allowlisted:**
-- Every hit is either (a) inside the file's own header/inline comments *documenting* the INV-8
-  rule ("No money amounts, 'bets', stake sizes..."), or (b) inside one of the two reassurance
-  strings that use the words in **negation**: `CLAIM_AGE_ATTEST_FOOTNOTE` and
-  `EIGHTEEN_PLUS_FOOTER_NOTICE`, both reading "Receipts never holds money — picks are for
-  competition, not wagers." A negation reassuring the user money isn't involved is the opposite
-  of the violation INV-8 guards against, so it's allowlisted.
+**Run for real, the pattern returns 14 lines — reported here honestly rather than the tidier
+two-category story an earlier draft of this doc gave:**
+- 1 line is the file's own rule-documenting comment ("No money amounts, 'bets', stake sizes...").
+- The other 13 are **not** money words at all — they're TypeScript template-literal
+  interpolations (`` `${streak}-day streak` ``, `` `Top ${topPercent}%` ``, etc.). The regex's
+  bare `\$` alternative matches the `$` in `${` , which is JS syntax, not a currency sign. None of
+  these strings contain an actual dollar amount (verified by reading each one).
+- **Neither of the two "not wagers" reassurance strings (`CLAIM_AGE_ATTEST_FOOTNOTE`,
+  `EIGHTEEN_PLUS_FOOTER_NOTICE`) is actually matched by this regex** — "wagers" is plural, and
+  `\bwager\b` requires a word boundary immediately after "wager," which the trailing "s" removes.
+  An earlier draft of this doc claimed these two strings were caught by the scan and allowlisted
+  as negations; they were never caught in the first place, so there was nothing for the AC's
+  literal pattern to allowlist there.
+- Separately (not from this grep, but by direct inspection, since the AC pattern has this gap):
+  those two reassurance strings *do* use "wagers"/"money" — always in negation ("Receipts never
+  holds money — picks are for competition, not wagers"), the opposite of the pressure INV-8
+  guards against. Manually checking inflected forms the literal AC pattern misses
+  (`bets|betting|stakes|staking|wagers|wagering|gamble|gambling|payout`) across the whole file
+  turns up nothing beyond those two negations and the rule comment.
 - No bare dollar amount (`$` followed by a digit) appears anywhere in the file.
 
-**Broader sweep (bonus, beyond the AC's copy.ts-only scope):** the same patterns were also run
-across `apps/web/app/**` and `apps/web/components/**` (all `.ts`/`.tsx`, excluding tests) to catch
-any literal string that bypassed `copy.ts` entirely. Zero matches outside the two allowlisted
-reassurance strings and the rule-documentation comments already covered above.
+**Broader sweep (bonus, beyond the AC's copy.ts-only scope):** the same literal pattern plus the
+inflected-forms check above were also run across `apps/web/app/**`, `apps/web/components/**`, and
+`apps/web/lib/**` (all `.ts`/`.tsx`, excluding tests) to catch any literal string that bypassed
+`copy.ts` entirely. Zero matches beyond template-literal `$` syntax and the two negation strings
+already covered above. The two pinned §10.6 strings (publicness statement, claim-nudge copy) were
+also spot-checked verbatim against `ClaimEntry.tsx:157` and match exactly.
 
-**Verdict: clean.**
+**Verdict: clean** — confirmed by manual inspection of every line the regex actually returns plus
+a supplementary inflected-forms check, not by the AC's literal pattern alone (which, run exactly
+as specified, neither flags a real violation nor catches the two strings worth allowlisting).
 
 ## Sign-off
 
@@ -200,3 +258,4 @@ reassurance strings and the rule-documentation comments already covered above.
 | Method | Static code/schema review (grep + file reads) + existing automated test suites (`pnpm denylist`, `question-state-view.test.tsx`, `question-page.spec.ts`, `spectator-cache-key.spec.ts`) — no new tests were needed since every invariant already has either a dedicated CI check or an existing test asserting it |
 | Result | INV-1 through INV-10: **hold**. One unbuilt-feature gap noted under INV-9 (§7.8 outbound deep-link builder) — not a violation, flagged for WBS follow-up. Copy scan: **clean**. |
 | Signed | claude-code-web-session-35b05898 (WS14-T3) |
+| Revised | 2026-07-19, same session, following an independent Fable-model review of the merged PR — see the Revision note near the top. All five findings were independently re-verified against the repository before the corrections above were made. |
