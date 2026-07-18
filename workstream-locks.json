@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T10:06:38.164Z",
+  "updated_at": "2026-07-18T10:12:18.628Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -501,13 +501,13 @@
         "WS2-T1"
       ],
       "mock_start_ok": false,
-      "note": "Claiming ahead via /goal continuation. Actual dependencies (WS1/WS2/WS4) are fully implemented+verified on branch claude/wave-2-ws-1-2-4-woo118 (owner: claude-code-web-session-9c961fec) even though registry shows them 'claimed' not 'done' (not yet merged to main). Building directly on top of that branch, not against mocks.",
-      "status": "claimed",
+      "note": "Draft PR #8, stacked on PR #7 (WS2) — diff shrinks once #7 merges. pnpm verify green.",
+      "status": "in_review",
       "owner": null,
       "branch": "claude/wave-2-ws-1-2-4-woo118",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/8",
       "claimed_at": null,
-      "updated_at": "2026-07-18T09:49:33.011Z"
+      "updated_at": "2026-07-18T10:12:18.628Z"
     },
     "WS5-T1": {
       "title": "Assignment job + pairing lifecycle",
