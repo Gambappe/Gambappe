@@ -21,6 +21,9 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'on-first-retry',
+    // WS8-T2's share sheet calls `navigator.clipboard.writeText` on copy-link — Chromium
+    // denies clipboard-write by default in a headless/CI context without an explicit grant.
+    permissions: ['clipboard-read', 'clipboard-write'],
     // Sandboxed/dev environments can point at a system chromium instead of downloading
     // (CI uses the standard pre-installed browsers, §17.3).
     ...(process.env.PW_CHROMIUM_PATH
