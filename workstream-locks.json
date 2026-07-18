@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T23:43:34.855Z",
+  "updated_at": "2026-07-18T23:43:43.253Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1215,13 +1215,13 @@
       "phase": "P1",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": "Signed checklist at docs/audits/invariant-copy-audit.md. INV-1..10 all hold; one unbuilt-feature gap flagged under INV-9 (§7.8 outbound deep-link builder doesn't exist, no WBS row owns it — not a violation, recommend follow-up task). Copy scan clean. Awaiting CI + fable review.",
+      "note": "Merged main (PR #47, squash sha to be confirmed via git log). Signed checklist at docs/audits/invariant-copy-audit.md. INV-1..10 all hold; one unbuilt-feature gap flagged under INV-9 (§7.8 outbound deep-link builder doesn't exist, no WBS row owns it — recommend follow-up task). Copy scan clean.",
       "status": "done",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws14-t3-invariant-copy-audit",
       "pr": "https://github.com/suvarna4/Gambappe/pull/47",
       "claimed_at": "2026-07-18T23:34:08.354Z",
-      "updated_at": "2026-07-18T23:43:34.855Z"
+      "updated_at": "2026-07-18T23:43:43.253Z"
     },
     "WS14-T4": {
       "title": "Launch runbook + Question Zero drill",
