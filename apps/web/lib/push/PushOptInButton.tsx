@@ -31,11 +31,12 @@ async function postSubscription(endpoint: string, keys: { p256dh: string; auth: 
 }
 
 async function deleteSubscription(endpoint: string) {
-  await fetch('/api/v1/push/subscribe', {
+  const res = await fetch('/api/v1/push/subscribe', {
     method: 'DELETE',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ endpoint }),
   });
+  if (!res.ok) throw new Error(`push unsubscribe failed: ${res.status}`);
 }
 
 export function PushOptInButton({ vapidPublicKey, onSubscribed }: PushOptInButtonProps) {
@@ -54,9 +55,16 @@ export function PushOptInButton({ vapidPublicKey, onSubscribed }: PushOptInButto
   }
 
   async function handleDisable() {
-    const endpoint = await unsubscribeFromPush();
-    if (endpoint) await deleteSubscription(endpoint);
-    setStatus('idle');
+    try {
+      const endpoint = await unsubscribeFromPush();
+      if (endpoint) await deleteSubscription(endpoint);
+      setStatus('idle');
+    } catch {
+      // Browser-level unsubscribe (if it happened) already took effect; surfacing 'error'
+      // here just means the server-side row may still be live until it self-heals on the
+      // next 404/410 from the push service — better than a silently-stuck "subscribed" button.
+      setStatus('error');
+    }
   }
 
   if (status === 'unsupported') return null;

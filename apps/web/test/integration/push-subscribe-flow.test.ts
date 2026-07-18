@@ -56,14 +56,39 @@ describe('subscribePush', () => {
     const active = await listActivePushSubscriptionsForProfile(db, profileId);
     expect(active.map((s) => s.endpoint)).toEqual(['https://push.example/flow-1']);
   });
+
+  it('rejects an 11th distinct endpoint once the profile is at the 10-device cap', async () => {
+    const profileId = await makeClaimedProfile();
+    for (let i = 0; i < 10; i++) {
+      await subscribePush(db, profileId, { endpoint: `https://push.example/cap-${i}`, keys: { p256dh: 'p', auth: 'a' } });
+    }
+
+    await expect(
+      subscribePush(db, profileId, { endpoint: 'https://push.example/cap-11', keys: { p256dh: 'p', auth: 'a' } }),
+    ).rejects.toThrow(/too many active push subscriptions/);
+
+    const active = await listActivePushSubscriptionsForProfile(db, profileId);
+    expect(active).toHaveLength(10);
+  });
+
+  it('re-subscribing an already-active endpoint is never blocked by the cap', async () => {
+    const profileId = await makeClaimedProfile();
+    for (let i = 0; i < 10; i++) {
+      await subscribePush(db, profileId, { endpoint: `https://push.example/recap-${i}`, keys: { p256dh: 'p', auth: 'a' } });
+    }
+
+    await expect(
+      subscribePush(db, profileId, { endpoint: 'https://push.example/recap-0', keys: { p256dh: 'new', auth: 'new' } }),
+    ).resolves.toEqual({ subscribed: true });
+  });
 });
 
 describe('unsubscribePush', () => {
-  it('revokes an existing subscription', async () => {
+  it('revokes an existing subscription owned by the calling profile', async () => {
     const profileId = await makeClaimedProfile();
     await subscribePush(db, profileId, { endpoint: 'https://push.example/flow-2', keys: { p256dh: 'p', auth: 'a' } });
 
-    const result = await unsubscribePush(db, 'https://push.example/flow-2', new Date());
+    const result = await unsubscribePush(db, profileId, 'https://push.example/flow-2', new Date());
     expect(result).toEqual({ unsubscribed: true });
 
     const active = await listActivePushSubscriptionsForProfile(db, profileId);
@@ -71,8 +96,21 @@ describe('unsubscribePush', () => {
   });
 
   it('is a no-op for an endpoint that was never subscribed', async () => {
-    await expect(unsubscribePush(db, 'https://push.example/never', new Date())).resolves.toEqual({
+    const profileId = await makeClaimedProfile();
+    await expect(unsubscribePush(db, profileId, 'https://push.example/never', new Date())).resolves.toEqual({
       unsubscribed: true,
     });
+  });
+
+  it('never revokes another profile\'s subscription, even when the endpoint is known', async () => {
+    const owner = await makeClaimedProfile();
+    const attacker = await makeClaimedProfile();
+    await subscribePush(db, owner, { endpoint: 'https://push.example/flow-3', keys: { p256dh: 'p', auth: 'a' } });
+
+    const result = await unsubscribePush(db, attacker, 'https://push.example/flow-3', new Date());
+    expect(result).toEqual({ unsubscribed: true }); // reports success either way (no oracle for "does this endpoint exist")
+
+    const active = await listActivePushSubscriptionsForProfile(db, owner);
+    expect(active.map((s) => s.endpoint)).toEqual(['https://push.example/flow-3']); // still active — the attacker's call was scoped to their own (empty) profile
   });
 });

@@ -14,6 +14,7 @@ import { buildProfile } from '../../src/testing/factories.js';
 import {
   listActivePushSubscriptionsForProfile,
   revokePushSubscriptionByEndpoint,
+  revokePushSubscriptionByEndpointForProfile,
   upsertPushSubscription,
 } from '../../src/repositories/push-subscriptions.js';
 
@@ -94,6 +95,36 @@ describe('revokePushSubscriptionByEndpoint', () => {
 
     const active = await listActivePushSubscriptionsForProfile(db, profileId);
     expect(active).toHaveLength(0);
+  });
+});
+
+describe('revokePushSubscriptionByEndpointForProfile', () => {
+  it('revokes when the endpoint belongs to the given profile', async () => {
+    const profileId = await makeClaimedProfile();
+    await upsertPushSubscription(db, profileId, 'https://push.example/owned', { p256dh: 'a', auth: 'b' });
+
+    await revokePushSubscriptionByEndpointForProfile(db, profileId, 'https://push.example/owned', new Date());
+
+    const active = await listActivePushSubscriptionsForProfile(db, profileId);
+    expect(active).toHaveLength(0);
+  });
+
+  it('does NOT revoke an endpoint owned by a different profile', async () => {
+    const owner = await makeClaimedProfile();
+    const attacker = await makeClaimedProfile();
+    await upsertPushSubscription(db, owner, 'https://push.example/not-yours', { p256dh: 'a', auth: 'b' });
+
+    await revokePushSubscriptionByEndpointForProfile(db, attacker, 'https://push.example/not-yours', new Date());
+
+    const active = await listActivePushSubscriptionsForProfile(db, owner);
+    expect(active.map((s) => s.endpoint)).toEqual(['https://push.example/not-yours']);
+  });
+
+  it('is idempotent for an unknown endpoint (silent no-op)', async () => {
+    const profileId = await makeClaimedProfile();
+    await expect(
+      revokePushSubscriptionByEndpointForProfile(db, profileId, 'https://push.example/never-existed', new Date()),
+    ).resolves.toBeUndefined();
   });
 });
 

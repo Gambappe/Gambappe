@@ -47,7 +47,7 @@ export async function DELETE(request: Request): Promise<NextResponse> {
     if (identity.kind !== 'claimed') throw new ApiError('UNAUTHENTICATED', 'a claimed profile is required');
 
     const body = unsubscribeBodySchema.parse(await request.json());
-    const result = await unsubscribePush(getDb(), body.endpoint, now());
+    const result = await unsubscribePush(getDb(), identity.profile.id, body.endpoint, now());
 
     return jsonSuccess(result);
   });

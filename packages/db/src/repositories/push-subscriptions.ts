@@ -40,14 +40,38 @@ export async function upsertPushSubscription(
   return row;
 }
 
-/** Soft-delete by endpoint — used both by the unsubscribe API and by `notify:dispatch` when the
- * push service reports the endpoint gone (404/410). Idempotent: revoking an already-revoked or
- * unknown endpoint is a silent no-op, not an error. */
+/** Soft-delete by endpoint alone, no profile check — for `notify:dispatch` when the push
+ * service itself reports the endpoint gone (404/410, §5.6). NEVER call this for a user-
+ * initiated unsubscribe: any caller who merely knows an endpoint string (e.g. from a leaked
+ * log line or a shared device's history) could silently kill another profile's subscription.
+ * The `DELETE /push/subscribe` route uses `revokePushSubscriptionByEndpointForProfile` below
+ * instead, which scopes the update to the caller's own profile. Idempotent: revoking an
+ * already-revoked or unknown endpoint is a silent no-op, not an error. */
 export async function revokePushSubscriptionByEndpoint(db: Db, endpoint: string, at: Date): Promise<void> {
   await db
     .update(pushSubscriptions)
     .set({ revokedAt: at })
     .where(and(eq(pushSubscriptions.endpoint, endpoint), isNull(pushSubscriptions.revokedAt)));
+}
+
+/** User-initiated unsubscribe (§13.2): scoped to `profileId` so a claimed user can only ever
+ * revoke their own subscriptions, never another profile's, even if they know its endpoint. */
+export async function revokePushSubscriptionByEndpointForProfile(
+  db: Db,
+  profileId: string,
+  endpoint: string,
+  at: Date,
+): Promise<void> {
+  await db
+    .update(pushSubscriptions)
+    .set({ revokedAt: at })
+    .where(
+      and(
+        eq(pushSubscriptions.endpoint, endpoint),
+        eq(pushSubscriptions.profileId, profileId),
+        isNull(pushSubscriptions.revokedAt),
+      ),
+    );
 }
 
 export async function listActivePushSubscriptionsForProfile(

@@ -28,6 +28,16 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   return navigator.serviceWorker.register('/sw.js');
 }
 
+export function applicationServerKeyMatches(existing: ArrayBuffer | null, requested: Uint8Array): boolean {
+  if (!existing) return false;
+  const existingBytes = new Uint8Array(existing);
+  if (existingBytes.length !== requested.length) return false;
+  for (let i = 0; i < existingBytes.length; i++) {
+    if (existingBytes[i] !== requested[i]) return false;
+  }
+  return true;
+}
+
 export interface PushSubscriptionPayload {
   endpoint: string;
   keys: { p256dh: string; auth: string };
@@ -61,13 +71,19 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<PushSubsc
   if (permission !== 'granted') throw new Error('Notification permission was not granted');
 
   const registration = await registerServiceWorker();
-  const existing = await registration.pushManager.getSubscription();
-  const subscription =
-    existing ??
-    (await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-    }));
+  const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+  let subscription = await registration.pushManager.getSubscription();
+
+  // A VAPID key rotation invalidates any existing subscription — the push service then rejects
+  // sends with 403 (not 404/410), which `WebPushTransport` treats as a transient error, not a
+  // dead endpoint, so it would never self-heal via `notify:dispatch`'s revocation path. Detect
+  // the mismatch here instead and resubscribe fresh under the current key.
+  if (subscription && !applicationServerKeyMatches(subscription.options?.applicationServerKey ?? null, applicationServerKey)) {
+    await subscription.unsubscribe();
+    subscription = null;
+  }
+
+  subscription ??= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
 
   return subscriptionToPayload(subscription);
 }
