@@ -8,13 +8,13 @@ export default defineConfig({
     // but Vitest needs it spelled out to import route handlers / lib code directly.
     alias: { '@': fileURLToPath(new URL('.', import.meta.url)) },
   },
-  // WS8-T1: Next's SWC transforms .tsx with the automatic JSX runtime (no `React` import
-  // needed, per the app-router convention already used by app/page.tsx etc.). Vitest's
-  // esbuild transform defaults to the classic runtime, which fails at test time with
-  // "React is not defined" for any lib/*.tsx satori template unless told to match.
+  // tsconfig.json sets `"jsx": "preserve"` (Next's own bundler transforms it); Vitest's esbuild
+  // pipeline needs its own JSX setting since it doesn't go through Next at all — automatic
+  // runtime matches React 19 (no `import React` needed in `.tsx` test files: WS7-T2's
+  // `question-state-view.test.tsx`, WS8-T1's satori OG templates).
   esbuild: { jsx: 'automatic' },
   test: {
-    include: ['test/**/*.test.ts'],
+    include: ['test/**/*.test.ts', 'test/**/*.test.tsx'],
     exclude: ['test/integration/**'],
     passWithNoTests: true,
     environment: 'node',
