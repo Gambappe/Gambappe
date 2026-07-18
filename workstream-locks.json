@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T21:24:22.948Z",
+  "updated_at": "2026-07-18T21:24:48.608Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -486,12 +486,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": "feat/ws4-t7-engine-job-wiring",
       "pr": "https://github.com/suvarna4/Gambappe/pull/33",
       "claimed_at": "2026-07-18T20:23:04.956Z",
-      "updated_at": "2026-07-18T21:07:10.425Z"
+      "updated_at": "2026-07-18T21:24:48.608Z"
     },
     "WS4-T8": {
       "title": "Placement flow (API + seed)",
