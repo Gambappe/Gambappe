@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T11:18:27.361Z",
+  "updated_at": "2026-07-18T11:43:57.710Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1034,12 +1034,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws11-t1-rate-limiter",
       "pr": "https://github.com/suvarna4/Gambappe/pull/12",
       "claimed_at": "2026-07-18T11:04:59.355Z",
-      "updated_at": "2026-07-18T11:17:00.044Z"
+      "updated_at": "2026-07-18T11:43:57.708Z"
     },
     "WS11-T2": {
       "title": "Bot scoring",
