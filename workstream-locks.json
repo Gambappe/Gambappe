@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T21:08:19.529Z",
+  "updated_at": "2026-07-18T21:08:48.182Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -911,13 +911,13 @@
         "WS9-T1"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "in_review",
+      "note": "Merged PR #26 (65cf98b), including fable-review fixes (DELETE endpoint ownership scoping, VAPID key rotation handling, sw.js focus-match fix, subscription cap, button error handling).",
+      "status": "done",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws9-t2-web-push",
       "pr": "https://github.com/suvarna4/Gambappe/pull/26",
       "claimed_at": "2026-07-18T19:58:18.202Z",
-      "updated_at": "2026-07-18T20:16:22.446Z"
+      "updated_at": "2026-07-18T21:08:48.181Z"
     },
     "WS9-T3": {
       "title": "Beat wiring",
