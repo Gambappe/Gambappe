@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T22:27:07.051Z",
+  "updated_at": "2026-07-18T22:27:55.689Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -518,13 +518,13 @@
         "WS2-T3"
       ],
       "mock_start_ok": false,
-      "note": "PR pushed: feat/ws5-t1-nemesis-assignment @ e06c3c1",
-      "status": "in_review",
+      "note": "Merged to main as PR #34 (squash e0def09)",
+      "status": "done",
       "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": "feat/ws5-t1-nemesis-assignment",
       "pr": "https://github.com/suvarna4/Gambappe/pull/34",
       "claimed_at": "2026-07-18T20:23:06.355Z",
-      "updated_at": "2026-07-18T21:09:32.479Z"
+      "updated_at": "2026-07-18T22:27:55.689Z"
     },
     "WS5-T2": {
       "title": "Bonus question selection",
