@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T21:37:22.115Z",
+  "updated_at": "2026-07-18T21:45:47.463Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -722,13 +722,13 @@
         "WS2-T3"
       ],
       "mock_start_ok": true,
-      "note": "Rebased onto merged WS7-T2 (#27); resolved a real copy.ts add/add conflict (merged additively, no naming collisions). Full suite re-verified green post-rebase.",
+      "note": "Rebased onto WS7-T2 (#27) and again as main advanced; resolved copy.ts add/add and a duplicate auth.ts server: key from a parallel independent fix. Full suite green; 1 pre-existing e2e flake (INV-10 streaming-SSR timing) confirmed unrelated, reproduces on bare main too.",
       "status": "in_review",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws7-t5-claim-flow-ui",
       "pr": "https://github.com/suvarna4/Gambappe/pull/28",
       "claimed_at": "2026-07-18T19:48:44.733Z",
-      "updated_at": "2026-07-18T21:07:58.178Z"
+      "updated_at": "2026-07-18T21:45:47.462Z"
     },
     "WS7-T6": {
       "title": "Nemesis UI",
