@@ -15,18 +15,21 @@
 import { and, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import type { Db } from '../client.js';
 import { duoMatches, duoMatchQuestions, duos, markets, picks, questions } from '../schema/index.js';
+// getDuoById/DuoRow: WS4-T7's ratings.ts (same package, intra-package relative import — unlike
+// the apps/web precedent noted below, nothing here crosses the packages/db <-> apps/* boundary
+// §4.2 protects) landed identical implementations first; re-declaring them here caused a real
+// `export *` ambiguity in index.ts once both files existed on main. Imported for this file's
+// own internal use only — NOT re-exported here, since index.ts's `export * from
+// './repositories/ratings.js'` already makes them (and this file's own unused-here
+// incrementDuoMatchesPlayed/updateDuoRating, also deduplicated the same way) available to every
+// consumer; re-exporting would recreate the same ambiguity.
+import { getDuoById, type DuoRow } from './ratings.js';
 
-export type DuoRow = typeof duos.$inferSelect;
 export type DuoMatchRow = typeof duoMatches.$inferSelect;
 export type NewDuoMatchRow = typeof duoMatches.$inferInsert;
 export type DuoBonusCandidateMarketRow = typeof markets.$inferSelect;
 
 // --- lookups ------------------------------------------------------------------------------
-
-export async function getDuoById(db: Db, id: string): Promise<DuoRow | null> {
-  const [row] = await db.select().from(duos).where(eq(duos.id, id)).limit(1);
-  return row ?? null;
-}
 
 /**
  * §5.5: a profile may have at most one active duo. Deliberately duplicated from
@@ -333,25 +336,6 @@ export async function updateDuoMatchConclusion(
       updatedAt: at,
     })
     .where(eq(duoMatches.id, matchId));
-}
-
-export async function incrementDuoMatchesPlayed(db: Db, duoId: string, at: Date): Promise<void> {
-  await db
-    .update(duos)
-    .set({ matchesPlayed: sql`${duos.matchesPlayed} + 1`, updatedAt: at })
-    .where(eq(duos.id, duoId));
-}
-
-export async function updateDuoRating(
-  db: Db,
-  duoId: string,
-  rating: { rating: number; rd: number; vol: number },
-  at: Date,
-): Promise<void> {
-  await db
-    .update(duos)
-    .set({ glickoRating: rating.rating, glickoRd: rating.rd, glickoVol: rating.vol, updatedAt: at })
-    .where(eq(duos.id, duoId));
 }
 
 // --- window-roll (§8.5) -------------------------------------------------------------------------
