@@ -192,6 +192,22 @@ export async function getGradedPickScoresForQuestion(db: Db, questionId: string)
   return rows.rows.map((r) => ({ profileId: r['profile_id'] as string, edge: Number(r['edge']) }));
 }
 
+/**
+ * Same as `getGradedPickScoresForQuestion` but WITHOUT the bot exclusion — §8.6's other half:
+ * "excluded profiles get their own percentile against the full set" (they just never appear in
+ * anyone else's denominator). Only ever used to compute a single bot-excluded profile's own
+ * percentile on demand — never for the shared cached denominator every other viewer reads.
+ */
+export async function getAllGradedPickScoresForQuestion(db: Db, questionId: string): Promise<GradedPickScore[]> {
+  const rows = await db.execute(sql`
+    SELECT p.profile_id, p.edge
+    FROM picks p
+    WHERE p.question_id = ${questionId}
+      AND p.result IN ('win', 'loss')
+  `);
+  return rows.rows.map((r) => ({ profileId: r['profile_id'] as string, edge: Number(r['edge']) }));
+}
+
 /** All (any-status, excludes bot-scored) graded picks by a profile — §6.6 replay input. */
 export async function getPicksForProfile(db: Db, profileId: string): Promise<PickRow[]> {
   return db.select().from(picks).where(eq(picks.profileId, profileId));

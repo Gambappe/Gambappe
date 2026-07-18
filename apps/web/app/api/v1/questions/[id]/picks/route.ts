@@ -29,11 +29,13 @@ import {
 import { getMarketById, getQuestionById, placePickTx, updateProfileById } from '@receipts/db';
 import { jsonError, jsonSuccess } from '@/lib/api-response';
 import { assertSameOrigin } from '@/lib/origin-check';
-import { resolveOrMintIdentity, applyIdentityCookies } from '@/lib/pick-identity';
+import { resolveOrMintIdentity, applyIdentityCookies, type ResolvedOrMintedIdentity } from '@/lib/pick-identity';
 import { derivePickSource } from '@/lib/pick-source';
 import { resolvePickPriceStamp } from '@/lib/price-stamp';
 import { serializePick } from '@/lib/serialize-pick';
 import { defaultVenueAdapters } from '@/lib/venues';
+import { extractClientIp } from '@/lib/http';
+import { enforceRateLimit } from '@/lib/rate-limit';
 import { getDb, getRedis } from '@/lib/stores';
 
 export const runtime = 'nodejs';
@@ -42,8 +44,18 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
+  // Hoisted out of the try block: a freshly-minted ghost's cookie must still be applied on any
+  // error path reached AFTER minting (e.g. placePickTx throwing) — otherwise the just-inserted
+  // profile row is orphaned (no cookie ever points at it) and the ghost-mint quota it consumed
+  // is silently wasted, forcing a re-mint on retry.
+  let resolved: ResolvedOrMintedIdentity | undefined;
   try {
     assertSameOrigin(request);
+
+    // §14.1: pick 30/h/profile, 120/h/IP. IP check first — cheapest, needs no identity
+    // resolution — same posture as POST /events (protect against a flood before doing work).
+    const ipLimited = await enforceRateLimit('pick_create_ip', extractClientIp(request.headers) ?? 'unknown');
+    if (ipLimited) return ipLimited;
 
     const { id: rawId } = await params;
     const questionIdParse = zQuestionId.safeParse(rawId);
@@ -58,7 +70,13 @@ export async function POST(
     const db = getDb();
     const at = now();
 
-    const resolved = await resolveOrMintIdentity(request);
+    resolved = await resolveOrMintIdentity(request);
+
+    const profileLimited = await enforceRateLimit('pick_create_profile', resolved.profile.id);
+    if (profileLimited) {
+      applyIdentityCookies(profileLimited, resolved);
+      return profileLimited;
+    }
 
     // §6.2 step 0 (INV-9).
     if (resolved.profile.ageAttestedAt === null) {
@@ -139,6 +157,8 @@ export async function POST(
     applyIdentityCookies(response, resolved);
     return response;
   } catch (err) {
-    return jsonError(err);
+    const response = jsonError(err);
+    if (resolved) applyIdentityCookies(response, resolved);
+    return response;
   }
 }

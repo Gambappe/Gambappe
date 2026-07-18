@@ -9,6 +9,7 @@ import { undoPickTx } from '@receipts/db';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { assertSameOrigin } from '@/lib/origin-check';
 import { resolveIdentityFromRequest } from '@/lib/identity-request';
+import { enforceRateLimit } from '@/lib/rate-limit';
 import { getDb } from '@/lib/stores';
 
 export const runtime = 'nodejs';
@@ -24,6 +25,10 @@ export async function DELETE(
     if (identity.kind === 'anonymous') {
       throw new ApiError('UNAUTHENTICATED', 'a ghost or claimed profile is required');
     }
+
+    // §14.1: undo 10/h/profile.
+    const rateLimited = await enforceRateLimit('undo', identity.profile.id);
+    if (rateLimited) return rateLimited;
 
     const { id: rawId } = await params;
     const pickIdParse = zPickId.safeParse(rawId);

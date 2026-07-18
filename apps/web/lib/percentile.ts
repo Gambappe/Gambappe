@@ -7,7 +7,7 @@
  */
 import type { Redis } from 'ioredis';
 import { computePercentiles } from '@receipts/core';
-import { getGradedPickScoresForQuestion, type Db } from '@receipts/db';
+import { getAllGradedPickScoresForQuestion, getGradedPickScoresForQuestion, type Db } from '@receipts/db';
 
 const REVEAL_HASH_TTL_S = 7 * 24 * 3600;
 
@@ -31,8 +31,11 @@ async function recomputeAndCache(db: Db, redis: Redis, questionId: string): Prom
   return byProfile;
 }
 
-/** `null` when the profile has no bot-excluded graded pick on this question (e.g. bot-scored,
- * or didn't pick / picked but ungraded — callers only call this once a pick is known graded). */
+/** `null` only when the profile truly has no graded pick on this question (callers only call
+ * this once a pick is known graded, so this is effectively unreachable in practice). A
+ * bot-excluded profile still gets a percentile — §8.6: "excluded profiles get their own
+ * percentile against the full set" — just never cached in the shared (excluded-set) hash that
+ * every other viewer's lookup reads. */
 export async function getViewerPercentile(
   db: Db,
   redis: Redis,
@@ -43,5 +46,12 @@ export async function getViewerPercentile(
   if (cached !== null) return Number(cached);
 
   const recomputed = await recomputeAndCache(db, redis, questionId);
-  return recomputed.get(profileId) ?? null;
+  const percentile = recomputed.get(profileId);
+  if (percentile !== undefined) return percentile;
+
+  const allEntries = await getAllGradedPickScoresForQuestion(db, questionId);
+  const idx = allEntries.findIndex((e) => e.profileId === profileId);
+  if (idx === -1) return null; // genuinely no graded pick at all
+  const allPercentiles = computePercentiles(allEntries.map((e) => e.edge));
+  return allPercentiles[idx] ?? null;
 }

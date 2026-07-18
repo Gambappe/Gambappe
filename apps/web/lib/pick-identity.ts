@@ -10,7 +10,7 @@ import { getDb, getRedis } from './stores';
 import { GHOST_COOKIE_NAME, clearedGhostCookieOptions, ghostCookieOptions } from './ghost-cookie';
 import { RedisGhostMintLimiter } from './ghost-mint-limiter';
 import { mintGhostWithDb } from './ghost-mint';
-import { getClientIp } from './client-ip';
+import { extractClientIp } from './http';
 import { resolveIdentityFromRequest } from './identity-request';
 
 export interface ResolvedOrMintedIdentity {
@@ -29,7 +29,8 @@ export async function resolveOrMintIdentity(request: Request): Promise<ResolvedO
   }
 
   const limiter = new RedisGhostMintLimiter(getRedis());
-  const { profile, cookieValue } = await mintGhostWithDb(getDb(), getClientIp(request), limiter, now());
+  const ip = extractClientIp(request.headers) ?? 'unknown';
+  const { profile, cookieValue } = await mintGhostWithDb(getDb(), ip, limiter, now());
   return { profile, minted: true, cookieValue, clearGhostCookie };
 }
 
