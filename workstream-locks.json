@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T23:55:21.097Z",
+  "updated_at": "2026-07-18T23:59:02.755Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1215,13 +1215,13 @@
       "phase": "P1",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": "Merged main (PR #47). Fable review of the merged doc found 5 accuracy defects (false INV-5 blanket claim re: duo-matchmaker reading wallet-prior-blended fingerprints.chalk; wrong toWalletBadge file citation; copy-scan write-up didn't match its own grep's actual output; 2 minor overstatements). Corrections in follow-up PR #52 — verdicts unchanged, all INV-1..10 still hold.",
+      "note": "Merged main d7ccd6f (PR #47 squash 924d4bc). Fable review of the merged doc found 5 accuracy defects (false INV-5 blanket claim re: duo-matchmaker reading wallet-prior-blended fingerprints.chalk; wrong toWalletBadge file citation; copy-scan write-up didn't match its own grep's actual output; 2 minor overstatements) — corrected in follow-up PR #52 (squash be6953b). Verdicts unchanged, all INV-1..10 hold.",
       "status": "done",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws14-t3-invariant-copy-audit",
       "pr": "https://github.com/suvarna4/Gambappe/pull/47",
       "claimed_at": "2026-07-18T23:34:08.354Z",
-      "updated_at": "2026-07-18T23:55:21.097Z"
+      "updated_at": "2026-07-18T23:59:02.755Z"
     },
     "WS14-T4": {
       "title": "Launch runbook + Question Zero drill",
