@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T20:27:12.739Z",
+  "updated_at": "2026-07-18T20:33:38.678Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -674,13 +674,13 @@
         "WS3-T2"
       ],
       "mock_start_ok": true,
-      "note": "Reclaiming stale entry (was on abandoned claude/wave-2-ws-1-2-4-woo118 branch, never delivered). Rebuilding fresh off latest main; WS7-T1 (design system) and WS3-T2 (daily question APIs) are merged.",
-      "status": "claimed",
+      "note": "Home (/) + question page (/q/[slug]) built: 5 question states, pick/undo w/ age-gate, viewer-free spectator island (INV-10). WS3-T2 not merged (still in_review on stale branch) and GET /me also missing — mock-started per §19.2/§0.2: SSR reads Postgres directly (lib/question-view.ts), client pick/undo/poll targets real contract paths (lib/pick-client.ts), will activate once those land. pnpm verify green; integration + e2e green.",
+      "status": "in_review",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws7-t2-home-question-page",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/27",
       "claimed_at": "2026-07-18T10:55:10.010Z",
-      "updated_at": "2026-07-18T19:50:11.886Z"
+      "updated_at": "2026-07-18T20:33:38.677Z"
     },
     "WS7-T3": {
       "title": "Reveal experience",
