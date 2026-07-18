@@ -3,7 +3,7 @@
  * (cosmetic CTA link only) rather than blocking the reveal transaction / reminder write that
  * calls it.
  */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { buildQuestionUrl } from '../src/lib/question-url.js';
 
 const ORIGINAL_APP_URL = process.env.NEXT_PUBLIC_APP_URL;
