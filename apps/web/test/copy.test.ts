@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CLAIM_NUDGE_COPY, CLAIM_PUBLICNESS_STATEMENT } from '@/lib/copy';
+import { CLAIM_NUDGE_COPY, CLAIM_PUBLICNESS_STATEMENT, shareCopy } from '@/lib/copy';
 
 /**
  * §10.6 AC (WS7-T5): "copy string matches §10.6 verbatim." Pinned exact text, quoted directly
@@ -27,6 +27,14 @@ describe('§10.6 pinned copy', () => {
 
   it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
     const allCopy = [CLAIM_PUBLICNESS_STATEMENT, ...Object.values(CLAIM_NUDGE_COPY)].join(' ');
+    expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
+  });
+});
+
+/** WS8-T2 (§10.5 share sheet) section — same INV-8 money-word rule applied to its own copy. */
+describe('§10.5 share sheet copy', () => {
+  it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
+    const allCopy = Object.values(shareCopy).join(' ');
     expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
   });
 });

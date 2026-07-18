@@ -9,6 +9,7 @@ import {
 } from '@receipts/ui';
 import ClaimPromptEngine from '@/components/claim/ClaimPromptEngine';
 import ClaimSheetGalleryDemo from './ClaimSheetGalleryDemo';
+import ShareSheetGalleryDemo from './ShareSheetGalleryDemo';
 
 /**
  * `/dev/ui` — the WS7-T1 design-system gallery (design doc §19.3 AC: "gallery renders all
@@ -92,6 +93,11 @@ export default function UiGalleryPage() {
       <section data-testid="gallery-claim-sheet" className="space-y-3">
         <h2 className="text-muted text-sm font-semibold uppercase">ClaimSheet (WS7-T5)</h2>
         <ClaimSheetGalleryDemo />
+      </section>
+
+      <section data-testid="gallery-share-sheet" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">ShareSheet (WS8-T2)</h2>
+        <ShareSheetGalleryDemo />
       </section>
     </main>
   );

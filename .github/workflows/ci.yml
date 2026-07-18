@@ -149,6 +149,10 @@ jobs:
       # route resolves through, §6.1.1) — same latency-until-first-real-exercise story as
       # NEXT_PUBLIC_APP_URL above. Test-only value; never a real secret.
       GHOST_COOKIE_SECRET: e2e-test-ghost-cookie-secret
+      # Required by apps/web/lib/share-token.ts (§10.5 `?r=` attribution token minting,
+      # WS8-T2) — same story: e2e/share-sheet.spec.ts is the first spec to hit
+      # POST /api/share/token. Test-only value; never a real secret.
+      SHARE_TOKEN_SECRET: e2e-test-share-token-secret
     steps:
       - uses: actions/checkout@v4
 

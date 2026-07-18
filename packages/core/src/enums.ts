@@ -82,6 +82,19 @@ export type ReportContext = (typeof REPORT_CONTEXT)[number];
 export const REPORT_REASON = ['abuse', 'spam', 'cheating', 'other'] as const;
 export type ReportReason = (typeof REPORT_REASON)[number];
 
+/**
+ * §10.5 share artifact kinds — one per OG/card template family, and one per public route
+ * pattern (`/q/*`, `/p/*`, `/vs/*`, `/duos/*`). `question` covers all three of that template's
+ * variants (question/result/voided, §10.5) since they share one entity id (the question) and
+ * one page URL; the OG/card route itself picks the variant from live state.
+ */
+export const SHARE_ARTIFACT_KIND = ['question', 'receipt', 'matchup', 'profile', 'duo'] as const;
+export type ShareArtifactKind = (typeof SHARE_ARTIFACT_KIND)[number];
+
+/** §10.5: share cards render at `story` (1080×1920) or `square` (1080×1080), PNG. */
+export const SHARE_CARD_FORMAT = ['story', 'square'] as const;
+export type ShareCardFormat = (typeof SHARE_CARD_FORMAT)[number];
+
 export const NOTIFICATION_STATUS = ['queued', 'sent', 'failed', 'cancelled'] as const;
 export type NotificationStatus = (typeof NOTIFICATION_STATUS)[number];
 

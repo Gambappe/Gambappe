@@ -25,3 +25,22 @@ export function renderOgImage(element: ReactElement): ImageResponse {
     },
   });
 }
+
+/**
+ * WS8-T2 `/api/cards/*` variant of `renderOgImage`: same content-addressed immutable cache
+ * header (a card URL is `?v=<hash>&format=<story|square>` — both parts are baked into the
+ * content-address, see `card-route-handler.ts`), but at the caller-supplied story/square
+ * dimensions instead of the fixed OG 1200×630.
+ */
+export function renderCardImage(
+  element: ReactElement,
+  dims: { width: number; height: number },
+): ImageResponse {
+  return new ImageResponse(element, {
+    width: dims.width,
+    height: dims.height,
+    headers: {
+      'cache-control': `public, s-maxage=${OG_CACHE_S_MAXAGE_S}, immutable`,
+    },
+  });
+}
