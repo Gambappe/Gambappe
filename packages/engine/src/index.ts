@@ -12,3 +12,5 @@ export * from './glicko2.js';
 export * from './style.js';
 export * from './nemesis-matcher.js';
 export * from './duo-matcher.js';
+export * from './scoring.js';
+export * from './narration.js';
