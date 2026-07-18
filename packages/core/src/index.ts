@@ -10,5 +10,6 @@ export * from './ids.js';
 export * from './flags.js';
 export * from './clock.js';
 export * from './handles.js';
+export * from './pricing.js';
 export * from './types/index.js';
 export * from './schemas/index.js';
