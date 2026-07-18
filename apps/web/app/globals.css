@@ -1,0 +1,9 @@
+@import 'tailwindcss';
+@config '../../../packages/ui/tailwind.config.ts';
+
+/* Component classNames live in packages/ui, outside Next's auto-detected content root. */
+@source '../../../packages/ui/src';
+
+:root {
+  color-scheme: dark;
+}

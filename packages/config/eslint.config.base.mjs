@@ -1,4 +1,5 @@
 // Shared ESLint flat config (design doc §3: ESLint + Prettier, config in packages/config).
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
@@ -39,5 +40,12 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/triple-slash-reference': 'off',
     },
+  },
+  {
+    // WS7-T1 a11y bar (design doc §10.4): interactive elements keyboard-operable, no
+    // color-only signaling, labeled controls — enforced on every .tsx file, not just packages/ui.
+    files: ['**/*.tsx'],
+    plugins: { 'jsx-a11y': jsxA11y },
+    rules: jsxA11y.flatConfigs.recommended.rules,
   },
 );
