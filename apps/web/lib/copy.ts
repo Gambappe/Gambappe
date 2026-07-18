@@ -194,3 +194,37 @@ export const threadCopy = {
     '🫡': 'Salute',
   } as const,
 } as const;
+
+/** WS7-T9 (settings UI) section — §9.2/§9.4: pause nemesis, notifications, deletion.
+ * `show_wallet_address` has no toggle here — that's WS12-T3's "Badge + settings + unlink"
+ * scope, not this task's. */
+export const settingsCopy = {
+  heading: 'Settings',
+  claimRequiredNotice: 'Claim your account to manage settings.',
+  loadError: 'Could not load your settings — try again.',
+  saveError: 'Could not save — try again.',
+
+  nemesisHeading: 'Nemesis',
+  nemesisPausedLabel: 'Pause nemesis matchmaking',
+  nemesisPausedHint: "You won't be assigned a new nemesis while this is on.",
+
+  notificationsHeading: 'Notifications',
+  emailRevealLabel: 'Email at reveal',
+  emailNemesisLabel: 'Email for nemesis updates',
+  emailDuoLabel: 'Email for duo updates',
+  emailProductLabel: 'Email for product updates',
+  pushRevealLabel: 'Push at reveal',
+  pushNemesisLabel: 'Push for nemesis updates',
+  pushDuoLabel: 'Push for duo updates',
+
+  deleteHeading: 'Delete account',
+  deleteWarning:
+    'This permanently deletes your account and pick history. This cannot be undone.',
+  deleteConfirmPrompt: (handle: string) => `Type "${handle}" to confirm`,
+  deleteButton: 'Delete my account',
+  deleteConfirmButton: 'Permanently delete',
+  deleteError: 'Could not delete your account — try again.',
+  deleteDoneHeading: "Your account's been deleted",
+  deleteDoneBody: 'Your picks and profile are gone. Thanks for playing.',
+  deleteDoneHomeLink: 'Home',
+} as const;

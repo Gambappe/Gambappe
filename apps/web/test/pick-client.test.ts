@@ -4,7 +4,15 @@
  * why those endpoints don't exist on this branch yet).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiClientError, fetchMe, fetchReveal, placePick, undoPick } from '@/lib/pick-client';
+import {
+  ApiClientError,
+  deleteMe,
+  fetchMe,
+  fetchReveal,
+  placePick,
+  undoPick,
+  updateSettings,
+} from '@/lib/pick-client';
 
 function jsonResponse(
   body: unknown,
@@ -275,6 +283,90 @@ describe('fetchReveal (§6.7, WS7-T3)', () => {
       ),
     );
     await expect(fetchReveal('will-it-happen')).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
+  });
+});
+
+describe('updateSettings (§9.2, §9.4, WS7-T9)', () => {
+  it('PATCHes /api/v1/me/settings with exactly the given partial body and parses the merged result', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        data: {
+          settings: {
+            nemesis_paused: true,
+            show_wallet_address: false,
+            notifications: {
+              email_reveal: true,
+              email_nemesis: true,
+              email_duo: true,
+              email_product: false,
+              push_reveal: true,
+              push_nemesis: true,
+              push_duo: true,
+            },
+          },
+          timezone: 'America/New_York',
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await updateSettings({ nemesis_paused: true });
+    expect(result.data.settings.nemesis_paused).toBe(true);
+    expect(result.data.timezone).toBe('America/New_York');
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('/api/v1/me/settings');
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(init.body as string)).toEqual({ nemesis_paused: true });
+  });
+
+  it('surfaces UNAUTHENTICATED for a non-claimed caller', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { error: { code: 'UNAUTHENTICATED', message: 'a claimed profile is required' } },
+          { status: 401 },
+        ),
+      ),
+    );
+    await expect(updateSettings({ nemesis_paused: true })).rejects.toMatchObject({
+      code: 'UNAUTHENTICATED',
+    });
+  });
+
+  it('rejects an unknown body field client-side before ever hitting the network (zod .strict())', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    // @ts-expect-error deliberately passing an invalid field to prove the client validates first
+    await expect(updateSettings({ nonsense: true })).rejects.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('deleteMe (§9.2, §11.4, WS7-T9)', () => {
+  it('DELETEs /api/v1/me with the typed handle as the confirm body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: { deleted: true } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await deleteMe('Fox #1234');
+    expect(result.data.deleted).toBe(true);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('/api/v1/me');
+    expect(init.method).toBe('DELETE');
+    expect(JSON.parse(init.body as string)).toEqual({ confirm: 'Fox #1234' });
+  });
+
+  it('surfaces VALIDATION_FAILED when the typed confirm does not match the handle', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { error: { code: 'VALIDATION_FAILED', message: 'confirm must exactly match your current handle' } },
+          { status: 400 },
+        ),
+      ),
+    );
+    await expect(deleteMe('wrong handle')).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 });
 
