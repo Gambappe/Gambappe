@@ -23,3 +23,6 @@ blob-report/
 .DS_Store
 .idea/
 .vscode/
+
+# agent harness worktrees (never commit)
+.claude/worktrees/
