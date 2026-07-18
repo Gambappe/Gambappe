@@ -95,15 +95,3 @@ export async function unlinkWalletLink(db: Db, id: string, at: Date): Promise<Wa
   if (!updated) throw new Error(`unlinkWalletLink: no row for id=${id}`);
   return updated;
 }
-
-/** Postgres unique_violation SQLSTATE — used to map a race on the address_hash constraint. */
-export const UNIQUE_VIOLATION_CODE = '23505';
-
-export function isUniqueViolation(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code?: unknown }).code === UNIQUE_VIOLATION_CODE
-  );
-}
