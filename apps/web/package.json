@@ -39,10 +39,13 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22.15.0",
     "@types/pg": "^8.15.0",
+    "@types/pngjs": "^6.0.5",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "drizzle-orm": "^0.44.7",
+    "jsqr": "^1.4.0",
+    "pngjs": "^7.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"
