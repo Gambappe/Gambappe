@@ -65,11 +65,13 @@ export function ViewerStrip({ question }: ViewerStripProps) {
   }, [question.id]);
 
   // Ticks the undo countdown; also doubles as the local expiry check driving `canUndo` below.
+  // Pointless once revealed — `RevealSequence` (below) owns rendering then, and undo/pick UI
+  // never shows again — so this would otherwise re-render every second forever for no reason.
   useEffect(() => {
-    if (!pick) return;
+    if (!pick || question.status === 'revealed') return;
     const id = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [pick]);
+  }, [pick, question.status]);
 
   const handlePick = useCallback(
     async (side: MarketSide, ageAttested: boolean) => {

@@ -374,7 +374,8 @@ test.describe('reveal sequence (§10.3, WS7-T3)', () => {
     await page.goto(`/q/${question.slug}`);
     await expect(page.getByTestId('reveal-sequence-result')).toBeVisible();
     await expect(page.getByTestId('reveal-sequence-result')).toContainText('WIN');
-    await expect(page.getByTestId('reveal-sequence-percentile')).toContainText('82');
+    // §8.6 "Top X%" display convention: X = 100 − percentile, so raw 82 → "Top 18%".
+    await expect(page.getByTestId('reveal-sequence-percentile')).toContainText('Top 18%');
     await expect(page.getByTestId('reveal-sequence-streak')).toContainText('4');
   });
 
