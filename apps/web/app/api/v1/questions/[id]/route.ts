@@ -13,7 +13,7 @@ import type { NextResponse } from 'next/server';
 import { ApiError, now } from '@receipts/core';
 import { getMarketById, getQuestionBySlug } from '@receipts/db';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
-import { serializeQuestionPublic } from '@/lib/serialize-question';
+import { assertQuestionPubliclyVisible, serializeQuestionPublic } from '@/lib/serialize-question';
 import { getDb } from '@/lib/stores';
 
 export const runtime = 'nodejs';
@@ -27,6 +27,7 @@ export async function GET(
     const db = getDb();
     const question = await getQuestionBySlug(db, slug);
     if (!question) throw new ApiError('NOT_FOUND', 'no such question');
+    assertQuestionPubliclyVisible(question);
 
     const market = await getMarketById(db, question.marketId);
     if (!market) throw new ApiError('INTERNAL', 'question references a missing market');

@@ -6,7 +6,7 @@ import type { NextResponse } from 'next/server';
 import { ApiError, etDateString, now } from '@receipts/core';
 import { getDailyQuestion, getMarketById } from '@receipts/db';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
-import { serializeQuestionPublic } from '@/lib/serialize-question';
+import { assertQuestionPubliclyVisible, serializeQuestionPublic } from '@/lib/serialize-question';
 import { getDb } from '@/lib/stores';
 
 export const runtime = 'nodejs';
@@ -17,6 +17,7 @@ export async function GET(): Promise<NextResponse> {
     const at = now();
     const question = await getDailyQuestion(db, etDateString(at));
     if (!question) throw new ApiError('NOT_FOUND', 'no daily question for today');
+    assertQuestionPubliclyVisible(question);
 
     const market = await getMarketById(db, question.marketId);
     if (!market) throw new ApiError('INTERNAL', 'question references a missing market');

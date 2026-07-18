@@ -9,16 +9,50 @@
  *     once effectively locked, it's null until the real lock snapshot exists (a late lock job
  *     "back-fills" it; there's nothing dishonest about returning null in the meantime).
  */
-import type { QuestionStatus } from '@receipts/core';
+import { ApiError, type QuestionStatus, type QuestionPublic } from '@receipts/core';
 import type { MarketRow, QuestionRow } from '@receipts/db';
-import type { QuestionPublic } from '@receipts/core';
 
-/** §5.7 effective-state rule. `revealed`/`voided` are terminal and never overridden. */
+/** State-machine order (§5.7: draft → scheduled → open → locked → revealed) — used to keep
+ * the timestamp derivation below monotonic-forward-only. `revealed`/`voided` aren't in here;
+ * they're terminal and returned immediately, never reached by the ranking logic. */
+const STATUS_RANK: Partial<Record<QuestionStatus, number>> = {
+  draft: 0,
+  scheduled: 1,
+  open: 2,
+  locked: 3,
+};
+
+/**
+ * §5.7 effective-state rule. `revealed`/`voided` are terminal and never overridden. `draft` is
+ * pre-publication and never derived forward from timestamps — a draft with stale/unset dates
+ * must never present as `open`/`locked` (callers should also outright refuse to serve a raw
+ * `draft` question at all; see `assertQuestionPubliclyVisible`). For everything else, the
+ * derivation is monotonic: it only ever moves a question LATER than its raw status (the
+ * documented worker-outage tolerance — `lock_at` passed but `question:lock` hasn't run yet)
+ * and never earlier (an admin early-lock with a future `lock_at` must stay `locked`, not
+ * reappear as `open` just because the clock hasn't caught up to it).
+ */
 export function effectiveQuestionStatus(question: QuestionRow, at: Date): QuestionStatus {
   if (question.status === 'revealed' || question.status === 'voided') return question.status;
-  if (at.getTime() >= question.lockAt.getTime()) return 'locked';
-  if (at.getTime() >= question.openAt.getTime()) return 'open';
-  return question.status === 'draft' ? 'draft' : 'scheduled';
+  if (question.status === 'draft') return 'draft';
+
+  const timestampDerived: QuestionStatus =
+    at.getTime() >= question.lockAt.getTime()
+      ? 'locked'
+      : at.getTime() >= question.openAt.getTime()
+        ? 'open'
+        : 'scheduled';
+
+  const rawRank = STATUS_RANK[question.status] ?? 0;
+  const derivedRank = STATUS_RANK[timestampDerived] ?? 0;
+  return derivedRank > rawRank ? timestampDerived : question.status;
+}
+
+/** Draft questions are pre-publication — never served on a public read route (§5.7). */
+export function assertQuestionPubliclyVisible(question: Pick<QuestionRow, 'status'>): void {
+  if (question.status === 'draft') {
+    throw new ApiError('NOT_FOUND', 'no such question');
+  }
 }
 
 export function serializeQuestionPublic(question: QuestionRow, market: MarketRow, at: Date): QuestionPublic {
