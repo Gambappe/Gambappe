@@ -11,7 +11,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Redis } from 'ioredis';
 import { uuidv7 } from 'uuidv7';
 import type pg from 'pg';
-import { connect, markets, picks, profiles, questions, type Db } from '@receipts/db';
+import { connect, insertPriceSnapshot, markets, picks, profiles, questions, type Db } from '@receipts/db';
 import { buildMarket, buildPick, buildProfile, buildQuestion } from '@receipts/db/testing';
 import { runQuestionOpen } from '../../src/jobs/question-open.js';
 import { runQuestionLock } from '../../src/jobs/question-lock.js';
@@ -138,5 +138,32 @@ describe('question:lock (§6.2 lock job)', () => {
     expect(staleResult.locked).toBe(true);
     const [staleRow] = await db.select().from(questions).where(sql`id = ${questionStale.id}`);
     expect(staleRow!.yesPriceAtLock).toBeNull(); // all rungs exhausted — locking still proceeds
+  });
+
+  it('late fire (worker outage): backfills from the price snapshot nearest lock_at, not the current price (§5.7)', async () => {
+    const lockAt = NOW;
+    const lateFireAt = new Date(NOW.getTime() + 20 * 60_000); // 20 min late — well past PRICE_MAX_STALENESS_S
+
+    // Market's current price has since moved on and was updated recently relative to the late
+    // fire — the old, buggy ladder would treat this as "fresh" and wrongly stamp it.
+    const market = buildMarket({
+      venue: 'kalshi',
+      venueMarketId: 'LOCK-LATE-1',
+      yesPrice: 0.9,
+      yesPriceUpdatedAt: lateFireAt,
+    });
+    await db.insert(markets).values(market);
+    const question = buildQuestion(market.id as string, { status: 'open', lockAt });
+    await db.insert(questions).values(question);
+
+    // The actual price snapshot nearest lock_at — this is what should win.
+    await insertPriceSnapshot(db, market.id as string, lockAt, 0.65);
+    // A farther-away snapshot near the late fire time, to prove "nearest" really means nearest.
+    await insertPriceSnapshot(db, market.id as string, lateFireAt, 0.9);
+
+    const result = await runQuestionLock(db, pool, redis, question.id as string, lateFireAt);
+    expect(result.locked).toBe(true);
+    const [row] = await db.select().from(questions).where(sql`id = ${question.id}`);
+    expect(Number(row!.yesPriceAtLock)).toBeCloseTo(0.65, 5);
   });
 });

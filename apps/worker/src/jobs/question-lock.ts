@@ -8,8 +8,16 @@
  */
 import type pg from 'pg';
 import type { Redis } from 'ioredis';
-import { now, stampPrice, type PriceStampSources } from '@receipts/core';
-import { createDb, getMarketById, getQuestionById, lockQuestionTx, type Db, type LockQuestionResult } from '@receipts/db';
+import { cacheStalenessLimitS, now, stampPrice, type PriceStampSources } from '@receipts/core';
+import {
+  createDb,
+  getMarketById,
+  getPriceSnapshotNearest,
+  getQuestionById,
+  lockQuestionTx,
+  type Db,
+  type LockQuestionResult,
+} from '@receipts/db';
 import type { JobHandler } from '../heartbeat.js';
 import { logger } from '../logger.js';
 
@@ -21,15 +29,33 @@ function priceCacheKey(venue: string, venueMarketId: string): string {
   return `price:${venue}:${venueMarketId}`;
 }
 
+/**
+ * §5.7: "A late lock job back-fills the lock snapshot from picks with `picked_at < lock_at`
+ * and the price snapshot nearest `lock_at`." The normal cache/DB-fallback ladder below is
+ * relative to `at` (the fire time) — on a worker-outage late fire, `at` can be well after
+ * `lockAt`, so a "fresh" cache/DB reading is fresh relative to NOW, not to lock time, and
+ * would stamp the post-lock market price instead of the price actually at lock. Once the fire
+ * is late enough that the ladder's own staleness window can no longer possibly straddle
+ * `lockAt`, skip straight to the nearest recorded `market_price_snapshots` row instead.
+ */
 async function resolveLockPrice(
   db: Db,
   redis: Redis,
   marketId: string,
   isVolatile: boolean,
+  lockAt: Date,
   at: Date,
 ): Promise<{ yesPrice: number } | null> {
   const market = await getMarketById(db, marketId);
   if (!market) return null;
+
+  const lateByS = (at.getTime() - lockAt.getTime()) / 1000;
+  if (lateByS > cacheStalenessLimitS(isVolatile)) {
+    const nearest = await getPriceSnapshotNearest(db, marketId, lockAt);
+    if (nearest) return { yesPrice: nearest.yesPrice };
+    // No snapshot ever recorded for this market — fall through to the normal ladder as a
+    // last resort rather than leaving yes_price_at_lock null outright.
+  }
 
   const sources: PriceStampSources = {
     readCache: async () => {
@@ -66,7 +92,7 @@ export async function runQuestionLock(
     return { locked: false };
   }
 
-  const price = await resolveLockPrice(db, redis, question.marketId, question.isVolatile, at);
+  const price = await resolveLockPrice(db, redis, question.marketId, question.isVolatile, question.lockAt, at);
 
   const client = await pool.connect();
   try {
