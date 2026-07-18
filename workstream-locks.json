@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T12:51:22.287Z",
+  "updated_at": "2026-07-18T12:53:39.044Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1003,13 +1003,13 @@
         "WS11-T3"
       ],
       "mock_start_ok": true,
-      "note": "Mock-start OK vs WS11-T3 (§19.2).",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "note": "Mock-start vs WS11-T3 (§19.2): building the admin queue read/resolve surface against the already-fixed reports/blocks/profiles schema, not against WS11-T3's not-yet-built report/block-creation endpoints. Will not merge until WS11-T3 lands per mock-start rules.",
+      "status": "claimed",
+      "owner": "claude-code-web-session-35b05898",
+      "branch": "feat/ws10-t4-moderation-queues",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-18T12:53:39.044Z",
+      "updated_at": "2026-07-18T12:53:39.044Z"
     },
     "WS10-T5": {
       "title": "Ops dashboard",
