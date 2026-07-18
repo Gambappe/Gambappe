@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T19:04:18.603Z",
+  "updated_at": "2026-07-18T19:04:20.448Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -897,12 +897,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-sonnet5-vf9acd-orchestrator",
+      "branch": "feat/ws9-t1-outbox-email",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-18T19:04:20.447Z",
+      "updated_at": "2026-07-18T19:04:20.447Z"
     },
     "WS9-T2": {
       "title": "Web push",
