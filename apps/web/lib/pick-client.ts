@@ -19,11 +19,15 @@
 import {
   createPickBodySchema,
   createPickResponseSchema,
+  deleteMeBodySchema,
+  deleteMeResponseSchema,
   deletePickResponseSchema,
   errorEnvelopeSchema,
   getMeResponseSchema,
   getQuestionResponseSchema,
   getRevealResponseSchema,
+  updateSettingsBodySchema,
+  updateSettingsResponseSchema,
   type ErrorCode,
   type QuestionPublic,
   type RevealPayload,
@@ -33,6 +37,9 @@ import type { z } from 'zod';
 type CreatePickBody = z.infer<typeof createPickBodySchema>;
 type CreatePickResponse = z.infer<typeof createPickResponseSchema>;
 type GetMeResponse = z.infer<typeof getMeResponseSchema>;
+type UpdateSettingsBody = z.infer<typeof updateSettingsBodySchema>;
+type UpdateSettingsResponse = z.infer<typeof updateSettingsResponseSchema>;
+type DeleteMeResponse = z.infer<typeof deleteMeResponseSchema>;
 
 /** Thrown for both transport failures and `{error}` envelopes — callers switch on `.code`. */
 export class ApiClientError extends Error {
@@ -175,5 +182,43 @@ export function fetchReveal(slug: string): Promise<ApiResult<RevealPayload>> {
     `/api/v1/questions/${encodeURIComponent(slug)}/reveal`,
     { method: 'GET' },
     getRevealResponseSchema,
+  );
+}
+
+/** `PATCH /api/v1/me/settings` (§9.2, §9.4, WS7-T9 settings UI). A partial `ProfileSettings`
+ * patch — the server merges it onto the stored settings, so callers only ever send the field(s)
+ * that actually changed. Claimed-only (`UNAUTHENTICATED` otherwise).
+ * `async` so a client-side `.strict()` validation failure on `body` rejects the returned promise
+ * like every other failure mode here (mirrors `placePick`'s own note above). */
+export async function updateSettings(
+  body: UpdateSettingsBody,
+): Promise<ApiResult<UpdateSettingsResponse>> {
+  const parsedBody = updateSettingsBodySchema.parse(body);
+  return request(
+    '/api/v1/me/settings',
+    {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(parsedBody),
+    },
+    updateSettingsResponseSchema,
+  );
+}
+
+/** `DELETE /api/v1/me` (§9.2, §11.4, WS7-T9 settings UI). `confirm` must exactly match the
+ * caller's CURRENT handle (server re-checks this — the settings UI's typed-confirm input is a
+ * UX affordance, not the actual guard) — a mismatch surfaces as `VALIDATION_FAILED`. Claimed-only.
+ * `async` for the same reason as `updateSettings` above (a synchronous parse failure — an empty
+ * `confirm` — must reject the returned promise, not throw). */
+export async function deleteMe(confirm: string): Promise<ApiResult<DeleteMeResponse>> {
+  const parsedBody = deleteMeBodySchema.parse({ confirm });
+  return request(
+    '/api/v1/me',
+    {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(parsedBody),
+    },
+    deleteMeResponseSchema,
   );
 }
