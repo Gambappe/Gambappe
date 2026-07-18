@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T22:28:37.799Z",
+  "updated_at": "2026-07-18T22:28:39.097Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -628,13 +628,13 @@
         "WS6-T2"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "available",
-      "owner": null,
+      "note": "Starting: ladder promotion/relegation on top of WS6-T2's window-roll",
+      "status": "claimed",
+      "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-18T22:28:39.097Z",
+      "updated_at": "2026-07-18T22:28:39.097Z"
     },
     "WS6-T4": {
       "title": "Duo public/self APIs",
