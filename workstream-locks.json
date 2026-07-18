@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T22:45:02.189Z",
+  "updated_at": "2026-07-18T22:45:07.437Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -537,10 +537,10 @@
       "note": "PR pushed: feat/ws5-t2-bonus-question-selection @ https://github.com/suvarna4/Gambappe/pull/39",
       "status": "in_review",
       "owner": "claude-sonnet5-vf9acd-orchestrator",
-      "branch": null,
+      "branch": "feat/ws5-t2-bonus-question-selection",
       "pr": "https://github.com/suvarna4/Gambappe/pull/39",
       "claimed_at": "2026-07-18T22:28:37.799Z",
-      "updated_at": "2026-07-18T22:45:02.189Z"
+      "updated_at": "2026-07-18T22:45:07.437Z"
     },
     "WS5-T3": {
       "title": "Week scoring + verdicts",
