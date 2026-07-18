@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T19:56:34.101Z",
+  "updated_at": "2026-07-18T19:56:35.444Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -850,13 +850,13 @@
         "WS3-T4"
       ],
       "mock_start_ok": true,
-      "note": "Claiming ahead via /goal continuation. Dependencies (WS1/WS2/WS3/WS4) implemented on branch claude/wave-2-ws-1-2-4-woo118; PRs open against main. Building directly on top of that branch.",
+      "note": "Restarting from latest main (f323980); prior owner's claim was stale/never delivered. Building ISR + /internal/revalidate per §10.1-10.2, §9.2; WS7-T2 not yet landed so spectator page is a documented mock scaffold.",
       "status": "claimed",
       "owner": "claude-code-web-session-9c961fec",
-      "branch": "claude/wave-2-ws-1-2-4-woo118",
+      "branch": "feat-ws8-t1-t3-og-isr",
       "pr": null,
       "claimed_at": "2026-07-18T10:55:12.717Z",
-      "updated_at": "2026-07-18T10:55:12.717Z"
+      "updated_at": "2026-07-18T19:56:35.443Z"
     },
     "WS8-T4": {
       "title": "oEmbed + meta + sitemap",
