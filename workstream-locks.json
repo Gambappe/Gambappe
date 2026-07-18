@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T12:05:55.168Z",
+  "updated_at": "2026-07-18T12:07:15.633Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1019,12 +1019,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-35b05898",
+      "branch": "feat/ws10-t5-ops-dashboard",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-18T12:07:15.633Z",
+      "updated_at": "2026-07-18T12:07:15.633Z"
     },
     "WS11-T1": {
       "title": "Rate limiter middleware",
