@@ -150,12 +150,17 @@ export interface RegradeResult {
  * Regrades an already-revealed question inside `tx` (§6.5 "admin can flip an outcome within
  * REGRADE_WINDOW_H"; the window itself is the caller's (WS10-T3) responsibility to check
  * against `revealed_at` before calling this — this function only enforces the state guard).
- * Re-scores EVERY pick for the question (not just `pending` ones, unlike `gradeResolvedQuestionTx`
- * — a revealed question's picks are always already win/loss, never pending) against the new
- * outcome. Scope: daily questions only in this wave — nemesis/duo bonus questions don't exist
- * yet (matches `grade:followup`'s own SPEC-GAP), so the "any pairing/duo scoring that consumed
- * it" + deep-regrade rating-restoration paths (§6.5) have nothing to restore against; the
- * caller refuses non-daily regrade rather than silently under-scoring a future pairing/match.
+ * Re-scores every non-void pick for the question (not just `pending` ones, unlike
+ * `gradeResolvedQuestionTx` — a revealed question's picks are always already win/loss, never
+ * pending) against the new outcome. The `result != 'void'` guard is defensive: a `revealed`
+ * question can't currently HAVE a void pick (the only pick-voiding paths void the whole
+ * question first, and that fails this function's own `status = 'revealed'` guard), but a future
+ * per-pick void (moderation, account deletion) must never get silently resurrected to win/loss
+ * by a later regrade. Scope: daily questions only in this wave — nemesis/duo bonus questions
+ * don't exist yet (matches `grade:followup`'s own SPEC-GAP), so the "any pairing/duo scoring
+ * that consumed it" + deep-regrade rating-restoration paths (§6.5) have nothing to restore
+ * against; the caller refuses non-daily regrade rather than silently under-scoring a future
+ * pairing/match.
  */
 export async function regradeRevealedQuestionTx(
   tx: Db,
@@ -177,7 +182,7 @@ export async function regradeRevealedQuestionTx(
         edge = (CASE WHEN side = ${newOutcome} THEN 1 ELSE 0 END)
                - (CASE WHEN side = 'yes' THEN yes_price_at_entry ELSE 1 - yes_price_at_entry END),
         graded_at = ${at.toISOString()}::timestamptz
-    WHERE question_id = ${questionId}
+    WHERE question_id = ${questionId} AND result != 'void'
     RETURNING profile_id
   `);
   return { regraded: true, affectedProfileIds: (regraded.rows as Array<{ profile_id: string }>).map((r) => r.profile_id) };

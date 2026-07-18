@@ -13,7 +13,7 @@
  * consumption is newly decided," never "what the resulting streak length is" (§6.6, reusing the
  * WS2-T3 replay procedure per the WS3 task brief).
  */
-import { eq, sql } from 'drizzle-orm';
+import { eq, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from '../client.js';
 import { profiles, streakFreezeUses } from '../schema/index.js';
 import {
@@ -289,4 +289,29 @@ export async function replayStreakForProfileTx(tx: Db, profileId: string, at: Da
     .where(eq(profiles.id, profileId));
 
   return result;
+}
+
+/**
+ * Every profile with ANY streak history (`last_counted_date IS NOT NULL`) — used by WS10-T3's
+ * post-reveal void to find non-participants who need a streak replay too, not just the voided
+ * question's own pick-holders. Why this is necessary: `streak:sweep` runs daily at 03:30 ET,
+ * inside the 48h post-reveal void window, and BREAKS a non-participant's streak against a day
+ * that (per §6.6: "void days never count for/against streaks") must never break anything once
+ * that day is voided. There is no ledger of "which profiles the sweep touched for date D" —
+ * sweep only writes the RESULTING streak fields, and a broken profile's `current_streak` is
+ * already 0 by the time an admin void runs, so a `current_streak > 0` filter (which would find
+ * the CANDIDATES *before* a sweep breaks them) can't find the ones already broken *after*.
+ * Replaying every profile with any streak history is the only reliable catch-all: `replayStreak`
+ * (§6.6, `../streak-replay.js`) already treats a `voided` day correctly (advances through it
+ * without breaking or incrementing) once the daily's status flip is visible to it, so re-running
+ * it for a profile untouched by this date is simply a no-op, not a correctness risk — only a
+ * cost. Accepted here because post-reveal void is a rare, deliberate admin action, not a hot
+ * path; this does not scale to "replay everyone" on every ordinary grading/reveal.
+ */
+export async function listProfileIdsWithStreakHistory(db: Db): Promise<string[]> {
+  const rows = await db
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(isNotNull(profiles.lastCountedDate));
+  return rows.map((r) => r.id);
 }

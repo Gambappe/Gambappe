@@ -11,7 +11,9 @@ import { getAllGradedPickScoresForQuestion, getGradedPickScoresForQuestion, type
 
 const REVEAL_HASH_TTL_S = 7 * 24 * 3600;
 
-function revealHashKey(questionId: string): string {
+/** Exported for WS10-T3's regrade path (to invalidate a stale cache entry on a failed
+ * recompute — see `settlement-admin.ts`). */
+export function revealHashKey(questionId: string): string {
   return `reveal:${questionId}`;
 }
 

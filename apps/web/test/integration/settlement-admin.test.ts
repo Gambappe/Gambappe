@@ -10,7 +10,7 @@
  */
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Redis } from 'ioredis';
@@ -135,6 +135,21 @@ describe('forceSettleQuestion (§15.3)', () => {
     await forceSettleQuestion(db, question.id as string, 'yes', NOW);
     const second = await forceSettleQuestion(db, question.id as string, 'yes', NOW);
     expect(second).toEqual({ graded: false, winCount: 0, lossCount: 0 });
+  });
+
+  it('still re-enqueues grade:followup on a retry even though grading itself is a no-op (recoverable crash-between-commit-and-enqueue)', async () => {
+    const market = buildMarket({ closeTime: new Date(NOW.getTime() - 31 * 60_000) });
+    await db.insert(markets).values(market);
+    const question = buildQuestion(market.id as string, { status: 'locked' });
+    await db.insert(questions).values(question);
+
+    await forceSettleQuestion(db, question.id as string, 'yes', NOW);
+    await db.execute(sql`DELETE FROM pgboss.job WHERE name = 'grade:followup'`); // simulate the first enqueue never having happened
+    await forceSettleQuestion(db, question.id as string, 'yes', NOW); // retry sees graded:false, but is still settled
+
+    const jobs = await db.execute(sql`SELECT data FROM pgboss.job WHERE name = 'grade:followup'`);
+    expect(jobs.rows).toHaveLength(1);
+    expect(jobs.rows[0]!['data']).toEqual({ questionId: question.id });
   });
 });
 
@@ -271,6 +286,80 @@ describe('voidQuestionAdmin — post-reveal (§5.7, §6.6 replay procedure)', ()
       /48h/,
     );
   });
+
+  it('also restores a non-participant whose streak was already broken by streak:sweep before the void (§6.6)', async () => {
+    // Day D-1: both profiles answer and win — both build a streak of 1.
+    const priorMarket = buildMarket({ status: 'resolved', outcome: 'yes' });
+    await db.insert(markets).values(priorMarket);
+    const priorQuestion = buildQuestion(priorMarket.id as string, {
+      questionDate: '2026-08-08',
+      status: 'revealed',
+      outcome: 'yes',
+      settledAt: new Date('2026-08-08T17:00:00Z'),
+      revealedAt: new Date('2026-08-08T20:00:00Z'),
+    });
+    await db.insert(questions).values(priorQuestion);
+
+    const participant = buildProfile({ currentStreak: 1, bestStreak: 1, lastCountedDate: '2026-08-08' });
+    // Simulates the POST-SWEEP state: streak:sweep already ran for 08-09 (03:30 ET on 08-10,
+    // well inside the 48h post-reveal void window) and broke this profile because they never
+    // answered 08-09 — current_streak zeroed, last_counted_date left at the last real day (per
+    // `replayStreak`'s non-participant break branch, which zeroes the streak but does not
+    // advance last_counted_date).
+    const nonParticipant = buildProfile({ currentStreak: 0, bestStreak: 1, lastCountedDate: '2026-08-08' });
+    await db.insert(profiles).values([participant, nonParticipant]);
+    await db.insert(picks).values([
+      buildPick(priorQuestion.id as string, participant.id as string, {
+        side: 'yes', yesPriceAtEntry: 0.6, result: 'win', edge: computeEdge('yes', 0.6, true), gradedAt: priorQuestion.settledAt as Date,
+      }),
+      buildPick(priorQuestion.id as string, nonParticipant.id as string, {
+        side: 'yes', yesPriceAtEntry: 0.6, result: 'win', edge: computeEdge('yes', 0.6, true), gradedAt: priorQuestion.settledAt as Date,
+      }),
+    ]);
+
+    // Day D (08-09): only the participant answers — extends their streak to 2. The
+    // non-participant's row above already reflects the sweep having broken them for this day.
+    const market = buildMarket({ status: 'resolved', outcome: 'yes' });
+    await db.insert(markets).values(market);
+    const revealedAt = new Date('2026-08-09T20:00:00Z');
+    const question = buildQuestion(market.id as string, {
+      questionDate: '2026-08-09',
+      status: 'revealed',
+      outcome: 'yes',
+      settledAt: new Date('2026-08-09T17:00:00Z'),
+      revealedAt,
+    });
+    await db.insert(questions).values(question);
+    await db.insert(picks).values(
+      buildPick(question.id as string, participant.id as string, {
+        side: 'yes', yesPriceAtEntry: 0.6, result: 'win', edge: computeEdge('yes', 0.6, true), gradedAt: question.settledAt as Date,
+      }),
+    );
+
+    const at = new Date(revealedAt.getTime() + 8 * 3600_000); // well after the 03:30 ET sweep, inside the 48h window
+    const result = await voidQuestionAdmin(db, question.id as string, 'overturned', at);
+    expect(result.voided).toBe(true);
+    expect(result.affectedProfileIds).toEqual([participant.id]); // only the actual pick-holder is notified
+
+    // The non-participant is restored: D is now a voided day, which `replayStreak` advances
+    // through without breaking — their streak returns to what it was at D-1, not stuck at 0.
+    const restoredNonParticipant = await getProfileById(db, nonParticipant.id as string);
+    expect(restoredNonParticipant?.currentStreak).toBe(1);
+    expect(restoredNonParticipant?.lastCountedDate).toBe('2026-08-09');
+
+    // The participant still has their (recomputed) streak too — D no longer counts, so they're
+    // back to the D-1 state rather than the now-void D having incremented them to 2.
+    const replayedParticipant = await getProfileById(db, participant.id as string);
+    expect(replayedParticipant?.currentStreak).toBe(1);
+    expect(replayedParticipant?.lastCountedDate).toBe('2026-08-09');
+
+    // No spurious notification for the non-participant — they never saw this question.
+    const nonParticipantNotifs = await db
+      .select()
+      .from(notifications)
+      .where(sql`profile_id = ${nonParticipant.id}`);
+    expect(nonParticipantNotifs).toHaveLength(0);
+  });
 });
 
 describe('regradeQuestion (§6.5, §6.6, §8.6)', () => {
@@ -382,5 +471,29 @@ describe('regradeQuestion (§6.5, §6.6, §8.6)', () => {
 
     const notifs = await db.select().from(notifications);
     expect(notifs.map((n) => n.kind)).toEqual(['question_regraded', 'question_regraded']);
+  });
+
+  it('still reports regraded:true when the percentile cache recompute fails, and invalidates the stale cache entry instead of leaving it', async () => {
+    const { question, winner, loser, revealedAt } = await makeRevealedDaily('2026-08-06');
+    const at = new Date(revealedAt.getTime() + 3600_000);
+
+    // Pre-seed a hash that a stale-serving bug would incorrectly leave behind.
+    await redis.hset(revealHashKey(question.id as string), { stale: '999' });
+
+    const hsetSpy = vi.spyOn(redis, 'hset').mockRejectedValueOnce(new Error('simulated redis failure'));
+    try {
+      const result = await regradeQuestion(db, redis, question.id as string, 'no', at);
+      expect(result.regraded).toBe(true); // the DB-level regrade still succeeds and is reported as such
+      expect(result.affectedProfileIds.sort()).toEqual([winner.id, loser.id].sort());
+
+      const [winnerPick] = await db.select().from(picks).where(sql`profile_id = ${winner.id}`);
+      expect(winnerPick?.result).toBe('loss'); // the DB mutation actually committed
+
+      // The stale hash is gone rather than left serving the pre-regrade percentiles.
+      const cached = await redis.hgetall(revealHashKey(question.id as string));
+      expect(cached).toEqual({});
+    } finally {
+      hsetSpy.mockRestore();
+    }
   });
 });

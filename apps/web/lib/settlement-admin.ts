@@ -33,6 +33,7 @@ import {
   gradeResolvedQuestionTx,
   getMarketById,
   getQuestionById,
+  listProfileIdsWithStreakHistory,
   regradeRevealedQuestionTx,
   replayStreakForProfileTx,
   sendNotification,
@@ -41,7 +42,8 @@ import {
   voidRevealedQuestionTx,
   type Db,
 } from '@receipts/db';
-import { recomputeAndCache } from './percentile';
+import { logger } from './logger';
+import { recomputeAndCache, revealHashKey } from './percentile';
 import { getBoss } from './stores';
 
 const GRADE_FOLLOWUP_QUEUE = 'grade:followup';
@@ -79,7 +81,12 @@ export async function forceSettleQuestion(
   }
 
   const result = await db.transaction((tx) => gradeResolvedQuestionTx(tx, questionId, outcome, at));
-  if (result.graded) {
+  // Enqueue whenever the question ends up settled — not just on `result.graded` from THIS call —
+  // so a crash between commit and enqueue is recoverable by simply retrying the same request
+  // (the retry sees `graded: false` but still re-enqueues; `grade:followup` is itself documented
+  // idempotent, §6.5, so a duplicate enqueue is harmless).
+  const settled = result.graded || (await getQuestionById(db, questionId))?.settledAt != null;
+  if (settled) {
     const boss = await getBoss();
     await boss.createQueue(GRADE_FOLLOWUP_QUEUE);
     await boss.send(GRADE_FOLLOWUP_QUEUE, { questionId });
@@ -108,20 +115,37 @@ export async function voidQuestionAdmin(
       throw new ApiError('VALIDATION_FAILED', `post-reveal void is only allowed within ${REGRADE_WINDOW_H}h of reveal`);
     }
 
-    const affectedProfileIds = await db.transaction(async (tx) => {
+    const { voided, notifiedProfileIds } = await db.transaction(async (tx) => {
       const voidResult = await voidRevealedQuestionTx(tx, questionId, at, reason);
-      if (!voidResult.voided) return [];
+      if (!voidResult.voided) return { voided: false, notifiedProfileIds: [] as string[] };
+
       const picksResult = await voidAllPicksForQuestionTx(tx, questionId, at);
-      for (const profileId of picksResult.affectedProfileIds) {
+      const pickHolderIds = new Set(picksResult.affectedProfileIds);
+
+      // §6.6: a voided day must never count for/against ANY profile's streak — not just this
+      // question's pick-holders. `streak:sweep` runs daily at 03:30 ET, inside the 48h
+      // post-reveal void window, and BREAKS a non-participant's streak against this exact day
+      // if it ran before this void does. There is no ledger of "which profiles the sweep
+      // touched for this date" (a broken profile's `current_streak` is already 0 by the time
+      // we'd query for it), so the only reliable fix is to replay every profile with any
+      // streak history — `replayStreak` already handles a `voided` day correctly (advances
+      // through it without breaking/incrementing) once this status flip is visible to it, so
+      // re-running it for an untouched profile is a no-op, not a correctness risk.
+      const streakHistoryIds = await listProfileIdsWithStreakHistory(tx);
+      const allAffected = new Set([...pickHolderIds, ...streakHistoryIds]);
+      for (const profileId of allAffected) {
         await replayStreakForProfileTx(tx, profileId, at);
       }
-      return picksResult.affectedProfileIds;
+      // Only actual participants get the "this affected you" notification — the broader
+      // streak-history replay is a correctness backstop, not something every user should hear
+      // about for a question they never saw.
+      return { voided: true, notifiedProfileIds: [...pickHolderIds] };
     });
 
     // Best-effort, outside the tx — matches wallet:ingest's non-transactional enqueue posture.
     // No narrate() beat exists for this yet (WS9-T3 beat wiring isn't built) — a bare `line`
     // still renders fine per the email template's documented fallback contract.
-    for (const profileId of affectedProfileIds) {
+    for (const profileId of notifiedProfileIds) {
       await sendNotification(
         db,
         profileId,
@@ -133,7 +157,7 @@ export async function voidQuestionAdmin(
       ).catch(() => {});
     }
 
-    return { voided: true, affectedProfileIds };
+    return { voided, affectedProfileIds: notifiedProfileIds };
   }
 
   const result = await db.transaction((tx) => voidQuestionTx(tx, questionId, at, reason));
@@ -180,7 +204,17 @@ export async function regradeQuestion(
   });
 
   if (affectedProfileIds.length > 0) {
-    await recomputeAndCache(db, redis, questionId);
+    // The DB write already committed — a Redis failure here must never surface as a failed
+    // regrade (the same-outcome guard would then permanently block retrying it). Best-effort
+    // recompute; on failure, delete the now-stale hash instead of leaving it (a miss makes
+    // `getViewerPercentile` recompute lazily on the next read, self-healing — leaving stale
+    // data behind would silently serve wrong percentiles for up to the hash's 7-day TTL).
+    try {
+      await recomputeAndCache(db, redis, questionId);
+    } catch (err) {
+      logger.warn({ err, questionId }, 'regradeQuestion: percentile recompute failed, invalidating cache instead');
+      await redis.del(revealHashKey(questionId)).catch(() => {});
+    }
   }
 
   for (const profileId of affectedProfileIds) {
