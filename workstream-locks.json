@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T23:37:14.424Z",
+  "updated_at": "2026-07-18T23:38:58.697Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -834,13 +834,13 @@
         "WS8-T1"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "claimed",
+      "note": "Recovered a prior interrupted agent's checkpointed WIP, verified against the 3 ACs (loss+busted-streak render, QR decodes to canonical URL, share_completed fires end-to-end), fixed a merge-induced share-button wiring gap in RevealSequence (WS7-T3 moved revealed-state rendering out of ViewerStrip after this branch diverged), added QR decode-proof tests. Full build/lint/test/integration/e2e green.",
+      "status": "in_review",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws8-t2-share-cards",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/46",
       "claimed_at": "2026-07-18T22:07:46.889Z",
-      "updated_at": "2026-07-18T22:07:46.889Z"
+      "updated_at": "2026-07-18T23:38:58.697Z"
     },
     "WS8-T3": {
       "title": "Spectator ISR + revalidation",
