@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T19:58:18.205Z",
+  "updated_at": "2026-07-18T19:59:37.962Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -501,13 +501,13 @@
         "WS2-T1"
       ],
       "mock_start_ok": false,
-      "note": "Rebased onto current main (PR #7/WS2 merged) — diff now just WS4-T8's own commit. Marked ready for review, PR #8. Awaiting CI before merge.",
-      "status": "in_review",
+      "note": "Merged to main via PR #8.",
+      "status": "done",
       "owner": null,
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": "https://github.com/suvarna4/Gambappe/pull/8",
       "claimed_at": null,
-      "updated_at": "2026-07-18T19:47:14.239Z"
+      "updated_at": "2026-07-18T19:59:37.961Z"
     },
     "WS5-T1": {
       "title": "Assignment job + pairing lifecycle",
