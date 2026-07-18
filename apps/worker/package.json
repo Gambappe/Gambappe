@@ -22,7 +22,9 @@
     "pg": "^8.16.0",
     "pg-boss": "^10.3.0",
     "pino": "^9.7.0",
-    "uuidv7": "^1.2.1"
+    "uuidv7": "^1.2.1",
+    "viem": "^2.21.0",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@receipts/config": "workspace:*",

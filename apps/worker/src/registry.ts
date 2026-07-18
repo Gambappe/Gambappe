@@ -31,6 +31,7 @@ import { streakSweepHandler } from './jobs/streak-sweep.js';
 import { stubHandler } from './jobs/stubs.js';
 import { venuePriceTickHandler } from './jobs/venue-price-tick.js';
 import { venueSyncCatalogHandler } from './jobs/venue-sync-catalog.js';
+import { walletIngestHandler } from './jobs/wallet-ingest.js';
 
 export interface JobDefinition {
   name: string;
@@ -132,7 +133,7 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     name: 'wallet:ingest',
     owner: 'WS12-T2',
     // Enqueued per link (§12.2) — no cron.
-    handler: stubHandler('wallet:ingest', 'WS12-T2'),
+    handler: walletIngestHandler,
   },
   {
     name: 'duo:matchmaker',
