@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T12:20:05.626Z",
+  "updated_at": "2026-07-18T12:22:20.328Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1172,12 +1172,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-35b05898",
+      "branch": "feat/ws13-t3-metrics-page",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-18T12:22:20.327Z",
+      "updated_at": "2026-07-18T12:22:20.327Z"
     },
     "WS14-T1": {
       "title": "E2E golden-loop suite",
