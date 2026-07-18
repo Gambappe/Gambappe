@@ -38,6 +38,7 @@ import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
 import { nemesisAssignHandler } from './jobs/nemesis-assign.js';
 import { nemesisLastdayHandler } from './jobs/nemesis-lastday.js';
 import { notifyDispatchHandler } from './jobs/notify-dispatch.js';
+import { preLockReminderHandler } from './jobs/pre-lock-reminder.js';
 import { questionLockHandler } from './jobs/question-lock.js';
 import { questionOpenHandler } from './jobs/question-open.js';
 import { ratingsWeeklyHandler } from './jobs/ratings-weekly.js';
@@ -97,6 +98,12 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     name: 'question:lock',
     owner: 'WS3-T1',
     handler: questionLockHandler,
+  },
+  {
+    name: 'notify:pre-lock-reminder',
+    owner: 'WS9-T4',
+    cron: '*/5 * * * *', // every 5 min; PRE_LOCK_REMINDER_LEAD_MIN + dedupe_key make the exact tick harmless
+    handler: preLockReminderHandler,
   },
   {
     name: 'reveal:fire',
