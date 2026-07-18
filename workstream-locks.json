@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T10:23:17.247Z",
+  "updated_at": "2026-07-18T10:31:51.371Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -97,13 +97,13 @@
         "WS0-T6"
       ],
       "mock_start_ok": false,
-      "note": "PR #6 open against main. Two CI-caught fixes pushed: (1) c30193d/e23d28f: enum-cast + two flaky test assertions in settlement-poll integration tests. CI re-running.",
+      "note": "PR #6 open against main — CI fully green (lint/typecheck/unit/build/drift, integration, e2e all pass).",
       "status": "in_review",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": "https://github.com/suvarna4/Gambappe/pull/6",
       "claimed_at": "2026-07-18T09:40:28.458Z",
-      "updated_at": "2026-07-18T10:23:08.967Z"
+      "updated_at": "2026-07-18T10:31:51.371Z"
     },
     "WS1-T2": {
       "title": "Kalshi adapter",
