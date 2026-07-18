@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T12:22:20.328Z",
+  "updated_at": "2026-07-18T12:28:21.642Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1172,12 +1172,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws13-t3-metrics-page",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/16",
       "claimed_at": "2026-07-18T12:22:20.327Z",
-      "updated_at": "2026-07-18T12:22:20.327Z"
+      "updated_at": "2026-07-18T12:28:21.642Z"
     },
     "WS14-T1": {
       "title": "E2E golden-loop suite",
