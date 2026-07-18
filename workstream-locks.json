@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T22:28:39.097Z",
+  "updated_at": "2026-07-18T22:28:40.982Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -769,13 +769,13 @@
         "WS7-T2"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "available",
-      "owner": null,
+      "note": "Starting: threads + reactions UI",
+      "status": "claimed",
+      "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-18T22:28:40.982Z",
+      "updated_at": "2026-07-18T22:28:40.982Z"
     },
     "WS7-T9": {
       "title": "Settings UI",
