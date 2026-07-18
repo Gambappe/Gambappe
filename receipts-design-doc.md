@@ -252,6 +252,8 @@ packages/core/src/
 
 `packages/engine` and `packages/venues` depend on `core`; nothing depends on `apps/*`. `packages/engine` has **zero I/O** — pure functions over plain data, so it is fully parallel-safe and trivially testable.
 
+**Two export surfaces, one package.** `core`'s main `.` entrypoint (the barrel `index.ts`) must be safe to import from a browser bundle — `apps/web`'s client components (`'use client'`) import it directly (e.g. for `SCHEDULE_TZ`, enums, zod schemas), and webpack bundles whatever the barrel transitively pulls in. Anything that needs a Node built-in (`node:crypto`, `node:fs`, ...) — e.g. the §13.2 unsubscribe-token HMAC signing — must live in its own file, excluded from the main barrel, and exported only via a dedicated subpath (`@receipts/core/server`, `package.json`'s `exports` field mirrors `@receipts/db`'s `./testing` subpath pattern). Only `apps/worker` and server-only `apps/web` code (route handlers, server components, `apps/web/lib/*` modules never imported by a client component) may import from `@receipts/core/server`.
+
 ### 4.3 Coding conventions
 
 - Node 22, ESM everywhere. Path aliases via tsconfig `paths` (`@receipts/core` etc.).
@@ -1591,6 +1593,7 @@ The P0 (48-hour) cut is the subset tagged P0 below, in the same wave order — s
 | `PRIOR_WEIGHT` | 5 | §8.1 |
 | `W_CHALK / W_CONTRA / W_TIMING / W_CAT` | 1.0 / 1.0 / 0.5 / 0.75 | §8.2 |
 | `GLICKO_TAU` | 0.5 | §8.3 |
+| `ACCURACY_PERCENTILE_MIN_PICKS` | 10 — added WS4-T7, not in the original table | §8.3 |
 | `NEMESIS_MIN_PICKS` / `DUO_MIN_PICKS` | 5 / 10 | §8.4/8.5 |
 | `NEMESIS_BAND_BASE` / `DUO_BAND_BASE` | 150 / 150 | §8.4/8.5 |
 | `DUO_BAND_WIDEN` / `DUO_BAND_CAP` | 25 per 30s tick / 400 | §8.5 |
