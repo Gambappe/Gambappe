@@ -3,7 +3,7 @@
  * WS2 scope; these are the shared primitives they're built on. Additive only — WS0's original
  * exports are unchanged.
  */
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
 import type { Db } from '../client.js';
 import { profiles } from '../schema/index.js';
 
@@ -81,4 +81,36 @@ export async function updateProfileBotScores(
       await tx.update(profiles).set({ botScore: score, updatedAt: new Date() }).where(eq(profiles.id, profileId));
     }
   });
+}
+
+// --- §19.3 WS8-T4 sitemap ------------------------------------------------------------------
+
+export interface SitemapProfileRow {
+  slug: string;
+  updatedAt: Date;
+}
+
+/** Every profile `/p/[slug]` (`apps/web/lib/profile-page.ts`'s `getVisibleProfileBySlug`) would
+ * 200 for — same `status !== 'deleted'` rule, exactly — slug-ordered for stable offset
+ * pagination. The "profiles" half of the §10.5/§19.3 WS8-T4 sitemap AC. */
+export async function listVisibleProfilesForSitemap(
+  db: Db,
+  limit: number,
+  offset: number,
+): Promise<SitemapProfileRow[]> {
+  return db
+    .select({ slug: profiles.slug, updatedAt: profiles.updatedAt })
+    .from(profiles)
+    .where(ne(profiles.status, 'deleted'))
+    .orderBy(asc(profiles.slug))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function countVisibleProfilesForSitemap(db: Db): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(profiles)
+    .where(ne(profiles.status, 'deleted'));
+  return row?.count ?? 0;
 }

@@ -310,6 +310,40 @@ export async function listDailyQuestionIdsBetween(db: Db, from: string, to: stri
   return rows.rows.map((r) => r['id'] as string);
 }
 
+// --- §19.3 WS8-T4 sitemap ------------------------------------------------------------------
+
+export interface SitemapQuestionRow {
+  slug: string;
+  updatedAt: Date;
+}
+
+/** Revealed questions with a slug, slug-ordered for stable offset pagination — the "revealed
+ * questions" half of the §10.5/§19.3 WS8-T4 sitemap AC. `voided` is deliberately excluded: the
+ * AC names "revealed questions" only, and a voided question's page is a "no result" explainer
+ * rather than content worth indexing. */
+export async function listRevealedQuestionsForSitemap(
+  db: Db,
+  limit: number,
+  offset: number,
+): Promise<SitemapQuestionRow[]> {
+  const rows = await db
+    .select({ slug: questions.slug, updatedAt: questions.updatedAt })
+    .from(questions)
+    .where(and(eq(questions.status, 'revealed'), sql`${questions.slug} IS NOT NULL`))
+    .orderBy(asc(questions.slug))
+    .limit(limit)
+    .offset(offset);
+  return rows.map((r) => ({ slug: r.slug as string, updatedAt: r.updatedAt }));
+}
+
+export async function countRevealedQuestionsForSitemap(db: Db): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(questions)
+    .where(and(eq(questions.status, 'revealed'), sql`${questions.slug} IS NOT NULL`));
+  return row?.count ?? 0;
+}
+
 /**
  * `question:open` questions whose `lock_at` is still ahead of `at` but within `leadMinutes` —
  * the `notify:pre-lock-reminder` (WS9-T4, §13.2) eligibility window. Effective-state rule

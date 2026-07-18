@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { NemesisMatchupCard } from '@/components/nemesis/NemesisMatchupCard';
+import { appUrl } from '@/lib/app-url';
 import { getPairingById, getProfileRef } from '@/lib/nemesis/mock-api';
 import type { PairingSide } from '@/lib/nemesis/types';
 
@@ -20,6 +21,13 @@ import type { PairingSide } from '@/lib/nemesis/types';
  * (`GET /pairings/:id`, design doc §9.2) — see that file's header for the full contract
  * explanation. `GET /profiles/:slug` (for each side's rating) is unbuilt too (owned by
  * WS7-T4/whoever ships it), also mocked here.
+ *
+ * SPEC-GAP(ws8-t4): the oEmbed discovery link below points at a real, DB-backed
+ * `/api/oembed` (WS8-T4, `lib/oembed/response.ts`'s `loadMatchupOg` via `nemesis_pairings`),
+ * but this page's `pairingId` is still a mock id (see the SPEC-GAP above) with no
+ * corresponding real row — so the link legitimately 404s today, exactly like `/p/[slug]`'s
+ * pre-WS8 og:image SPEC-GAP did before WS8-T1 landed. It'll resolve for free once WS5-T4
+ * wires this page to real pairings; no further oEmbed-side change needed then.
  */
 export const revalidate = 30;
 
@@ -35,9 +43,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { pairingId } = await params;
   const pairing = getPairingById(pairingId);
   if (!pairing) return { title: 'Matchup not found — Receipts' };
+  const pageUrl = `${appUrl()}/vs/${pairingId}`;
   return {
     title: `${pairing.a.handle} vs ${pairing.b.handle} — Receipts`,
     description: `Nemesis matchup: ${pairing.a.handle} vs ${pairing.b.handle}, week of ${pairing.week_start}.`,
+    alternates: {
+      types: {
+        'application/json+oembed': `${appUrl()}/api/oembed?url=${encodeURIComponent(pageUrl)}`,
+      },
+    },
   };
 }
 
