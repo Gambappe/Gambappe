@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T19:48:09.001Z",
+  "updated_at": "2026-07-18T19:48:43.216Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -581,13 +581,13 @@
         "WS11-T3"
       ],
       "mock_start_ok": true,
-      "note": "Mock-start OK vs WS11-T3 (§19.2).",
-      "status": "claimed",
-      "owner": "claude-code-web-session-9c961fec",
-      "branch": "feat-ws5-t5-rematch-block",
+      "note": "Releasing — WS5-T4 (matchup+history APIs) isn't done or mock-start-permitted per this task's note; too risky to mock convincingly right now. Swapping for WS7-T5 instead.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
       "pr": null,
-      "claimed_at": "2026-07-18T19:48:07.618Z",
-      "updated_at": "2026-07-18T19:48:07.618Z"
+      "claimed_at": null,
+      "updated_at": "2026-07-18T19:48:43.215Z"
     },
     "WS6-T1": {
       "title": "Queue API + matchmaker job",
