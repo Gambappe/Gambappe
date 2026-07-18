@@ -246,16 +246,6 @@ export function buildRating(profileId: string, overrides: Partial<RatingRow> = {
   };
 }
 
-/** `seasons` row (§5.4). Defaults to a nemesis season starting at `startsOn`. */
-export function buildSeason(overrides: Partial<SeasonRow> & { startsOn: string; endsOn: string }): SeasonRow {
-  return {
-    id: uuidv7(),
-    kind: 'nemesis',
-    name: `Test Nemesis Season (${overrides.startsOn})`,
-    ...overrides,
-  };
-}
-
 /** Persist a scenario (FK-ordered) — used by integration tests. */
 export async function insertGradedQuestionScenario(
   db: Db,
