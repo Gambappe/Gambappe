@@ -1,7 +1,9 @@
 {
   "extends": "@receipts/config/tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "jsx": "react-jsx"
   },
-  "include": ["src", "vitest.config.ts"]
+  "include": ["src", "vitest.config.ts", "tailwind.config.ts"]
 }
