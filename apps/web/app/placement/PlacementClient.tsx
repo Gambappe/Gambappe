@@ -270,6 +270,7 @@ export default function PlacementClient({ swipeBallot = false }: { swipeBallot?:
                 {...crowdCountsFromPct(reveal.historical_crowd_yes_pct)}
                 yesLabel={currentItem.yes_label}
                 noLabel={currentItem.no_label}
+                surface="paper"
               />
               <p className="text-muted font-mono text-xs">
                 {copy.placement.resolvedOnPrefix} {reveal.resolved_on}

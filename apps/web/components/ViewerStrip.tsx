@@ -30,7 +30,16 @@ export interface ViewerStripProps {
    */
   swipeBallot?: boolean;
   /** SW2-T4: the page arrived via a pre-armed deep link (`?arm=1`) — forces the gesture nudge +
-   * hints for a first-time visitor. Forwarded to `SwipeBallot`; never auto-picks. */
+   * hints for a first-time visitor. Forwarded to `SwipeBallot`; never auto-picks.
+   *
+   * Optional explicit override — `app/page.tsx` (already `force-dynamic`) still reads
+   * `searchParams` server-side and passes this directly. `/q/[slug]/page.tsx` (ISR'd,
+   * `revalidate = 30`) omits it: reading `searchParams` in a Server Component opts the whole
+   * route out of static/ISR rendering in Next 15 regardless of the actual query string, which
+   * would silently force every `/q/[slug]` request to hit the DB once `swipe_ballot` is on. When
+   * omitted, this component detects `?arm=1` from `window.location` itself, client-side only —
+   * SSR/hydration still render `arm=false` (byte-identical, same posture as `me`/`pick` above),
+   * and a post-mount effect flips it, matching how those two already resolve after paint. */
   arm?: boolean;
 }
 
@@ -50,13 +59,21 @@ type MeState =
  * from those calls (including plain network failures while unmerged) are caught and shown
  * inline; they never crash this component or the page around it.
  */
-export function ViewerStrip({ question, swipeBallot = false, arm = false }: ViewerStripProps) {
+export function ViewerStrip({ question, swipeBallot = false, arm: armProp }: ViewerStripProps) {
   const [me, setMe] = useState<MeState>({ status: 'loading' });
   const [pick, setPick] = useState<CachedPick | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [shareOpen, setShareOpen] = useState(false);
+  const [arm, setArm] = useState(armProp ?? false);
+
+  useEffect(() => {
+    // Only self-detect when the caller didn't already resolve `arm` server-side (see the prop's
+    // doc comment) — an explicit `armProp` always wins.
+    if (armProp !== undefined || typeof window === 'undefined') return;
+    if (new URLSearchParams(window.location.search).get('arm') === '1') setArm(true);
+  }, [armProp]);
 
   useEffect(() => {
     // `RevealSequence` (below) owns its own identity fetch (the reveal endpoint resolves the

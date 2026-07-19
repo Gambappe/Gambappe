@@ -140,6 +140,7 @@ export function QuestionStateView({
                     noCount={question.crowd.no}
                     yesLabel={question.yes_label}
                     noLabel={question.no_label}
+                    surface="paper"
                   />
                 ) : null}
                 <CountdownTicker
@@ -159,6 +160,7 @@ export function QuestionStateView({
                   noCount={question.crowd.no}
                   yesLabel={question.yes_label}
                   noLabel={question.no_label}
+                  surface="paper"
                   animated
                 />
               ) : null}

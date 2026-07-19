@@ -28,7 +28,6 @@ export const revalidate = 30; // ISR_REVALIDATE_QUESTION_S (design doc §10.1 ro
 
 interface QuestionPageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ arm?: string }>;
 }
 
 export async function generateMetadata({ params }: QuestionPageProps): Promise<Metadata> {
@@ -65,7 +64,7 @@ export async function generateMetadata({ params }: QuestionPageProps): Promise<M
   };
 }
 
-export default async function QuestionPage({ params, searchParams }: QuestionPageProps) {
+export default async function QuestionPage({ params }: QuestionPageProps) {
   const { slug } = await params;
   const nowMsValue = nowMs();
   const question = await getQuestionPublicBySlug(getDb(), slug, { nowMsValue });
@@ -86,7 +85,6 @@ export default async function QuestionPage({ params, searchParams }: QuestionPag
   });
 
   const swipeBallot = isFlagEnabled('swipe_ballot');
-  const arm = swipeBallot && (await searchParams).arm === '1';
 
   return (
     <main className="mx-auto max-w-xl space-y-6 px-6 py-10">
@@ -94,7 +92,10 @@ export default async function QuestionPage({ params, searchParams }: QuestionPag
         question={question}
         serverOffsetMs={serverOffsetMs}
         swipeBallot={swipeBallot}
-        viewerSlot={<ViewerStrip question={question} swipeBallot={swipeBallot} arm={arm} />}
+        // `?arm=1` is intentionally NOT read here (searchParams) — see ViewerStrip's `arm` prop
+        // doc: doing so would force this ISR'd (`revalidate = 30`) route into fully dynamic
+        // rendering. ViewerStrip self-detects it client-side instead.
+        viewerSlot={<ViewerStrip question={question} swipeBallot={swipeBallot} />}
       />
       <script
         type="application/ld+json"
