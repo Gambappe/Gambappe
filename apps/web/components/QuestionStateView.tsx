@@ -3,6 +3,7 @@ import { Barcode, CountdownTicker, CrowdBar, PriceTag, Stamp, TicketCard } from 
 import { copy } from '@/lib/copy';
 import { formatEtClock } from '@/lib/format-et';
 import { DeckStage } from './DeckStage';
+import { DeckStates } from './DeckStates';
 
 export interface QuestionStateViewProps {
   question: QuestionPublic;
@@ -38,17 +39,22 @@ export function QuestionStateView({
   viewerSlot,
   swipeBallot = false,
 }: QuestionStateViewProps) {
-  // SW2-T1: the deck replaces the ticket layout for the actionable `open` state when the flag is
-  // on. The viewer island (SwipeBallot, via viewerSlot) carries the card, prices, and gesture;
-  // the stage is viewer-free chrome, so INV-10 still holds. Other states keep the ticket for now.
-  if (swipeBallot && question.status === 'open') {
+  // SW2-T1/SW2-T2: when the flag is on, the whole question page is the deck. The actionable
+  // `open` state is the interactive ballot (DeckStage); the other states render on the same dark
+  // stage (DeckStates). Both are viewer-free, so INV-10 holds; the flag-off path below is
+  // untouched and stays byte-identical.
+  if (swipeBallot) {
     return (
       <div data-testid={`question-state-${question.status}`}>
-        <DeckStage
-          question={question}
-          viewerSlot={viewerSlot}
-          underLabel={copy.question.tomorrowTeaser}
-        />
+        {question.status === 'open' ? (
+          <DeckStage
+            question={question}
+            viewerSlot={viewerSlot}
+            underLabel={copy.question.tomorrowTeaser}
+          />
+        ) : (
+          <DeckStates question={question} serverOffsetMs={serverOffsetMs} viewerSlot={viewerSlot} />
+        )}
       </div>
     );
   }

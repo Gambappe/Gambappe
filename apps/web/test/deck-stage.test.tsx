@@ -79,8 +79,9 @@ describe('QuestionStateView — swipe_ballot flag', () => {
     expect(html).not.toContain('data-testid="deck-stage"');
   });
 
-  it('does not deck-ify non-open states even with the flag on (SW2-T2 owns those)', () => {
-    const html = renderToStaticMarkup(
+  it('renders non-open states on the deck stage too, without the open-state rails (SW2-T2)', () => {
+    // scheduled: deck-styled, keeps its state testid, but no gesture rails (that's the open ballot).
+    const scheduled = renderToStaticMarkup(
       <QuestionStateView
         question={{ ...base, status: 'scheduled' }}
         serverOffsetMs={0}
@@ -88,7 +89,42 @@ describe('QuestionStateView — swipe_ballot flag', () => {
         viewerSlot={null}
       />,
     );
-    expect(html).toContain('data-testid="question-scheduled"');
-    expect(html).not.toContain('data-testid="deck-stage"');
+    expect(scheduled).toContain('data-testid="question-scheduled"');
+    expect(scheduled).not.toContain('data-testid="deck-stage"');
+    expect(scheduled).not.toContain('data-testid="rail-against"');
+  });
+
+  it('shows the post-lock crowd split on the deck for the locked state (§9.3 snapshot only)', () => {
+    const locked = renderToStaticMarkup(
+      <QuestionStateView
+        question={{ ...base, status: 'locked', crowd: { yes: 64, no: 36, pct_yes: 64 } }}
+        serverOffsetMs={0}
+        swipeBallot
+        viewerSlot={null}
+      />,
+    );
+    expect(locked).toContain('data-testid="question-locked"');
+    expect(locked).toContain('role="img"'); // CrowdBar
+    expect(locked).toContain('64%');
+  });
+
+  it('never leaks a crowd split on the deck while open (§9.3)', () => {
+    const open = renderToStaticMarkup(
+      <QuestionStateView question={base} serverOffsetMs={0} swipeBallot viewerSlot={null} />,
+    );
+    expect(open).not.toContain('role="img"');
+  });
+
+  it('deck-styles the voided state with the void stamp + explainer', () => {
+    const voided = renderToStaticMarkup(
+      <QuestionStateView
+        question={{ ...base, status: 'voided', void_reason: 'Venue voided the market.' }}
+        serverOffsetMs={0}
+        swipeBallot
+        viewerSlot={null}
+      />,
+    );
+    expect(voided).toContain('data-testid="question-voided"');
+    expect(voided).toContain('VOID');
   });
 });
