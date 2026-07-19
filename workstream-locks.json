@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T23:29:41.112Z",
+  "updated_at": "2026-07-19T23:35:03.615Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1678,13 +1678,13 @@
         "SW9-T3"
       ],
       "mock_start_ok": false,
-      "note": "PR #82 open; fable review found no real bugs (only 1 low-severity test-coverage nit — a misleading TZ-immunity test that didn't vary TZ — fixed and pushed); waiting on CI",
-      "status": "in_review",
+      "note": "PR #82 merged (squash 1d23a50). Fable review: no real bugs found; fixed 1 low-severity test-coverage nit (TZ-immunity test didn't vary TZ). SW9 obituary-handoff workstream complete.",
+      "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw9-t2-obituary-wake",
       "pr": "https://github.com/Gambappe/Gambappe/pull/82",
       "claimed_at": "2026-07-19T22:57:23.797Z",
-      "updated_at": "2026-07-19T23:29:41.112Z"
+      "updated_at": "2026-07-19T23:35:03.603Z"
     },
     "SW9-T3": {
       "title": "Honest busted-streak card binding + graveyard data [contract-change]",
