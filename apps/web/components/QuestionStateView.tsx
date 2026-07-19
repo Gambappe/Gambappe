@@ -2,6 +2,7 @@ import type { QuestionPublic } from '@receipts/core';
 import { Barcode, CountdownTicker, CrowdBar, PriceTag, Stamp, TicketCard } from '@receipts/ui';
 import { copy } from '@/lib/copy';
 import { formatEtClock } from '@/lib/format-et';
+import { DeckStage } from './DeckStage';
 
 export interface QuestionStateViewProps {
   question: QuestionPublic;
@@ -10,6 +11,14 @@ export interface QuestionStateViewProps {
   serverOffsetMs: number;
   /** Reserved slot for the client-side viewer strip (§10.1: "no layout shift on hydration"). */
   viewerSlot?: React.ReactNode;
+  /**
+   * SW2-T1: `swipe_ballot` flag (read server-side, passed down). When on, the `open` state
+   * renders the full-screen deck (`DeckStage`) instead of the ticket + price-tag layout; every
+   * other state is unchanged for now (SW2-T2 converts them). Default `false` keeps the flag-off
+   * render byte-identical to today (INV-10) — this prop is not viewer data, so it never touches
+   * the INV-10 dual-render proof.
+   */
+  swipeBallot?: boolean;
 }
 
 /**
@@ -27,7 +36,23 @@ export function QuestionStateView({
   question,
   serverOffsetMs,
   viewerSlot,
+  swipeBallot = false,
 }: QuestionStateViewProps) {
+  // SW2-T1: the deck replaces the ticket layout for the actionable `open` state when the flag is
+  // on. The viewer island (SwipeBallot, via viewerSlot) carries the card, prices, and gesture;
+  // the stage is viewer-free chrome, so INV-10 still holds. Other states keep the ticket for now.
+  if (swipeBallot && question.status === 'open') {
+    return (
+      <div data-testid={`question-state-${question.status}`}>
+        <DeckStage
+          question={question}
+          viewerSlot={viewerSlot}
+          underLabel={copy.question.tomorrowTeaser}
+        />
+      </div>
+    );
+  }
+
   return (
     <div data-testid={`question-state-${question.status}`}>
       <TicketCard>

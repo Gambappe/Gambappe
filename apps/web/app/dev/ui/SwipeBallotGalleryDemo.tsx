@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { QuestionPublic } from '@receipts/core';
+import { DeckStage } from '@/components/DeckStage';
 import { SwipeBallot } from '@/components/SwipeBallot';
 import type { CachedPick } from '@/lib/pick-storage';
 
@@ -35,25 +36,32 @@ const DEMO_Q: QuestionPublic = {
 export default function SwipeBallotGalleryDemo() {
   const [pick, setPick] = useState<CachedPick | null>(null);
 
+  const ballot = (
+    <SwipeBallot
+      question={DEMO_Q}
+      ageGateRequired={false}
+      pick={pick}
+      undoable={pick !== null}
+      onPick={(side) =>
+        setPick({
+          pickId: 'demo',
+          side,
+          pickedAtIso: DEMO_Q.open_at,
+          undoUntilIso: DEMO_Q.lock_at,
+          yesPriceAtEntry: DEMO_Q.yes_price ?? undefined,
+        })
+      }
+      onUndo={() => setPick(null)}
+    />
+  );
+
+  // Shown inside the deck stage (SW2-T1) so the rails + stage framing render around the ballot,
+  // exactly as the flag-on `open` state composes them on `/` and `/q/[slug]`.
   return (
-    <div className="bg-bg rounded-md p-6">
-      <div className="mx-auto max-w-[280px]">
-        <SwipeBallot
-          question={DEMO_Q}
-          ageGateRequired={false}
-          pick={pick}
-          undoable={pick !== null}
-          onPick={(side) =>
-            setPick({
-              pickId: 'demo',
-              side,
-              pickedAtIso: DEMO_Q.open_at,
-              undoUntilIso: DEMO_Q.lock_at,
-            })
-          }
-          onUndo={() => setPick(null)}
-        />
-      </div>
-    </div>
+    <DeckStage
+      question={DEMO_Q}
+      viewerSlot={ballot}
+      underLabel="Tomorrow's question lands at 9:00 ET."
+    />
   );
 }
