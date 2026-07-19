@@ -95,6 +95,14 @@ test.describe('GET /robots.txt (WS8-T5)', () => {
     expect(res.status()).toBe(200);
     const body = await res.text();
     expect(body).toContain('Disallow: /admin');
+    expect(body).toContain('Disallow: /api/');
     expect(body).toContain('Sitemap:');
+  });
+
+  test('carves out an allow for the OG/oEmbed share surface under the /api/ disallow', async ({ request }) => {
+    const res = await request.get('/robots.txt');
+    const body = await res.text();
+    expect(body).toContain('Allow: /api/og/');
+    expect(body).toContain('Allow: /api/oembed');
   });
 });

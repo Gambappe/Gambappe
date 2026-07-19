@@ -4,15 +4,13 @@
  * so the query + formatting logic is testable without Next's page/metadata machinery (mirrors
  * `lib/sitemap.ts`'s own rationale).
  */
-import { countRevealedQuestionsForArchive, listRevealedQuestionsForArchive, type ArchiveQuestionRow, type Db } from '@receipts/db';
+import { listRevealedQuestionsForArchive, type ArchiveQuestionRow, type Db } from '@receipts/db';
 
 /**
  * A defensive cap, not a claim of proximity (mirrors `lib/sitemap.ts`'s `SITEMAP_ENTITY_CAP`
  * reasoning). At current/expected volume (~1 revealed daily question/day) a single capped page
- * is simplest and keeps this route free of Next's Dynamic APIs (no `searchParams`), so a literal
- * `revalidate` on the route actually behaves like real ISR instead of being forced into
- * per-request dynamic rendering. Revisit with real pagination if the archive's own length ever
- * becomes the bottleneck.
+ * is simplest and keeps this route free of Next's `searchParams`-based pagination. Revisit with
+ * real pagination if the archive's own length ever becomes the bottleneck.
  */
 export const ARCHIVE_ENTRY_CAP = 200;
 
@@ -41,16 +39,10 @@ export function describeArchiveOutcome(row: ArchiveQuestionRow): string {
 
 export interface ArchiveListing {
   entries: ArchiveEntry[];
-  /** True when `countRevealedQuestionsForArchive` exceeds `ARCHIVE_ENTRY_CAP` — surfaced so the
-   * page can note "showing the most recent N" rather than silently truncating. */
-  truncated: boolean;
 }
 
 export async function loadArchiveListing(db: Db): Promise<ArchiveListing> {
-  const [rows, total] = await Promise.all([
-    listRevealedQuestionsForArchive(db, ARCHIVE_ENTRY_CAP, 0),
-    countRevealedQuestionsForArchive(db),
-  ]);
+  const rows = await listRevealedQuestionsForArchive(db, ARCHIVE_ENTRY_CAP, 0);
   return {
     entries: rows.map((row) => ({
       slug: row.slug,
@@ -58,6 +50,5 @@ export async function loadArchiveListing(db: Db): Promise<ArchiveListing> {
       description: describeArchiveOutcome(row),
       revealedAt: row.revealedAt ? row.revealedAt.toISOString() : null,
     })),
-    truncated: total > ARCHIVE_ENTRY_CAP,
   };
 }
