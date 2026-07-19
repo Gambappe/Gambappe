@@ -1,77 +1,70 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { nemesisCopy } from '@/lib/copy';
-import type { RematchRequest } from '@/lib/nemesis/types';
+import type { RematchStatus } from '@/lib/nemesis/types';
+
+/** The reduced rematch state `GET /me/nemesis-history` now folds into each history entry
+ * (`nemesisRematchStateSchema`, `@receipts/core`, WS5-T5 contract-change) — the viewer's most
+ * relevant rematch request with THIS row's opponent, if any. */
+export interface RematchState {
+  id: string;
+  direction: 'outgoing' | 'incoming';
+  status: RematchStatus;
+}
 
 export interface RematchPanelProps {
   viewerProfileId: string;
   opponent: { profile_id: string; handle: string };
+  /** Initial state from the page's own `GET /me/nemesis-history` load (server-rendered) —
+   * `null` when no rematch request exists yet between the viewer and this opponent. */
+  rematchRequest: RematchState | null;
   className?: string;
 }
 
 type ConfirmPhase = 'idle' | 'confirming';
 
-const BASE = '/api/mock/nemesis/rematch-requests';
+const BASE = '/api/v1/rematch-requests';
 
 /** Matches the §9.1 error envelope shape `{error: {code, message}}` without importing the
- * `ApiError` class from `@receipts/core` — see this file's SPEC-GAP note below for why. */
+ * `ApiError` class from `@receipts/core` — `@receipts/core` has a `node:crypto`-importing
+ * module (WS9-T1's `notifications.ts`) and only one export path (no subpaths), so any
+ * client-bundled import from it fails webpack; a plain `fetch()` + hand-rolled envelope parse
+ * sidesteps that entirely (same posture the mock-backed version of this component used). */
 async function readJson<T>(res: Response): Promise<T> {
   const body = (await res.json()) as { data?: T; error?: { message?: string } };
   if (!res.ok) throw new Error(body.error?.message ?? `request failed (${res.status})`);
   return body.data as T;
 }
 
+interface RematchRequestWire {
+  id: string;
+  requester_profile_id: string;
+  target_profile_id: string;
+  status: RematchStatus;
+}
+
 /**
- * The rematch-request flow (button + confirmation + pending-request state; design doc §8.4
- * step 0, §9.2 `POST /rematch-requests` + `/accept|decline`). "Mutual accept" = the
- * requester's creation call (implicit consent) + the target's explicit accept (the mock
- * routes below enforce only the target may accept/decline). Acceptance does not create a
+ * The rematch-request flow (button + confirmation + pending/incoming state; design doc §8.4
+ * step 0, §9.2 `POST /rematch-requests` + `/accept|decline`, real endpoints as of WS5-T5 —
+ * replaces this component's original `/api/mock/nemesis/rematch-requests*` wiring). "Mutual
+ * accept" = the requester's creation call (implicit consent) + the target's explicit accept
+ * (only the target may accept/decline, enforced server-side). Acceptance does not create a
  * pairing on the spot — the real `nemesis:assign` batch (Monday 09:00 ET) does that — so this
  * panel's copy says "you'll be paired starting next week," never "paired now."
- *
- * SPEC-GAP(WS7-T6): talks to `/api/mock/nemesis/rematch-requests*` — MOCK-ONLY routes (see
- * their file headers) that wrap `lib/nemesis/mock-api.ts` server-side, not the real
- * `/api/v1/rematch-requests*` (WS5-T5, not built). This component intentionally imports
- * nothing from `@receipts/core` or `mock-api.ts` directly: `@receipts/core` gained a
- * `notifications.ts` module (WS9-T1) that imports `node:crypto`, and since `@receipts/core`
- * has only one export path (no subpaths), any client-bundled import from it fails webpack —
- * routing through a server-side API boundary sidesteps that entirely, and is what a real
- * integration would do anyway (fetch, not a shared in-process function call).
  */
-export function RematchPanel({ viewerProfileId, opponent, className = '' }: RematchPanelProps) {
+export function RematchPanel({ viewerProfileId, opponent, rematchRequest, className = '' }: RematchPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [confirmPhase, setConfirmPhase] = useState<ConfirmPhase>('idle');
-  const [loaded, setLoaded] = useState(false);
-  const [outgoing, setOutgoing] = useState<RematchRequest | null>(null);
-  const [incoming, setIncoming] = useState<RematchRequest | null>(null);
+  const [state, setState] = useState<RematchState | null>(rematchRequest);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const [out, inc] = await Promise.all([
-          fetch(
-            `${BASE}/outgoing?requester_profile_id=${encodeURIComponent(viewerProfileId)}&target_profile_id=${encodeURIComponent(opponent.profile_id)}`,
-          ).then((r) => readJson<{ request: RematchRequest | null }>(r)),
-          fetch(`${BASE}/incoming?profile_id=${encodeURIComponent(viewerProfileId)}`).then((r) =>
-            readJson<{ request: RematchRequest | null }>(r),
-          ),
-        ]);
-        if (cancelled) return;
-        setOutgoing(out.request);
-        setIncoming(inc.request?.requester_profile_id === opponent.profile_id ? inc.request : null);
-      } catch {
-        // Best-effort — leave both null (renders the default "Request rematch" state).
-      } finally {
-        if (!cancelled) setLoaded(true);
-      }
-    }
-    void load();
-    return () => {
-      cancelled = true;
+  function toState(wire: RematchRequestWire): RematchState {
+    return {
+      id: wire.id,
+      direction: wire.requester_profile_id === viewerProfileId ? 'outgoing' : 'incoming',
+      status: wire.status,
     };
-  }, [viewerProfileId, opponent.profile_id]);
+  }
 
   async function handleRequest() {
     setError(null);
@@ -79,73 +72,48 @@ export function RematchPanel({ viewerProfileId, opponent, className = '' }: Rema
       const res = await fetch(BASE, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          requester_profile_id: viewerProfileId,
-          target_profile_id: opponent.profile_id,
-        }),
+        body: JSON.stringify({ target_profile_id: opponent.profile_id }),
       });
-      const { request } = await readJson<{ request: RematchRequest }>(res);
-      setOutgoing(request);
+      const { request } = await readJson<{ request: RematchRequestWire }>(res);
+      setState(toState(request));
       setConfirmPhase('idle');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     }
   }
 
-  async function handleAccept() {
-    if (!incoming) return;
+  async function respond(action: 'accept' | 'decline') {
+    if (!state) return;
     setError(null);
     try {
-      const res = await fetch(`${BASE}/${incoming.id}/accept`, {
+      const res = await fetch(`${BASE}/${state.id}/${action}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ acting_profile_id: viewerProfileId }),
       });
-      const { request } = await readJson<{ request: RematchRequest }>(res);
-      setIncoming(request);
+      const { request } = await readJson<{ request: RematchRequestWire }>(res);
+      setState(toState(request));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     }
   }
 
-  async function handleDecline() {
-    if (!incoming) return;
-    setError(null);
-    try {
-      const res = await fetch(`${BASE}/${incoming.id}/decline`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ acting_profile_id: viewerProfileId }),
-      });
-      const { request } = await readJson<{ request: RematchRequest }>(res);
-      setIncoming(request);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    }
-  }
-
-  if (!loaded) {
-    return <div className={className} data-testid="rematch-loading" aria-hidden="true" />;
-  }
-
-  // An incoming request from THIS opponent takes priority over showing an outgoing-request
-  // affordance — you can't simultaneously ask for and be asked for the same rematch in this
-  // mock's model (a real system would just show both, but that's not reachable here).
-  if (incoming && incoming.status === 'open') {
+  // An incoming, still-open request from THIS opponent takes priority over any outgoing
+  // affordance — you accept/decline before you'd ever see a "request rematch" button again.
+  if (state && state.direction === 'incoming' && state.status === 'open') {
     return (
       <div className={className} data-testid="rematch-incoming">
         <p className="text-sm">{nemesisCopy.rematchIncomingLabel(opponent.handle)}</p>
         <div className="mt-2 flex gap-2">
           <button
             type="button"
-            onClick={handleAccept}
+            onClick={() => void respond('accept')}
             className="bg-win text-bg rounded px-3 py-1.5 text-sm font-medium"
           >
             {nemesisCopy.rematchAcceptCta}
           </button>
           <button
             type="button"
-            onClick={handleDecline}
+            onClick={() => void respond('decline')}
             className="border-muted text-muted rounded border px-3 py-1.5 text-sm font-medium"
           >
             {nemesisCopy.rematchDeclineCta}
@@ -156,7 +124,7 @@ export function RematchPanel({ viewerProfileId, opponent, className = '' }: Rema
     );
   }
 
-  if (incoming?.status === 'accepted') {
+  if (state?.status === 'accepted') {
     return (
       <p className={`text-win text-sm ${className}`} data-testid="rematch-accepted">
         {nemesisCopy.rematchAcceptedLabel}
@@ -164,7 +132,7 @@ export function RematchPanel({ viewerProfileId, opponent, className = '' }: Rema
     );
   }
 
-  if (incoming?.status === 'declined') {
+  if (state?.direction === 'incoming' && state.status === 'declined') {
     return (
       <p className={`text-muted text-sm ${className}`} data-testid="rematch-declined">
         {nemesisCopy.rematchDeclinedLabel}
@@ -172,18 +140,10 @@ export function RematchPanel({ viewerProfileId, opponent, className = '' }: Rema
     );
   }
 
-  if (outgoing?.status === 'open') {
+  if (state?.direction === 'outgoing' && state.status === 'open') {
     return (
       <p className={`text-muted text-sm ${className}`} data-testid="rematch-pending">
         {nemesisCopy.rematchPendingLabel(opponent.handle)}
-      </p>
-    );
-  }
-
-  if (outgoing?.status === 'accepted') {
-    return (
-      <p className={`text-win text-sm ${className}`} data-testid="rematch-accepted">
-        {nemesisCopy.rematchAcceptedLabel}
       </p>
     );
   }
@@ -195,7 +155,7 @@ export function RematchPanel({ viewerProfileId, opponent, className = '' }: Rema
         <div className="mt-2 flex gap-2">
           <button
             type="button"
-            onClick={handleRequest}
+            onClick={() => void handleRequest()}
             className="bg-side-a text-bg rounded px-3 py-1.5 text-sm font-medium"
           >
             Yes, request it

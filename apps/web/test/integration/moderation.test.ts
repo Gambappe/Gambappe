@@ -20,6 +20,7 @@ import {
   picks,
   profiles,
   ratings,
+  rematchRequests,
   seasons,
   users,
   type Db,
@@ -53,7 +54,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await db.execute(
-    sql`TRUNCATE reports, blocks, notifications, nemesis_pairings, pairing_questions, ratings, picks, questions, markets, profiles, users, seasons RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE reports, blocks, notifications, rematch_requests, nemesis_pairings, pairing_questions, ratings, picks, questions, markets, profiles, users, seasons RESTART IDENTITY CASCADE`,
   );
 });
 
@@ -266,5 +267,50 @@ describe('applyBlock / pairing mid-week exit (§5.7, §14.3)', () => {
     const [ratingB] = await db.select().from(ratings).where(eq(ratings.profileId, b.profileId));
     expect(ratingA!.glickoRating).toBeLessThan(1500); // the blocker still takes the loss
     expect(ratingB!.glickoRating).toBeGreaterThan(1500);
+  });
+
+  it('declines any open rematch requests between the two profiles (WS5-T5, §8.4 step 0)', async () => {
+    // No active pairing needed for this one — rematch requests exist independently of an
+    // active pairing (they're requested AFTER a pairing concludes).
+    const a = await makeClaimedProfile();
+    const b = await makeClaimedProfile();
+    const seasonId = uuidv7();
+    await db.insert(seasons).values({ id: seasonId, kind: 'nemesis', startsOn: '2026-07-20', endsOn: '2026-12-31', name: 'Test season' });
+
+    const outgoingId = uuidv7(); // a -> b, open
+    const irrelevantId = uuidv7(); // b -> some third party, must be untouched
+    const third = await makeClaimedProfile();
+    await db.insert(rematchRequests).values([
+      { id: outgoingId, requesterProfileId: a.profileId, targetProfileId: b.profileId, seasonId, status: 'open' },
+      { id: irrelevantId, requesterProfileId: b.profileId, targetProfileId: third.profileId, seasonId, status: 'open' },
+    ]);
+
+    await applyBlock(db, a.profileId, b.profileId, NOW);
+
+    const [outgoing] = await db.select().from(rematchRequests).where(eq(rematchRequests.id, outgoingId));
+    expect(outgoing?.status).toBe('declined');
+    const [irrelevant] = await db.select().from(rematchRequests).where(eq(rematchRequests.id, irrelevantId));
+    expect(irrelevant?.status).toBe('open'); // untouched — doesn't involve the blocked pair
+  });
+
+  it('declines an INCOMING open rematch request too (direction-agnostic)', async () => {
+    const a = await makeClaimedProfile();
+    const b = await makeClaimedProfile();
+    const seasonId = uuidv7();
+    await db.insert(seasons).values({ id: seasonId, kind: 'nemesis', startsOn: '2026-07-20', endsOn: '2026-12-31', name: 'Test season' });
+
+    const incomingId = uuidv7(); // b -> a, open
+    await db.insert(rematchRequests).values({
+      id: incomingId,
+      requesterProfileId: b.profileId,
+      targetProfileId: a.profileId,
+      seasonId,
+      status: 'open',
+    });
+
+    await applyBlock(db, a.profileId, b.profileId, NOW);
+
+    const [incoming] = await db.select().from(rematchRequests).where(eq(rematchRequests.id, incomingId));
+    expect(incoming?.status).toBe('declined');
   });
 });

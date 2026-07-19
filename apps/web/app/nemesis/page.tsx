@@ -29,9 +29,13 @@ import type { PairingSide } from '@/lib/nemesis/types';
  * `/claim/page.tsx`'s own direct `auth()` use — no `Request`-argument-free identity resolver
  * exists yet for server components, so this follows that closest existing pattern rather than
  * inventing a new one) and reads real pairing/history data from `@/lib/nemesis/service`,
- * replacing WS7-T6's hardcoded mock `VIEWER` fixture. `RematchPanel` (inside
- * `NemesisHistoryList`) still talks to the mock rematch-request backend
- * (`/api/mock/nemesis/rematch-requests*`) — that flow is WS5-T5 scope, not this task's.
+ * replacing WS7-T6's hardcoded mock `VIEWER` fixture.
+ *
+ * WS5-T5: `RematchPanel` (inside `NemesisHistoryList`) now talks to the real
+ * `/api/v1/rematch-requests*` endpoints instead of the (deleted) mock backend. Each history
+ * row's rematch state is server-rendered here too — `getNemesisHistoryPage` folds it into
+ * `entry.rematch_request` (a §9.2 contract-change, see `nemesisRematchStateSchema`'s header in
+ * `@receipts/core`) — so the panel never needs its own discovery fetch on mount.
  *
  * A ghost (ineligible) or signed-out visitor is redirected to `/claim` — this page has no
  * spectator-safe empty state to fall back to (unlike `/vs/[pairingId]`, which is public by

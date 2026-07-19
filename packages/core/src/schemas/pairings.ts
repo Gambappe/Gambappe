@@ -55,6 +55,26 @@ export const getPairingResponseSchema = pairingPublicSchema;
 
 // --- GET /me/nemesis-history (claimed): lifetime records vs past nemeses ----------------------
 
+/**
+ * WS5-T5 contract-change (flagged, additive): the viewer's rematch-request state with THIS
+ * history entry's opponent, if any request exists between them (either direction). §9.2's
+ * `POST /rematch-requests` family has no documented `GET` for discovering a request's id (the
+ * SPEC-GAP `apps/web/lib/nemesis/mock-api.ts`'s header recorded for whoever built this task) —
+ * rather than minting an undocumented new endpoint, this folds discovery into the ALREADY-
+ * contracted `GET /me/nemesis-history` response, which is exactly where a per-opponent rematch
+ * affordance is rendered (`RematchPanel`, one per history row). `direction` is from the
+ * viewer's point of view: `outgoing` = viewer is `requester_profile_id`, `incoming` = viewer is
+ * `target_profile_id`. When both directions exist for the same opponent (each side
+ * independently requested the other — §8.4 step 0's "both sides independently requested each
+ * other" case), the more actionable one wins: an `open` request beats a resolved one; if both
+ * are `open`, `incoming` wins (something for the viewer to act on beats something to wait on).
+ */
+export const nemesisRematchStateSchema = z.object({
+  id: zRematchRequestId,
+  direction: z.enum(['outgoing', 'incoming']),
+  status: z.enum(REMATCH_STATUS),
+});
+
 export const nemesisHistoryEntrySchema = z.object({
   pairing_id: zPairingId,
   season_id: zSeasonId,
@@ -64,6 +84,7 @@ export const nemesisHistoryEntrySchema = z.object({
   their_score: z.number().int().nonnegative(),
   outcome: z.enum(['win', 'loss', 'draw', 'cancelled']),
   is_rematch: z.boolean(),
+  rematch_request: nemesisRematchStateSchema.nullable(),
 });
 
 export const getNemesisHistoryRequestSchema = z.object({ query: paginationQuerySchema });

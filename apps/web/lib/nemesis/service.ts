@@ -33,10 +33,12 @@ import {
   getProfileBySlug,
   getRatingByProfileId,
   listNemesisHistoryForProfile,
+  listRematchRequestsInvolving,
   type Db,
   type NemesisPairingRow,
   type PairingScoreboardQuestionRow,
   type ProfileRow,
+  type RematchRequestRow,
 } from '@receipts/db';
 import { isPubliclyResolved } from '@/lib/profile-page';
 import { toScoreboardRow, type SharedQuestionRecord } from './masking';
@@ -189,6 +191,41 @@ export interface NemesisHistoryQuery {
   limit?: number;
 }
 
+/**
+ * WS5-T5: folds each history row's rematch-request state (§9.2 contract-change, see
+ * `nemesisRematchStateSchema`'s header in `@receipts/core`) into the response. `rows` is every
+ * rematch request (any status, either direction) involving `viewerProfileId` and any of this
+ * page's opponents — one query for the whole page (`listRematchRequestsInvolving`), reduced here
+ * per opponent: an `open` request beats a resolved one (something actionable beats history), and
+ * if both directions are simultaneously `open` (§8.4 step 0's "both sides independently
+ * requested each other" case), `incoming` wins (something to act on beats something to wait on).
+ * `rows` is already newest-first (`listRematchRequestsInvolving`'s `ORDER BY created_at DESC`),
+ * so within an equally-ranked pair the first one encountered per opponent is the most recent.
+ */
+function buildRematchStateByOpponent(
+  rows: RematchRequestRow[],
+  viewerProfileId: string,
+): Map<string, { id: string; direction: 'outgoing' | 'incoming'; status: RematchRequestRow['status'] }> {
+  const rank = (status: RematchRequestRow['status'], direction: 'outgoing' | 'incoming'): number => {
+    if (status === 'open' && direction === 'incoming') return 3;
+    if (status === 'open') return 2;
+    return 1;
+  };
+
+  const byOpponent = new Map<string, { id: string; direction: 'outgoing' | 'incoming'; status: RematchRequestRow['status'] }>();
+  for (const row of rows) {
+    const isOutgoing = row.requesterProfileId === viewerProfileId;
+    const opponentId = isOutgoing ? row.targetProfileId : row.requesterProfileId;
+    const direction: 'outgoing' | 'incoming' = isOutgoing ? 'outgoing' : 'incoming';
+    const candidate = { id: row.id, direction, status: row.status };
+    const current = byOpponent.get(opponentId);
+    if (!current || rank(candidate.status, candidate.direction) > rank(current.status, current.direction)) {
+      byOpponent.set(opponentId, candidate);
+    }
+  }
+  return byOpponent;
+}
+
 /** `GET /me/nemesis-history` (claimed) — the viewer's lifetime record vs past nemeses. */
 export async function getNemesisHistoryPage(
   db: Db,
@@ -213,6 +250,10 @@ export async function getNemesisHistoryPage(
       ? encodeHistoryCursor({ weekStart: last.weekStart, pairingId: last.pairingId })
       : null;
 
+  const opponentIds = [...new Set(page.map((r) => r.opponent.profileId))];
+  const rematchRows = await listRematchRequestsInvolving(db, profileId, opponentIds);
+  const rematchByOpponent = buildRematchStateByOpponent(rematchRows, profileId);
+
   const data = page.map((r) =>
     nemesisHistoryEntrySchema.parse({
       pairing_id: r.pairingId,
@@ -228,6 +269,7 @@ export async function getNemesisHistoryPage(
       outcome:
         r.status === 'cancelled' ? 'cancelled' : r.winnerProfileId === null ? 'draw' : r.winnerProfileId === profileId ? 'win' : 'loss',
       is_rematch: r.isRematch,
+      rematch_request: rematchByOpponent.get(r.opponent.profileId) ?? null,
     }),
   );
 

@@ -15,6 +15,7 @@ import {
 } from '@receipts/core';
 import {
   countQualifiedReportersSince,
+  declineOpenRematchRequestsBetween,
   findActivePairingInvolving,
   getFullPairingSharedQuestionPicks,
   getOrDefaultRating,
@@ -178,10 +179,18 @@ export async function applyNemesisMidWeekExit(db: Db, profileId: string, at: Dat
  * exits follow the same early-conclusion rule as pairings", WS6-T2's `applyDuoMidWindowExit`)
  * — a profile can have at most one active pairing AND one active duo match at once, so both
  * checks always run, independently, on every block.
+ *
+ * WS5-T5 addition: also resolves any `open` `rematch_requests` between the two profiles (either
+ * direction) to `declined`. A blocked pair can never be forced into a pairing anyway
+ * (`apps/worker/src/jobs/nemesis-assign.ts`'s `buildForcedPairs` already silently drops a
+ * forced pair once either side is blocked, §8.4 step 0), so leaving a request looking "pending"
+ * for up to a week until the next `nemesis:assign` sweep expires it (§5.5) would just be a
+ * stale, misleading UI state for whichever side is waiting on it.
  */
 export async function applyBlock(db: Db, blockerProfileId: string, blockedProfileId: string, at: Date): Promise<void> {
   await db.transaction(async (tx) => {
     await insertBlock(tx, blockerProfileId, blockedProfileId);
+    await declineOpenRematchRequestsBetween(tx, blockerProfileId, blockedProfileId);
 
     // Nested transactions (Postgres SAVEPOINTs, drizzle-orm) — same pattern as
     // `packages/db/src/repositories/picks.ts`'s `placePickTx` — so the duo-match and pairing

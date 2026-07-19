@@ -958,9 +958,9 @@ Served by `GET /leaderboards/weekly` (owner: WS3-T7). Window = ISO week Mon–Su
 | `POST /placement/answers` | ghost+ | `{item_id, side}` → per-item result revealed in response |
 | `GET /pairings/current` | claimed | My active pairing + scoreboard |
 | `GET /pairings/:id` | none | Public matchup page data (both handles, daily-by-daily scoreboard, narration line). Pre-reveal daily results masked per §9.3 |
-| `GET /me/nemesis-history` | claimed | Lifetime records vs past nemeses |
-| `POST /rematch-requests` | claimed | `{target_profile_id}`; target must be a past nemesis this season |
-| `POST /rematch-requests/:id/accept` \| `/decline` | claimed | |
+| `GET /me/nemesis-history` | claimed | Lifetime records vs past nemeses. Each entry also carries `rematch_request: {id, direction: 'outgoing'\|'incoming', status: rematch_status} \| null` — the viewer's most relevant rematch request with that entry's opponent, if any (WS5-T5 contract-change: there's no dedicated discovery endpoint for a rematch request's id, §9.2 previously had none documented — this folds discovery into the endpoint that already renders the per-opponent rematch affordance, rather than minting a new undocumented route) |
+| `POST /rematch-requests` | claimed | `{target_profile_id}`; target must be a past nemesis this season (a terminal — `completed`/`cancelled` — pairing this season). Idempotent: a repeat call while an identical request is already `open` returns that same row |
+| `POST /rematch-requests/:id/accept` \| `/decline` | claimed | Target-only (the requester already consented by creating the request). Accepting does not pair immediately — the next `nemesis:assign` run (Monday 09:00 ET) does, per §8.4 step 0 |
 | `POST /duo/queue` | claimed | Enqueue (eligibility checked) · `DELETE /duo/queue` to leave |
 | `GET /duo/current` | claimed | My duo + active match |
 | `GET /duos/:id` | none | Public duo page: partners, tier, rating, chemistry, match history |
