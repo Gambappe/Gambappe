@@ -189,11 +189,16 @@ task's scope; small enough for a fast-follow).
 
 ### Observation: `share.card_urls` is always `[]`
 
-Also in `reveal-payload.ts` — `card_urls: []`, no `SPEC-GAP` comment. Working OG endpoints exist
-for both the question card and a viewer's own receipt card (step 11 above proves both render
-real images), so this looks like it could be populated. Not investigated further (out of scope
-for this task) — worth a look before launch if any client surface expects this array to be
-non-empty for a revealed question.
+Also in `reveal-payload.ts` — `card_urls: []`, no `SPEC-GAP` comment. At drill time this was a
+vague "looks like it could be populated"; after rebasing onto `main` post-drill, WS8-T2 ("Share
+cards + share sheet," merged after this drill's first pass) landed exactly the routes this field
+should hold: `GET /api/cards/receipt/:pickId?format=story|square` (a viewer's own pick,
+story/square PNG with a real QR footer — `apps/web/app/api/cards/receipt/[pickId]/route.ts`) and
+the equivalent `GET /api/cards/question/:slug`. `share.card_urls` was never updated to reference
+either. This is now a concrete integration gap between two workstreams (WS3-T4/WS6.7's reveal
+payload and WS8-T2's card routes) rather than a speculative one — worth wiring up before launch
+if the client's share sheet reads `card_urls` from the reveal payload rather than constructing
+card URLs itself. Not investigated further or fixed here (out of this task's scope).
 
 ## 3. Monitoring during the first reveal
 
