@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T12:39:22.864Z",
+  "updated_at": "2026-07-19T14:33:46.708Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1246,13 +1246,13 @@
       "phase": "SP1",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": "reassigned to claude-session-35b05898-7175 to take over/finish; see SW0-T1 reclaim",
-      "status": "in_review",
+      "note": "Merged to main via PR #73 (commit b486590)",
+      "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/daily-question-swipe-ux-f0p4wq",
       "pr": "https://github.com/suvarna4/Gambappe/pull/73",
       "claimed_at": "2026-07-19T12:37:58.653Z",
-      "updated_at": "2026-07-19T12:39:16.731Z"
+      "updated_at": "2026-07-19T14:33:46.684Z"
     },
     "SW0-T2": {
       "title": "Tokens, fonts, glow/motion scale, side-axis + swipe constants",
