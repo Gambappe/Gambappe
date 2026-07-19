@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T19:15:01.366Z",
+  "updated_at": "2026-07-19T22:43:10.426Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1693,13 +1693,13 @@
         "SW9-T1"
       ],
       "mock_start_ok": false,
-      "note": "Spec: docs/plans/obituary-handoff.md §3.3(2-3), §4. Replaces loadReceiptOg's SPEC-GAP heuristic with the replay binding; ProfilePublic.graveyard closes SW4-T3's ripDays SPEC-GAP; /p/[slug] renders GraveyardShelf.",
-      "status": "claimed",
+      "note": "Card binding + graveyard implemented, all verify+integration tests green; opening PR",
+      "status": "in_review",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw9-t3-card-binding-graveyard",
       "pr": null,
       "claimed_at": "2026-07-19T19:15:01.355Z",
-      "updated_at": "2026-07-19T19:15:01.355Z"
+      "updated_at": "2026-07-19T22:43:10.426Z"
     }
   }
 }
