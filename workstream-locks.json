@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T14:33:48.545Z",
+  "updated_at": "2026-07-19T14:33:49.961Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1272,13 +1272,13 @@
       "phase": "SP1",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": "reassigned to claude-session-35b05898-7175 to take over/finish",
-      "status": "in_review",
+      "note": "Merged to main via PR #73 (commit b486590)",
+      "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/daily-question-swipe-ux-f0p4wq",
       "pr": "https://github.com/suvarna4/Gambappe/pull/73",
       "claimed_at": "2026-07-19T12:38:03.360Z",
-      "updated_at": "2026-07-19T12:39:21.123Z"
+      "updated_at": "2026-07-19T14:33:49.961Z"
     },
     "SW1-T1": {
       "title": "BallotCard presentational component (+UnderCard)",
