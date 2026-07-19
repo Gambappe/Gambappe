@@ -8,7 +8,7 @@ import { PRODUCT_NAME } from '@receipts/core';
 export default function AdminHomePage() {
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
-      <h1 className="text-2xl font-bold">{PRODUCT_NAME} admin</h1>
+      <h1 className="text-2xl font-bold">{`${PRODUCT_NAME} admin`}</h1>
       <p className="text-muted mt-2 text-sm">
         P0 stopgap auth (bearer token + IP allowlist). Curation, settlement, moderation, and
         the ops dashboard land in WS10-T2..T5.
