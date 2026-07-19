@@ -182,6 +182,20 @@ export const nemesisCopy = {
         : `${opponentHandle} leads ${oppWins}–${youWins}`,
   /** SW5-T4 preset stamp reactions (matchup trash talk) — preset-only, no free text (P1). */
   reactionStamps: ['Sweating?', 'Lucky', 'Called it', 'Respect'] as const,
+
+  /** SW5-T2 · The Friday verdict card + rematch-by-swipe (swipe-ux-plan §2.9). Both players get
+   * a card; the loser's is the richer one (P3). The week's last swipe is emotional — right =
+   * run it back (affirmative-right, D-SW9), left = a new stranger. No money words (INV-8). */
+  verdictWon: 'You took the week',
+  verdictLost: 'Taken down',
+  verdictDrew: 'Dead even',
+  verdictScore: (you: number, opp: number) => `${you}–${opp}`,
+  /** Loser card's data-derived line (edge gap or streak-of-weeks). */
+  verdictLoserLine: (opponentHandle: string, edgeGap: number) =>
+    `${opponentHandle}'s edge beat yours by ${edgeGap} points. The rematch button is right there.`,
+  verdictWinnerLine: (opponentHandle: string) => `You out-edged ${opponentHandle} when it counted.`,
+  newFate: 'New fate',
+  runItBack: 'Run it back',
 } as const;
 
 /** WS8-T2 (share cards + share sheet, §10.5) section. */
