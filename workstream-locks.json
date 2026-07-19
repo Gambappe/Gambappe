@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T22:43:39.570Z",
+  "updated_at": "2026-07-19T22:44:04.042Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1662,13 +1662,13 @@
       "phase": "SP2",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": "replayStreak runs/currentRunStartedOn (zero-guarded), viewer.streak.broken_run per §3.2 mechanical wake condition, streak_busted re-keyed onto the replay wake signal (n = dead run length); AC (a)-(h) via real buildRevealPayload/runStreakSweep/runRevealFire against seeded Postgres. https://github.com/Gambappe/Gambappe/pull/79",
+      "note": "PR #79 merged; follow-up death-scoped dedupe fix (PR #79 review finding 1) merged as PR #80",
       "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw9-t1-broken-run-contract",
       "pr": "https://github.com/Gambappe/Gambappe/pull/79",
       "claimed_at": "2026-07-19T18:19:20.502Z",
-      "updated_at": "2026-07-19T18:46:37.513Z"
+      "updated_at": "2026-07-19T22:44:04.042Z"
     },
     "SW9-T2": {
       "title": "The wake: obituary handoff in RevealSequence",
