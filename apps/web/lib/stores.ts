@@ -126,6 +126,9 @@ export function getBoss(): Promise<PgBoss> {
         cache.boss = undefined;
         cache.bossStarted = undefined;
       }
+      // Best-effort teardown of the failed instance's internal pool — without it, every failed
+      // start during a long DB outage would leak whatever connections it managed to open.
+      void boss.stop().catch(() => {});
       throw err;
     });
   }

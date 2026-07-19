@@ -126,7 +126,11 @@ async function checkRedisBucket(
 // In-process fallback state (per Node instance, by design — §14.1). Never persisted.
 // Entries carry the same 2×window lifetime the Redis path gets via EXPIRE, and a sweep prunes
 // dead ones once the map crosses a size threshold — without it, a sustained Redis outage plus
-// many unique keys (an IP-spraying client, say) grows this map without bound.
+// many unique keys (an IP-spraying client, say) grows this map without bound. Because a spray
+// of LIVE long-window entries (ghost_mint is IP-keyed with a day window) can outpace expiry,
+// the sweep also hard-caps the map by evicting oldest-inserted entries when expiry alone
+// wasn't enough — evicting a live bucket merely refills it to (fallback) capacity on next
+// sight, which is still fail-closed at 25% of the normal limit, never unlimited.
 const fallbackBuckets = new Map<string, { tokens: number; ts: number; expiresAtMs: number }>();
 const FALLBACK_SWEEP_THRESHOLD = 10_000;
 
@@ -134,6 +138,16 @@ function sweepFallbackBuckets(now: number): void {
   if (fallbackBuckets.size < FALLBACK_SWEEP_THRESHOLD) return;
   for (const [key, bucket] of fallbackBuckets) {
     if (bucket.expiresAtMs <= now) fallbackBuckets.delete(key);
+  }
+  // Map iteration is insertion-ordered, so deleting from the front evicts oldest-first.
+  if (fallbackBuckets.size >= FALLBACK_SWEEP_THRESHOLD) {
+    const excess = fallbackBuckets.size - FALLBACK_SWEEP_THRESHOLD + 1;
+    let evicted = 0;
+    for (const key of fallbackBuckets.keys()) {
+      if (evicted >= excess) break;
+      fallbackBuckets.delete(key);
+      evicted++;
+    }
   }
 }
 

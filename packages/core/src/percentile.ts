@@ -17,7 +17,21 @@ export function computePercentiles(scores: readonly number[]): number[] {
   if (n === 0) return [];
   if (n === 1) return [100];
 
-  const order = Array.from(scores.keys()).sort((a, b) => scores[a]! - scores[b]!);
+  // NaN-safe total ordering (NaN sorts last): `a - b` returns NaN for NaN operands, which
+  // Array#sort treats as an inconsistent comparator — that can split REAL tie groups apart and
+  // corrupt other members' percentiles, not just the NaN's own. With NaN-last, every finite
+  // member's percentile is exactly the §8.6 value it would get if the NaN rows simply didn't
+  // compare (matching the old pairwise implementation, where NaN comparisons were always false);
+  // each NaN gets a deterministic own-group slot. NaN here means corrupt data (a literal NaN in
+  // a pg numeric `edge`) — tolerated without contaminating everyone else, not endorsed.
+  const order = Array.from(scores.keys()).sort((a, b) => {
+    const sa = scores[a]!;
+    const sb = scores[b]!;
+    const aNaN = Number.isNaN(sa);
+    const bNaN = Number.isNaN(sb);
+    if (aNaN || bNaN) return aNaN === bNaN ? 0 : aNaN ? 1 : -1;
+    return sa - sb;
+  });
   const result = new Array<number>(n);
   let groupStart = 0;
   while (groupStart < n) {

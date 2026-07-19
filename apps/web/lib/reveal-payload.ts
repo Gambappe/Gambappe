@@ -78,14 +78,17 @@ async function computeViewerStreakBlock(
  */
 function buildNarrativeLine(question: QuestionRow, crowdYes: number, crowdNo: number): string {
   const winningLabel = question.outcome === 'yes' ? question.yesLabel : question.noLabel;
-  // Majority from the raw COUNTS, never a rounded percent (49.6% rounds to 50 and would flip
-  // which side the narrative attributes to the crowd). Tie → yes side, matching the old
-  // `pct >= 50` behavior exactly.
+  // No crowd at all (degenerate: revealed with zero lock-snapshot picks) → there's no honest
+  // "N% called it / had it wrong" to attribute, so just state the outcome.
   const total = crowdYes + crowdNo;
+  if (total === 0) return `${winningLabel} it is.`;
+  // Majority from the raw COUNTS, never a rounded percent (49.6% rounds to 50 and would flip
+  // which side the narrative attributes to the crowd). Non-zero tie → yes side, matching the
+  // old `pct >= 50` behavior exactly.
   const crowdPickedYes = crowdYes >= crowdNo;
   const crowdWasRight = (crowdPickedYes && question.outcome === 'yes') || (!crowdPickedYes && question.outcome === 'no');
   const crowdSideCount = crowdPickedYes ? crowdYes : crowdNo;
-  const crowdSidePct = total === 0 ? 0 : Math.round((crowdSideCount / total) * 100);
+  const crowdSidePct = Math.round((crowdSideCount / total) * 100);
   return crowdWasRight
     ? `${crowdSidePct}% called it. ${winningLabel} it is.`
     : `${crowdSidePct}% had it wrong. ${winningLabel} came through instead.`;

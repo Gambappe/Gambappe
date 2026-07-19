@@ -5,6 +5,7 @@
  * (`computePercentiles` + `getGradedPickScoresForQuestion`); only the thin Redis glue differs
  * per runtime (no cross-app import between `apps/web`/`apps/worker`).
  */
+import { randomUUID } from 'node:crypto';
 import type { Redis } from 'ioredis';
 import { computePercentiles } from '@receipts/core';
 import { getAllGradedPickScoresForQuestion, getGradedPickScoresForQuestion, type Db } from '@receipts/db';
@@ -25,7 +26,13 @@ export async function recomputeAndCache(db: Db, redis: Redis, questionId: string
   await ensureRedisConnected(redis);
   const entries = await getGradedPickScoresForQuestion(db, questionId);
   const byProfile = new Map<string, number>();
-  if (entries.length === 0) return byProfile;
+  if (entries.length === 0) {
+    // An empty graded set must still INVALIDATE (a regrade voiding every pick would otherwise
+    // leave the whole pre-regrade hash serving stale percentiles) — snapshot semantics apply
+    // to the empty snapshot too.
+    await redis.del(revealHashKey(questionId));
+    return byProfile;
+  }
 
   const percentiles = computePercentiles(entries.map((e) => e.edge));
   const fields: Record<string, string> = {};
@@ -59,6 +66,16 @@ function recomputeLockKey(questionId: string): string {
   return `reveal:${questionId}:recompute-lock`;
 }
 
+/** Compare-and-delete: release the lock only if WE still hold it. Without the token check, a
+ * recompute that outlives the lock TTL would blindly DEL a successor holder's lock and admit a
+ * third recomputer (the classic non-token distributed-lock misdelete). */
+const RELEASE_LOCK_LUA = `
+if redis.call('get', KEYS[1]) == ARGV[1] then
+  return redis.call('del', KEYS[1])
+end
+return 0
+`;
+
 /** `null` only when the profile truly has no graded pick on this question (callers only call
  * this once a pick is known graded, so this is effectively unreachable in practice). A
  * bot-excluded profile still gets a percentile — §8.6: "excluded profiles get their own
@@ -80,12 +97,13 @@ export async function getViewerPercentile(
   // recompute+hset storms onto the pool.
   let recomputed: Map<string, number> | null = null;
   const lockKey = recomputeLockKey(questionId);
-  const lockAcquired = (await redis.set(lockKey, '1', 'EX', RECOMPUTE_LOCK_TTL_S, 'NX')) === 'OK';
+  const lockToken = randomUUID();
+  const lockAcquired = (await redis.set(lockKey, lockToken, 'EX', RECOMPUTE_LOCK_TTL_S, 'NX')) === 'OK';
   if (lockAcquired) {
     try {
       recomputed = await recomputeAndCache(db, redis, questionId);
     } finally {
-      await redis.del(lockKey).catch(() => {});
+      await redis.eval(RELEASE_LOCK_LUA, 1, lockKey, lockToken).catch(() => {});
     }
   } else {
     for (let attempt = 0; attempt < RECOMPUTE_POLL_ATTEMPTS; attempt++) {
