@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T08:36:19.733Z",
+  "updated_at": "2026-07-19T08:37:22.256Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1272,13 +1272,13 @@
       "phase": "SP1",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": null,
-      "status": "claimed",
+      "note": "shipped on claude/daily-question-swipe-ux-f0p4wq; core tests + build green",
+      "status": "in_review",
       "owner": "claude-session-01RU7xfuiYTVXMUbpHWEfcfJ",
       "branch": "claude/daily-question-swipe-ux-f0p4wq",
       "pr": null,
       "claimed_at": "2026-07-19T08:35:34.864Z",
-      "updated_at": "2026-07-19T08:35:34.864Z"
+      "updated_at": "2026-07-19T08:37:22.256Z"
     },
     "SW1-T1": {
       "title": "BallotCard presentational component (+UnderCard)",
