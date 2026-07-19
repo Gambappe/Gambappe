@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T22:52:37.690Z",
+  "updated_at": "2026-07-19T22:57:10.041Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1693,13 +1693,13 @@
         "SW9-T1"
       ],
       "mock_start_ok": false,
-      "note": "PR #81 open; fable review found 1 medium (missing E2E graveyard test + stale comment) + 1 low (doc table formatting) — both fixed and pushed; waiting on CI",
-      "status": "in_review",
+      "note": "PR #81 merged (squash c3fc886). Fable review found+fixed: missing graveyard E2E integration test, design-doc Appendix D table formatting.",
+      "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw9-t3-card-binding-graveyard",
       "pr": "https://github.com/Gambappe/Gambappe/pull/81",
       "claimed_at": "2026-07-19T19:15:01.355Z",
-      "updated_at": "2026-07-19T22:52:37.690Z"
+      "updated_at": "2026-07-19T22:57:10.041Z"
     }
   }
 }
