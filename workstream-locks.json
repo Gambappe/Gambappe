@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T15:12:09.283Z",
+  "updated_at": "2026-07-19T17:37:33.199Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1441,13 +1441,13 @@
         "SW1-T1"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "in_review",
+      "note": "Merged to main via PR #75 (commit 9db4dc9). Obituary handoff descoped after fable review found its trigger unreachable against the real backend (participation streak never hits current=0 on a loss) — needs a packages/core contract change to do properly; documented inline in RevealSequence.tsx. Stamp foil/tape/punch inks + choreography-timing analysis shipped as-is. Separately, PR #76 fixed a repo-wide test-fixture time-bomb (packages/db/src/testing/factories.ts's hardcoded T0 date) discovered while chasing this PR's CI.",
+      "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw3-t2-choreography-foil",
       "pr": "https://github.com/suvarna4/Gambappe/pull/75",
       "claimed_at": "2026-07-19T14:39:27.471Z",
-      "updated_at": "2026-07-19T15:12:09.283Z"
+      "updated_at": "2026-07-19T17:37:33.181Z"
     },
     "SW4-T1": {
       "title": "Obituary card + busted-streak template upgrade",
