@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T00:17:31.861Z",
+  "updated_at": "2026-07-19T00:29:23.989Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1233,13 +1233,13 @@
         "WS14-T2"
       ],
       "mock_start_ok": false,
-      "note": "Starting: launch runbook + Question Zero drill",
-      "status": "claimed",
+      "note": "PR #54: launch runbook + Question Zero drill. CRITICAL finding: daily-question composer never schedules question:open/lock/reveal:fire (scheduleQuestionLifecycle never called) -- confirmed empirically via pgboss.job. Do not launch until fixed. Everything downstream (open/lock/settle/reveal/cards/rollback) proven working via live drill.",
+      "status": "in_review",
       "owner": "claude-sonnet5-vf9acd-orchestrator",
-      "branch": null,
-      "pr": null,
+      "branch": "feat/ws14-t4-launch-runbook",
+      "pr": "https://github.com/suvarna4/Gambappe/pull/54",
       "claimed_at": "2026-07-18T23:51:07.170Z",
-      "updated_at": "2026-07-18T23:51:07.170Z"
+      "updated_at": "2026-07-19T00:29:23.989Z"
     }
   }
 }
