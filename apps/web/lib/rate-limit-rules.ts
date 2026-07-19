@@ -17,6 +17,7 @@ import {
   RL_REACT_PROFILE_D,
   RL_REPORT_PROFILE_D,
   RL_REVALIDATE_MIN,
+  RL_SHARE_TOKEN_IP_H,
   RL_SIWE_PROFILE_H,
   RL_UNDO_PROFILE_H,
 } from '@receipts/core';
@@ -48,6 +49,7 @@ export const RATE_LIMIT_RULES = {
   siwe: { keyType: 'profile', limit: RL_SIWE_PROFILE_H, windowSeconds: HOUR },
   events: { keyType: 'ip', limit: RL_EVENTS_IP_H, windowSeconds: HOUR },
   images: { keyType: 'ip', limit: RL_IMAGES_IP_MIN, windowSeconds: MINUTE },
+  share_token: { keyType: 'ip', limit: RL_SHARE_TOKEN_IP_H, windowSeconds: HOUR },
   internal_revalidate: { keyType: 'global', limit: RL_REVALIDATE_MIN, windowSeconds: MINUTE },
   api_v1_get_backstop: { keyType: 'ip', limit: RL_GET_IP_MIN, windowSeconds: MINUTE },
 } as const satisfies Record<string, RateLimitRule>;

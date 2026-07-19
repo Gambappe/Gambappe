@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { MarketSide, QuestionPublic } from '@receipts/core';
-import { copy } from '@/lib/copy';
+import { copy, shareCopy } from '@/lib/copy';
 import { formatEtClock } from '@/lib/format-et';
 import { ApiClientError, fetchMe, placePick, undoPick } from '@/lib/pick-client';
 import { canPick, canUndo, needsAgeGate } from '@/lib/pick-eligibility';
@@ -12,6 +12,7 @@ import {
   writeCachedPick,
   type CachedPick,
 } from '@/lib/pick-storage';
+import ShareSheet from './share/ShareSheet';
 import { PickButtons } from './PickButtons';
 import { QuestionThread } from './QuestionThread';
 import { RevealSequence } from './RevealSequence';
@@ -42,6 +43,7 @@ export function ViewerStrip({ question }: ViewerStripProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     // `RevealSequence` (below) owns its own identity fetch (the reveal endpoint resolves the
@@ -144,6 +146,16 @@ export function ViewerStrip({ question }: ViewerStripProps) {
   if (pick) {
     const sideLabel = pick.side === 'yes' ? question.yes_label : question.no_label;
     const undoable = canUndo(pick, nowMs, question.lock_at);
+    // §10.5/WS8-T2: the receipt card only has a real win/loss/void/busted-streak result once
+    // grading has happened — before that there's nothing worth sharing yet (a pre-reveal
+    // "your pick" doesn't fit the receipt template's stamp). The `/api/cards/receipt/:pickId`
+    // route re-derives the exact variant server-side from live pick/profile state (§10.5's
+    // "busted-streak" SPEC-GAP note in `lib/og/entities.ts`) — this component just decides
+    // WHEN to offer sharing, never which variant renders. `revealed` never reaches this branch
+    // (the early return above hands that state to `RevealSequence`, which offers its own share
+    // button off `viewer.pick` once grading is confirmed) — only `voided` still falls through
+    // to this generic pick view.
+    const settled = question.status === 'voided';
     return (
       <div className="space-y-2" data-testid="viewer-strip-pick">
         <p className="font-mono text-sm">
@@ -162,6 +174,26 @@ export function ViewerStrip({ question }: ViewerStripProps) {
           >
             {copy.question.undoButton}
           </button>
+        ) : null}
+        {settled ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setShareOpen(true)}
+              data-testid="share-receipt-button"
+              className="bg-side-a min-h-11 rounded px-3 py-1.5 text-xs font-semibold text-white"
+            >
+              {shareCopy.shareButtonLabel}
+            </button>
+            <ShareSheet
+              kind="receipt"
+              targetId={pick.pickId}
+              pagePath={`/q/${question.slug}`}
+              title={question.headline}
+              open={shareOpen}
+              onOpenChange={setShareOpen}
+            />
+          </>
         ) : null}
         {error ? (
           <p className="text-loss text-xs" data-testid="viewer-strip-error">

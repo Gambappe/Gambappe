@@ -34,11 +34,31 @@ describe('ogVersionGuard', () => {
     expect(res!.status).toBe(302);
   });
 
-  it('preserves the path exactly, dropping any other query params on redirect', () => {
+  it('preserves the path exactly and replaces only `v` on redirect', () => {
     const req = new Request('https://receipts.example/api/og/question/foo?v=wrong&extra=1');
     const res = ogVersionGuard(req, 'abc123');
     const location = new URL(res!.headers.get('location')!);
     expect(location.pathname).toBe('/api/og/question/foo');
     expect(location.searchParams.get('v')).toBe('abc123');
+  });
+
+  // WS8-T2: `/api/cards/*` adds a `?format=story|square` param the OG routes never had. The
+  // redirect must carry it through unchanged (only `v` is ever rewritten) — otherwise a card
+  // request missing/holding a stale `?v=` would silently drop back to whatever the route
+  // defaults to instead of keeping the format the caller asked for.
+  it('preserves non-`v` query params (e.g. cards\' ?format=) on redirect', () => {
+    const req = new Request('https://receipts.example/api/cards/receipt/foo?format=story');
+    const res = ogVersionGuard(req, 'abc123');
+    const location = new URL(res!.headers.get('location')!);
+    expect(location.pathname).toBe('/api/cards/receipt/foo');
+    expect(location.searchParams.get('format')).toBe('story');
+    expect(location.searchParams.get('v')).toBe('abc123');
+  });
+
+  it('never lets a client-supplied `v` param survive the rewrite (canonical hash always wins)', () => {
+    const req = new Request('https://receipts.example/api/cards/receipt/foo?v=stale&format=square');
+    const res = ogVersionGuard(req, 'abc123');
+    const location = new URL(res!.headers.get('location')!);
+    expect(location.searchParams.getAll('v')).toEqual(['abc123']);
   });
 });

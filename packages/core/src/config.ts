@@ -297,6 +297,24 @@ export const ISR_REVALIDATE_PROFILE_S = 60;
 export const ISR_REVALIDATE_PAIRING_S = 30;
 export const ISR_REVALIDATE_DUO_S = 60;
 
+// --- WS8-T2: share cards (§10.5 contract-change) ----------------------------------------------
+
+/** Share card portrait ("story") dimensions, px (§10.5: "story 1080×1920 ... PNG"). */
+export const CARD_STORY_WIDTH = 1080;
+export const CARD_STORY_HEIGHT = 1920;
+/** Share card square dimensions, px (§10.5: "square 1080×1080"). */
+export const CARD_SQUARE_WIDTH = 1080;
+export const CARD_SQUARE_HEIGHT = 1080;
+
+/**
+ * `POST /api/share/token`, per IP per hour — mints the §10.5 `?r=` attribution token. Not in
+ * the original §14.1 table (added by WS8-T2, same as WS9-T1's quiet-hours constants); every
+ * mutation route gets a named rule per §14.1's own convention. Generous relative to
+ * `RL_CLAIM_IP_H` since minting is cheap (HMAC only, no DB/entity lookup) and every share-sheet
+ * open mints one, but still bounded — never unlimited (§14.1 fail-closed posture).
+ */
+export const RL_SHARE_TOKEN_IP_H = 60;
+
 // --- Data lifecycle (§11.5 table; centralized here per §0.1 rule 4) --------------------------
 
 /** Ghost profiles unseen this long are pruned/anonymized by `maintenance:prune`. */
@@ -404,6 +422,11 @@ export const CONFIG = {
   ISR_REVALIDATE_PROFILE_S,
   ISR_REVALIDATE_PAIRING_S,
   ISR_REVALIDATE_DUO_S,
+  CARD_STORY_WIDTH,
+  CARD_STORY_HEIGHT,
+  CARD_SQUARE_WIDTH,
+  CARD_SQUARE_HEIGHT,
+  RL_SHARE_TOKEN_IP_H,
   RETENTION_GHOST_UNSEEN_MONTHS,
   RETENTION_PRICE_SNAPSHOTS_DAYS,
   RETENTION_ANALYTICS_MONTHS,

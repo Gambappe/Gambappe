@@ -4,9 +4,10 @@
  * narration templates' rendered strings (§13.3)." — WS14-T3 scans this file for money words).
  *
  * Seeded independently by WS7-T2 (the `copy.question`/`copy.errors` sections), WS7-T5 (the
- * flat `CLAIM_*` exports, claim flow UI), WS7-T6 (`nemesisCopy`, nemesis UI), and WS7-T10
- * (`copy.placement`) before any had landed on `main` — merged here on rebase. Later tasks
- * should add their own section to this file rather than starting a second copy file.
+ * flat `CLAIM_*` exports, claim flow UI), WS7-T6 (`nemesisCopy`, nemesis UI), WS7-T10
+ * (`copy.placement`), WS7-T8 (`threadCopy`, threads + reactions UI), and WS8-T2 (`shareCopy`,
+ * share sheet) before any had landed on `main` — merged here on rebase. Later tasks should add
+ * their own section to this file rather than starting a second copy file.
  *
  * Rules enforced in review (§10.6):
  *  - No money amounts, "bets", stake sizes, or venue balances (INV-8) — say "pick"/"call".
@@ -169,6 +170,20 @@ export const nemesisCopy = {
   rematchDeclinedLabel: 'Rematch declined',
 
   historyEmpty: 'No nemesis history yet — your first assignment lands Monday 9am ET.',
+} as const;
+
+/** WS8-T2 (share cards + share sheet, §10.5) section. */
+export const shareCopy = {
+  shareButtonLabel: 'Share your receipt',
+  sheetHeading: 'Share this',
+  formatStoryLabel: 'Story',
+  formatSquareLabel: 'Square',
+  webShareLabel: 'Share',
+  downloadLabel: 'Download',
+  copyLinkLabel: 'Copy link',
+  copyLinkCopiedLabel: 'Copied!',
+  closeLabel: 'Close',
+  genericError: 'Something went wrong preparing your share card. Try again.',
 } as const;
 
 /** WS7-T8 (threads + reactions UI) section. */

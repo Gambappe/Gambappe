@@ -4,3 +4,4 @@
  * barrel) in server-only code; `apps/web` client components must only ever import `.`.
  */
 export * from './notifications-token.js';
+export * from './share-token.js';

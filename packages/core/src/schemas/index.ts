@@ -15,4 +15,5 @@ export * from './push.js';
 export * from './events.js';
 export * from './leaderboards.js';
 export * from './internal.js';
+export * from './share.js';
 export * from './registry.js';
