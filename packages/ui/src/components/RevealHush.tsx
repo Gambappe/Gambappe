@@ -8,13 +8,16 @@ export interface RevealHushProps {
   /** ISO `reveal_at` — the hush activates `HUSH_WINDOW_MS` before this and holds until it. */
   targetIso: string;
   serverOffsetMs?: number;
-  /** Approximate participant count ("drama, not accounting" — docs/swipe-ux-plan.md §2.6).
-   * Omit when no cheap source is available; the hush still shows without a count. */
-  roomCount?: number;
+  /** Already-formatted room-count text ("drama, not accounting" — docs/swipe-ux-plan.md §2.6),
+   * e.g. `hushCopy.roomCount(n)`. Omit when no cheap source is available; the hush still shows
+   * without a count. A pre-formatted string rather than a `(n) => string` formatter: this
+   * component is `'use client'` and its caller (`QuestionStateView`) is a Server Component —
+   * passing a function as a prop across that boundary throws at runtime ("Functions cannot be
+   * passed directly to Client Components"), so the caller must format the string itself. */
+  roomCountText?: string;
   /** Caller-owned copy (design doc §10.6: every user-facing string lives in `apps/web/lib/copy.ts`,
    * never baked into a shared component). */
   frozenLabel: string;
-  roomCountLabel: (n: number) => string;
   children: ReactNode;
   className?: string;
 }
@@ -26,7 +29,7 @@ const HUSH_GOLD = '#FFC53D';
 /**
  * §2.6 F1 hush (docs/swipe-ux-plan.md, SW3-T1): starting `HUSH_WINDOW_MS` before reveal, dims the
  * wrapped stage content 8% and shows a FROZEN chip (plus an optional room count) until reveal.
- * No new endpoints or fields — `roomCount` is whatever the caller already has on hand.
+ * No new endpoints or fields — `roomCountText` is whatever the caller already has on hand.
  *
  * Reduced motion skips the whole effect (§2.13 invariant 4) rather than rendering a static
  * version of it: the hush is atmosphere the product can live without, not information the page
@@ -39,9 +42,8 @@ const HUSH_GOLD = '#FFC53D';
 export function RevealHush({
   targetIso,
   serverOffsetMs = 0,
-  roomCount,
+  roomCountText,
   frozenLabel,
-  roomCountLabel,
   children,
   className = '',
 }: RevealHushProps) {
@@ -78,9 +80,9 @@ export function RevealHush({
         >
           {frozenLabel}
         </span>
-        {roomCount !== undefined ? (
+        {roomCountText !== undefined ? (
           <span className="text-muted font-mono text-xs" data-testid="reveal-hush-room-count">
-            {roomCountLabel(roomCount)}
+            {roomCountText}
           </span>
         ) : null}
       </div>

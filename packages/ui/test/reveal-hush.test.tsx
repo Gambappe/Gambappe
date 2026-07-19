@@ -15,7 +15,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const roomCountLabel = (n: number) => `${n} in the room`;
+const roomCountText = '42 in the room';
 
 describe('RevealHush', () => {
   it('passes children through unchanged on the pre-effect (SSR/initial) render, even inside the T-10s window', () => {
@@ -23,7 +23,7 @@ describe('RevealHush', () => {
       <RevealHush
         targetIso={new Date(Date.now() + 5_000).toISOString()}
         frozenLabel="FROZEN"
-        roomCountLabel={roomCountLabel}
+        roomCountText={roomCountText}
       >
         <p>stage content</p>
       </RevealHush>,
@@ -40,7 +40,7 @@ describe('RevealHush', () => {
       <RevealHush
         targetIso={new Date(Date.now() + 5_000).toISOString()}
         frozenLabel="FROZEN"
-        roomCountLabel={roomCountLabel}
+        roomCountText={roomCountText}
       >
         <p>stage content</p>
       </RevealHush>,

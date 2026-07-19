@@ -87,9 +87,13 @@ export function QuestionStateView({
               serverOffsetMs={serverOffsetMs}
               // §2.6 F1: "already derivable from the reveal/percentile cache" — reusing the same
               // crowd totals CrowdBar renders just below rather than adding a new field/endpoint.
-              roomCount={question.crowd ? question.crowd.yes + question.crowd.no : undefined}
+              // Formatted to a string here (not passed as a function) because `RevealHush` is a
+              // Client Component and this is a Server Component — functions can't cross that
+              // boundary as props.
+              roomCountText={
+                question.crowd ? hushCopy.roomCount(question.crowd.yes + question.crowd.no) : undefined
+              }
               frozenLabel={hushCopy.frozenChip}
-              roomCountLabel={hushCopy.roomCount}
             >
               <div className="space-y-3" data-testid="question-locked">
                 {question.crowd ? (
