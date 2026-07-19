@@ -20,10 +20,11 @@ import type { PairingSide } from '@/lib/nemesis/types';
  * route.
  *
  * WS5-T4: now backed by real Postgres reads (`@/lib/nemesis/service`, §9.2 `GET /pairings/:id`
- * + a `GET /profiles/:slug`-equivalent rating composition), replacing WS7-T6's original mock
- * (`lib/nemesis/mock-api.ts`, kept only for the still-mocked WS5-T5 rematch-request flow — see
- * that file's header). `getPairingPublicById`/`getPairingSideRef` return the exact same
- * `@receipts/core`-schema shapes the mock did, so `NemesisMatchupCard` needed no changes.
+ * + a `GET /profiles/:slug`-equivalent rating composition), replacing WS7-T6's original mock.
+ * `getPairingPublicById`/`getPairingSideRef` return the exact same `@receipts/core`-schema
+ * shapes the mock did, so `NemesisMatchupCard` needed no changes. WS5-T5 subsequently deleted
+ * the mock module entirely (`lib/nemesis/mock-api.ts`) once the rematch-request flow it backed
+ * got real `/api/v1/rematch-requests*` endpoints — see `/nemesis/page.tsx`'s header.
  *
  * The `/api/oembed` SPEC-GAP this page's header used to flag (mock pairing ids had no
  * corresponding real `nemesis_pairings` row, so the oEmbed link 404'd) is resolved now that

@@ -16,6 +16,14 @@ process.env.ADMIN_STOPGAP_IP_ALLOWLIST ??= '127.0.0.1';
 // until one internal ladder window completes cleanly"). Same inherit-into-webServer mechanism
 // as `ADMIN_STOPGAP_TOKEN` above.
 process.env.FLAG_DUO_QUEUE ??= 'true';
+// WS5-T5 nemesis-rematch.spec.ts exercises `/nemesis` and the real `/api/v1/rematch-requests*`
+// routes — all behind the `nemesis` flag (§4.6: "off until WS5 E2E passes"). WS5-T5 is the last
+// task on that workstream's WBS row, so its own e2e suite flipping this on here is exactly what
+// "until WS5 E2E passes" means — same inherit-into-webServer mechanism as `FLAG_DUO_QUEUE` above.
+// (`nemesis-matchup.spec.ts`, WS5-T4, predates this and only reads `/vs/[pairingId]` — an
+// unflagged SSR page — so it never needed this default; the flag still gated it implicitly
+// since that page's own data functions don't check it, only the `/api/v1/*` route handlers do.)
+process.env.FLAG_NEMESIS ??= 'true';
 // WS14-T1 golden-loop.spec.ts calls the real `POST /internal/revalidate` (§9.2) to force fresh
 // ISR after directly advancing question state (lock/reveal) via repository calls instead of the
 // real worker cron — same "harmless test-only default" rationale as the stopgap token above.

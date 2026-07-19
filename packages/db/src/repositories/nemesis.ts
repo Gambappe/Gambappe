@@ -10,7 +10,7 @@
  * verbatim rather than replaced, since `apps/worker/src/jobs/nemesis-lastday.ts` already depends
  * on its exact shape via the `@receipts/db` barrel.
  */
-import { and, asc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import type { MarketCategory } from '@receipts/core';
 import type { Db } from '../client.js';
 import {
@@ -165,6 +165,158 @@ export async function listOpenRematchRequestIds(db: Db): Promise<string[]> {
 export async function markRematchRequestsExpired(db: Db, ids: readonly string[]): Promise<void> {
   if (ids.length === 0) return;
   await db.update(rematchRequests).set({ status: 'expired' }).where(inArray(rematchRequests.id, ids));
+}
+
+// --- Rematch requests: WRITE path (§9.2 `POST /rematch-requests*`, WS5-T5) --------------------
+//
+// The functions above (`listAcceptedRematchRequests`, `listOpenRematchRequestIds`,
+// `markRematchRequestsExpired`) are `nemesis:assign`'s READ/consume side (WS5-T1, already
+// shipped). Everything below is the REQUEST side WS5-T5 owns: a claimed profile creating a
+// request and the target accepting/declining it — `apps/web/lib/nemesis/rematch.ts` is the
+// only caller.
+
+export interface NewRematchRequestInput {
+  id: string;
+  requesterProfileId: string;
+  targetProfileId: string;
+  seasonId: string;
+}
+
+export async function insertRematchRequest(db: Db, input: NewRematchRequestInput): Promise<RematchRequestRow> {
+  const [inserted] = await db
+    .insert(rematchRequests)
+    .values({
+      id: input.id,
+      requesterProfileId: input.requesterProfileId,
+      targetProfileId: input.targetProfileId,
+      seasonId: input.seasonId,
+      status: 'open',
+    })
+    .returning();
+  if (!inserted) throw new Error('insertRematchRequest: no row returned');
+  return inserted;
+}
+
+/** The requester's own currently-`open` request to this exact target, if any — makes `POST
+ * /rematch-requests` idempotent (a repeat click/retry returns the same row rather than piling
+ * up duplicate open requests to the same opponent, mirroring `insertBlock`'s re-block posture). */
+export async function findOpenRematchRequestFromTo(
+  db: Db,
+  requesterProfileId: string,
+  targetProfileId: string,
+): Promise<RematchRequestRow | null> {
+  const [row] = await db
+    .select()
+    .from(rematchRequests)
+    .where(
+      and(
+        eq(rematchRequests.requesterProfileId, requesterProfileId),
+        eq(rematchRequests.targetProfileId, targetProfileId),
+        eq(rematchRequests.status, 'open'),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+export async function getRematchRequestById(db: Db, id: string): Promise<RematchRequestRow | null> {
+  const [row] = await db.select().from(rematchRequests).where(eq(rematchRequests.id, id)).limit(1);
+  return row ?? null;
+}
+
+/** `accept`/`decline` (§9.2 `POST /rematch-requests/:id/accept|decline`) — `null` if `id` no
+ * longer names an `open` request (already resolved, or never existed); the caller distinguishes
+ * "not found" from "already resolved" itself via a preceding `getRematchRequestById` read. */
+export async function updateRematchRequestStatus(
+  db: Db,
+  id: string,
+  status: 'accepted' | 'declined',
+): Promise<RematchRequestRow | null> {
+  const [row] = await db
+    .update(rematchRequests)
+    .set({ status })
+    .where(and(eq(rematchRequests.id, id), eq(rematchRequests.status, 'open')))
+    .returning();
+  return row ?? null;
+}
+
+/**
+ * §14.3 block integration: an `open` rematch request between two profiles that just became
+ * mutually blocked can never be honored (`nemesis:assign`'s `buildForcedPairs` already silently
+ * drops a forced pair once either side is in `blockedKeys` — see `nemesis-assign.ts`) — this
+ * resolves it eagerly to `declined` at block time rather than leaving it visibly "pending" for
+ * up to a week until the next `nemesis:assign` sweep expires it (§5.5). Direction-agnostic
+ * (checks both `(a requested b)` and `(b requested a)`); a no-op if neither exists.
+ */
+export async function declineOpenRematchRequestsBetween(db: Db, profileAId: string, profileBId: string): Promise<void> {
+  await db
+    .update(rematchRequests)
+    .set({ status: 'declined' })
+    .where(
+      and(
+        eq(rematchRequests.status, 'open'),
+        or(
+          and(eq(rematchRequests.requesterProfileId, profileAId), eq(rematchRequests.targetProfileId, profileBId)),
+          and(eq(rematchRequests.requesterProfileId, profileBId), eq(rematchRequests.targetProfileId, profileAId)),
+        ),
+      ),
+    );
+}
+
+/**
+ * Every rematch request (any status) involving `profileId` as either side, where the other side
+ * is in `opponentIds` — the batched lookup `getNemesisHistoryPage` (§9.2 `GET
+ * /me/nemesis-history`) uses to fold each history row's `rematch_request` state (this file's
+ * sibling schema addition in `@receipts/core`) into one query per history page instead of one
+ * per row. Ordered newest-first so the caller's "most relevant" reduction (prefer `open`, else
+ * most recent) can just take the first match per opponent.
+ */
+export async function listRematchRequestsInvolving(
+  db: Db,
+  profileId: string,
+  opponentIds: readonly string[],
+): Promise<RematchRequestRow[]> {
+  if (opponentIds.length === 0) return [];
+  return db
+    .select()
+    .from(rematchRequests)
+    .where(
+      or(
+        and(eq(rematchRequests.requesterProfileId, profileId), inArray(rematchRequests.targetProfileId, [...opponentIds])),
+        and(eq(rematchRequests.targetProfileId, profileId), inArray(rematchRequests.requesterProfileId, [...opponentIds])),
+      ),
+    )
+    .orderBy(desc(rematchRequests.createdAt));
+}
+
+/**
+ * Was `targetProfileId` a past nemesis of `requesterProfileId` **this season** (§9.2 `POST
+ * /rematch-requests` rule: "target must be a past nemesis this season")? "Past" = a terminal
+ * (`completed`/`cancelled`, §5.7) pairing — an `active` current pairing doesn't need a rematch
+ * *request*, and `scheduled` never happens for nemesis (§5.7). Direction-agnostic (canonical
+ * `profile_a < profile_b` ordering, §5.5, means either could be `a` or `b`).
+ */
+export async function wasNemesisThisSeason(
+  db: Db,
+  requesterProfileId: string,
+  targetProfileId: string,
+  seasonId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: nemesisPairings.id })
+    .from(nemesisPairings)
+    .where(
+      and(
+        eq(nemesisPairings.seasonId, seasonId),
+        inArray(nemesisPairings.status, ['completed', 'cancelled']),
+        or(
+          and(eq(nemesisPairings.profileAId, requesterProfileId), eq(nemesisPairings.profileBId, targetProfileId)),
+          and(eq(nemesisPairings.profileAId, targetProfileId), eq(nemesisPairings.profileBId, requesterProfileId)),
+        ),
+      ),
+    )
+    .limit(1);
+  return row !== undefined;
 }
 
 // --- Pairing persistence -------------------------------------------------------------------------

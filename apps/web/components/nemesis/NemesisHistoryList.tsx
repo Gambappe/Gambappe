@@ -48,7 +48,19 @@ export function NemesisHistoryList({
           </div>
           <div className="flex items-center gap-3">
             <OutcomeBadge outcome={entry.outcome} />
-            <RematchPanel viewerProfileId={viewerProfileId} opponent={entry.opponent} />
+            <RematchPanel
+              viewerProfileId={viewerProfileId}
+              opponent={entry.opponent}
+              rematchRequest={
+                entry.rematch_request
+                  ? {
+                      id: entry.rematch_request.id,
+                      direction: entry.rematch_request.direction,
+                      status: entry.rematch_request.status,
+                    }
+                  : null
+              }
+            />
           </div>
         </li>
       ))}
