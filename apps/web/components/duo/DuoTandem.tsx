@@ -12,7 +12,8 @@ export interface DuoTandemProps {
 }
 
 function sideClasses(side: MarketSide): string {
-  return side === 'yes' ? 'border-side-a text-side-a' : 'border-side-b text-side-b';
+  // Darkened on-paper side ink for the label text (AA on cream); bright border kept for the pop.
+  return side === 'yes' ? 'border-side-a text-[#1d4fa8]' : 'border-side-b text-[#b34d0a]';
 }
 
 /**
@@ -53,7 +54,7 @@ export function DuoTandem({
         </span>
         <span
           data-testid="tandem-verdict"
-          className={`font-mono text-[11px] font-semibold uppercase ${matched ? 'text-win' : 'text-gold'}`}
+          className={`font-mono text-[11px] font-semibold uppercase ${matched ? 'text-[#0b6b4f]' : 'text-[#6b5200]'}`}
         >
           {matched ? duoCopy.tandemMatched : duoCopy.tandemSplit}
         </span>

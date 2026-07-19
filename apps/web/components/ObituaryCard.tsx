@@ -110,7 +110,7 @@ export function ObituaryCard({
         </p>
 
         <div className="mt-3 flex items-end justify-between">
-          <span className="border-loss text-loss inline-block -rotate-6 rounded border-2 px-2.5 py-0.5 font-display text-base font-bold uppercase">
+          <span className="border-loss inline-block -rotate-6 rounded border-2 px-2.5 py-0.5 font-display text-base font-bold text-[#a11731] uppercase">
             {obituaryCopy.stamp}
           </span>
           <span className="text-ink/70 font-mono text-[11px]">🕯 {obituaryCopy.rip(days)}</span>

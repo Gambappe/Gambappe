@@ -67,7 +67,7 @@ export function ReceiptSlip({
         transition: reducedMotion ? undefined : `transform ${PRINT_MS}ms ${PRINT_EASE}`,
       }}
     >
-      <div className="text-muted flex items-center justify-between font-mono text-[10px] tracking-wide uppercase">
+      <div className="text-ink/70 flex items-center justify-between font-mono text-[10px] tracking-wide uppercase">
         <span>{handle ? `Receipt — ${handle}` : copy.question.yourPickLabel}</span>
         <span>{pickedAtLabel}</span>
       </div>
@@ -85,12 +85,12 @@ export function ReceiptSlip({
             data-testid="undo-pick"
             onClick={onUndo}
             disabled={disabled}
-            className="text-muted min-h-11 font-mono text-[11px] underline disabled:opacity-50"
+            className="text-ink/70 min-h-11 font-mono text-[11px] underline disabled:opacity-50"
           >
             {copy.question.undoButton} · {secondsLeft}s
           </button>
         ) : (
-          <span data-testid="undo-locked" className="text-muted font-mono text-[11px]">
+          <span data-testid="undo-locked" className="text-ink/70 font-mono text-[11px]">
             {ballotCopy.undoLocked}
           </span>
         )}
@@ -106,7 +106,7 @@ export function ReceiptSlip({
         }}
       />
 
-      <div className="text-muted mt-2 flex items-center justify-between font-mono text-[9px] tracking-wide uppercase">
+      <div className="text-ink/70 mt-2 flex items-center justify-between font-mono text-[9px] tracking-wide uppercase">
         <span>{sealedNote}</span>
         <span>{serial}</span>
       </div>

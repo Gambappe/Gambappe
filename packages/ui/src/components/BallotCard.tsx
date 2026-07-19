@@ -101,7 +101,9 @@ export function BallotCard({
     >
       <div aria-hidden="true" className="h-1.5 -translate-y-1" style={perforationStyle} />
 
-      <div className="text-muted flex items-center justify-between font-mono text-[9px] font-semibold tracking-widest uppercase">
+      {/* Muted labels on paper use ink-at-70% (not `text-muted`, which is tuned for the dark bg
+          and fails AA on paper — caught by the SW8-T1 axe pass). */}
+      <div className="text-ink/70 flex items-center justify-between font-mono text-[9px] font-semibold tracking-widest uppercase">
         <span>{eyebrow}</span>
         <span>{serial}</span>
       </div>
@@ -115,7 +117,7 @@ export function BallotCard({
         {rightChip}
       </div>
 
-      <div className="text-muted mt-2 flex items-center justify-between font-mono text-[9px] tracking-wide uppercase">
+      <div className="text-ink/70 mt-2 flex items-center justify-between font-mono text-[9px] tracking-wide uppercase">
         <span>{venue}</span>
         <span>{lockLabel}</span>
       </div>
@@ -142,7 +144,7 @@ export function UnderCard({ label, className = '' }: UnderCardProps) {
   return (
     <div
       aria-hidden="true"
-      className={`bg-paper text-muted relative flex flex-col rounded-lg px-4 pt-3 pb-3 ${className}`}
+      className={`bg-paper text-ink/70 relative flex flex-col rounded-lg px-4 pt-3 pb-3 ${className}`}
     >
       <div className="h-1.5 -translate-y-1" style={perforationStyle} />
       {label ? (

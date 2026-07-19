@@ -381,7 +381,7 @@ export function SwipeBallot({
                   <span
                     aria-hidden="true"
                     data-testid="stamp-preview"
-                    className={`pointer-events-none absolute top-[42%] left-1/2 -rotate-6 rounded border-2 px-3 py-1 font-display text-lg font-bold uppercase ${previewSide === 'yes' ? 'border-side-a text-side-a' : 'border-side-b text-side-b'}`}
+                    className={`pointer-events-none absolute top-[42%] left-1/2 -rotate-6 rounded border-2 px-3 py-1 font-display text-lg font-bold uppercase ${previewSide === 'yes' ? 'border-side-a text-[#1d4fa8]' : 'border-side-b text-[#b34d0a]'}`}
                     style={{
                       transform: `translate(-50%,-50%) rotate(-6deg) scale(${stampScale(progress)})`,
                       opacity: Math.min(1, progress),

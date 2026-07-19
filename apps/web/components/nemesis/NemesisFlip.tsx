@@ -36,8 +36,10 @@ export function NemesisFlip({
   weekLabel,
   className = '',
 }: NemesisFlipProps) {
+  // Bright side hues fail AA as text on paper (caught by SW8-T1 axe) — keep the bright border but
+  // print the label in a darkened on-paper side ink (#1d4fa8 / #b34d0a, ~6:1 on cream).
   const stampColor =
-    opponentSide === 'yes' ? 'border-side-a text-side-a' : 'border-side-b text-side-b';
+    opponentSide === 'yes' ? 'border-side-a text-[#1d4fa8]' : 'border-side-b text-[#b34d0a]';
   return (
     <div
       data-testid="nemesis-flip"
