@@ -8,6 +8,7 @@ import {
   StreakFlame,
   TicketCard,
   UnderCard,
+  sideAxisPair,
 } from '@receipts/ui';
 import { ObituaryCard } from '@/components/ObituaryCard';
 import { GraveyardShelf } from '@/components/GraveyardShelf';
@@ -179,12 +180,17 @@ export default function UiGalleryPage() {
       <section data-testid="gallery-pricetag" className="space-y-3">
         <h2 className="text-muted text-sm font-semibold uppercase">PriceTag</h2>
         {/* PriceTag is a "printed on paper" motif (§10.4 ink token) — always shown on a
-            paper surface, same as it will be inside a TicketCard in product UI. */}
-        <div className="bg-paper flex flex-wrap gap-6 rounded-md px-4 py-3">
-          <PriceTag side="yes" label="France" yesProbability={0.63} />
-          <PriceTag side="no" label="Brazil" yesProbability={0.63} />
-          <PriceTag side="yes" label="Yes" yesProbability={0.02} />
-          <PriceTag side="no" label="No" yesProbability={0.02} />
+            paper surface, same as it will be inside a TicketCard in product UI. Pairs are
+            axis-ordered per D-SW9 (swipe plan §2.2): NO left, YES right, dir="ltr". */}
+        <div dir="ltr" className="bg-paper flex flex-wrap gap-6 rounded-md px-4 py-3">
+          {sideAxisPair(
+            <PriceTag key="venue-no" side="no" label="Brazil" yesProbability={0.63} />,
+            <PriceTag key="venue-yes" side="yes" label="France" yesProbability={0.63} />,
+          )}
+          {sideAxisPair(
+            <PriceTag key="bare-no" side="no" label="No" yesProbability={0.02} />,
+            <PriceTag key="bare-yes" side="yes" label="Yes" yesProbability={0.02} />,
+          )}
         </div>
       </section>
 

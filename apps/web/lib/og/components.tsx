@@ -17,7 +17,7 @@
  * satori family names (`CARD_DISPLAY_FONT`/`CARD_MONO_FONT`) that match those registrations.
  */
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
-import { barcodePattern } from '@receipts/ui';
+import { barcodePattern, sideAxisPair } from '@receipts/ui';
 import { CARD_DISPLAY_FONT, CARD_MONO_FONT, printShop } from './print-shop';
 
 export const OG_WIDTH = 1200;
@@ -149,9 +149,14 @@ export function OgPriceTag({ side, cents }: { side: 'yes' | 'no'; cents: number 
   );
 }
 
-/** §10.4 CrowdBar — side-A/side-B split, colorblind-safe pair, always paired with the %. */
+/** §10.4 CrowdBar — side-A/side-B split, colorblind-safe pair, always paired with the %.
+ * Axis order (D-SW9, swipe plan §2.2): NO fills from the left edge, YES from the right —
+ * both segments and labels — matching the in-DOM `CrowdBar`. The `data-side` attrs are for
+ * the axis-order unit tests (satori ignores unknown props); satori has no RTL layout, so no
+ * `dir` equivalent is needed here. */
 export function OgCrowdBar({ yesPct }: { yesPct: number }): ReactElement {
   const pct = Math.max(0, Math.min(100, Math.round(yesPct)));
+  const noPct = 100 - pct;
   return (
     <div style={{ ...flexCol, width: '100%', gap: 8 }}>
       <div
@@ -163,10 +168,18 @@ export function OgCrowdBar({ yesPct }: { yesPct: number }): ReactElement {
           overflow: 'hidden',
         }}
       >
-        <div style={{ width: `${pct}%`, backgroundColor: printShop.sideA, display: 'flex' }} />
-        <div
-          style={{ width: `${100 - pct}%`, backgroundColor: printShop.sideB, display: 'flex' }}
-        />
+        {sideAxisPair(
+          <div
+            key="no"
+            data-side="no"
+            style={{ width: `${noPct}%`, backgroundColor: printShop.sideB, display: 'flex' }}
+          />,
+          <div
+            key="yes"
+            data-side="yes"
+            style={{ width: `${pct}%`, backgroundColor: printShop.sideA, display: 'flex' }}
+          />,
+        )}
       </div>
       <div
         style={{
@@ -177,8 +190,14 @@ export function OgCrowdBar({ yesPct }: { yesPct: number }): ReactElement {
           color: printShop.muted,
         }}
       >
-        <span>YES {pct}%</span>
-        <span>NO {100 - pct}%</span>
+        {sideAxisPair(
+          <span key="no" data-side="no">
+            NO {noPct}%
+          </span>,
+          <span key="yes" data-side="yes">
+            YES {pct}%
+          </span>,
+        )}
       </div>
     </div>
   );

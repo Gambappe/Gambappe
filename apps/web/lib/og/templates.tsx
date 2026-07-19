@@ -11,7 +11,8 @@
  * decorative barcode.
  */
 import type { ReactElement } from 'react';
-import { colors, impliedCents } from '@receipts/ui';
+import { impliedCents, sideAxisPair } from '@receipts/ui';
+import { printShop } from './print-shop';
 import type { DuoWithProfiles, PairingWithProfiles } from '@receipts/db';
 import {
   OgBarcodeFooter,
@@ -28,7 +29,13 @@ import {
   type OgStampVariant,
 } from './components';
 import type { ProfileOgData, QuestionOgData, ReceiptOgData } from './entities';
-import { absoluteUrl, duoPagePath, matchupPagePath, profilePagePath, questionPagePath } from './paths';
+import {
+  absoluteUrl,
+  duoPagePath,
+  matchupPagePath,
+  profilePagePath,
+  questionPagePath,
+} from './paths';
 
 /** WS8-T2: passed by `/api/cards/*` route handlers only — see this file's header comment. */
 export interface CardRenderOptions {
@@ -73,8 +80,9 @@ export function renderQuestionTemplate(
         <OgHeadline>{question.headline}</OgHeadline>
         <OgRow style={{ flexDirection: 'column', gap: 20 }}>
           {yesPrice != null && <OgPriceTag side="yes" cents={Math.round(yesPrice * 100)} />}
-          <div style={{ display: 'flex', fontSize: 24, color: colors.muted }}>
-            Pick your side — {question.yesLabel} / {question.noLabel}
+          <div style={{ display: 'flex', fontSize: 24, color: printShop.muted }}>
+            {/* D-SW9 (swipe plan §2.2): the side pair lists NO/against first (left). */}
+            Pick your side — {sideAxisPair(question.noLabel, question.yesLabel).join(' / ')}
           </div>
         </OgRow>
         {renderFooter(path, cardOptions)}
@@ -88,7 +96,7 @@ export function renderQuestionTemplate(
         <OgHeadline>{question.headline}</OgHeadline>
         <OgRow style={{ flexDirection: 'column', gap: 20 }}>
           <OgStamp variant="void" />
-          <div style={{ display: 'flex', fontSize: 22, color: colors.muted }}>
+          <div style={{ display: 'flex', fontSize: 22, color: printShop.muted }}>
             Voided by venue — streak-safe.
           </div>
         </OgRow>
@@ -105,7 +113,7 @@ export function renderQuestionTemplate(
       <OgHeadline>{question.headline}</OgHeadline>
       <OgRow style={{ flexDirection: 'column', gap: 20 }}>
         <OgStamp variant={question.outcome ? 'win' : 'void'} />
-        <div style={{ display: 'flex', fontSize: 26, color: colors.paper }}>
+        <div style={{ display: 'flex', fontSize: 26, color: printShop.ink }}>
           The crowd said {question.outcome === 'yes' ? pct : 100 - pct}% — outcome: {outcomeLabel}
         </div>
         <OgCrowdBar yesPct={pct} />
@@ -139,7 +147,7 @@ export function renderReceiptTemplate(
           <OgStamp variant={RECEIPT_STAMP[variant]} />
         </OgRow>
         {variant === 'busted_streak' && (
-          <div style={{ display: 'flex', fontSize: 22, color: colors.loss }}>
+          <div style={{ display: 'flex', fontSize: 22, color: printShop.loss }}>
             RIP {profile.bestStreak}-day streak
           </div>
         )}
@@ -165,14 +173,14 @@ export function renderMatchupTemplate(
         <OgRow style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <OgHandleRow handle={profileA.handle} />
-            <div style={{ display: 'flex', fontSize: 48, fontWeight: 700, color: colors.sideA }}>
+            <div style={{ display: 'flex', fontSize: 48, fontWeight: 700, color: printShop.sideA }}>
               {pairing.scoreA}
             </div>
           </div>
-          <div style={{ display: 'flex', fontSize: 32, color: colors.muted }}>vs</div>
+          <div style={{ display: 'flex', fontSize: 32, color: printShop.muted }}>vs</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
             <OgHandleRow handle={profileB.handle} />
-            <div style={{ display: 'flex', fontSize: 48, fontWeight: 700, color: colors.sideB }}>
+            <div style={{ display: 'flex', fontSize: 48, fontWeight: 700, color: printShop.sideB }}>
               {pairing.scoreB}
             </div>
           </div>
@@ -194,7 +202,7 @@ export function renderProfileTemplate(
       <OgTicket style={{ gap: 20 }}>
         <OgRow style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ display: 'flex', fontSize: 20, color: colors.muted }}>Record</div>
+            <div style={{ display: 'flex', fontSize: 20, color: printShop.muted }}>Record</div>
             <div style={{ display: 'flex', fontSize: 36, fontWeight: 700 }}>
               {record.wins}-{record.losses}
               {record.voids > 0 ? `-${record.voids}` : ''}
@@ -220,8 +228,8 @@ export function renderDuoTemplate(
       </OgHeadline>
       <OgTicket style={{ gap: 16 }}>
         <OgRow style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', fontSize: 22, color: colors.muted }}>Tier {duo.tier}</div>
-          <div style={{ display: 'flex', fontSize: 22, color: colors.muted }}>
+          <div style={{ display: 'flex', fontSize: 22, color: printShop.muted }}>Tier {duo.tier}</div>
+          <div style={{ display: 'flex', fontSize: 22, color: printShop.muted }}>
             {duo.matchesPlayed} matches
           </div>
         </OgRow>

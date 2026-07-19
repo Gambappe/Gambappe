@@ -9,6 +9,7 @@ export * from './format.js';
 export * from './side-axis.js';
 export * from './swipe.js';
 export * from './reduced-motion.js';
+export * from './side-axis.js';
 export * from './components/TicketCard.js';
 export * from './components/BallotCard.js';
 export * from './components/Stamp.js';
