@@ -19,6 +19,7 @@ import ClaimPromptEngine from '@/components/claim/ClaimPromptEngine';
 import ClaimSheetGalleryDemo from './ClaimSheetGalleryDemo';
 import ShareSheetGalleryDemo from './ShareSheetGalleryDemo';
 import SwipeBallotGalleryDemo from './SwipeBallotGalleryDemo';
+import PlacementSwipeGalleryDemo from './PlacementSwipeGalleryDemo';
 
 /**
  * `/dev/ui` — the WS7-T1 design-system gallery (design doc §19.3 AC: "gallery renders all
@@ -77,6 +78,12 @@ export default function UiGalleryPage() {
       <section data-testid="gallery-swipeballot" className="space-y-3">
         <h2 className="text-muted text-sm font-semibold uppercase">SwipeBallot (interactive)</h2>
         <SwipeBallotGalleryDemo />
+      </section>
+
+      {/* SW6-T1: placement as a swipe deck (over a historical item). */}
+      <section data-testid="gallery-placement-swipe" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">Placement swipe (SW6-T1)</h2>
+        <PlacementSwipeGalleryDemo />
       </section>
 
       {/* SW4-T1: the busted-streak obituary — the loser's artifact (P3). Static (share/OG) form. */}

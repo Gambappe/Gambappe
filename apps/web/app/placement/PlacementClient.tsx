@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { Barcode, CrowdBar, PriceTag, Stamp, TicketCard } from '@receipts/ui';
 import type { MarketSide } from '@receipts/core';
 import { copy } from '@/lib/copy';
+import { PlacementSwipeCard } from './PlacementSwipeCard';
 import {
   PlacementApiError,
   categoryLabel,
@@ -43,7 +44,7 @@ function ButtonLink({ href, children }: { href: string; children: React.ReactNod
   );
 }
 
-export default function PlacementClient() {
+export default function PlacementClient({ swipeBallot = false }: { swipeBallot?: boolean }) {
   const [phase, setPhase] = useState<Phase>('loading');
   const [items, setItems] = useState<PlacementItem[]>([]);
   const [index, setIndex] = useState(0);
@@ -193,54 +194,66 @@ export default function PlacementClient() {
         <p className="text-muted text-sm">{copy.placement.intro}</p>
       </header>
 
-      <TicketCard>
-        <p className="text-muted text-xs font-semibold uppercase">
-          {categoryLabel(currentItem.category)}
-        </p>
-        <p className="mt-1 font-mono text-base">{currentItem.title}</p>
+      {!reveal && swipeBallot ? (
+        // SW6-T1: placement as a swipe — the same throw, over a historical item.
+        <PlacementSwipeCard
+          category={categoryLabel(currentItem.category)}
+          title={currentItem.title}
+          yesLabel={currentItem.yes_label}
+          noLabel={currentItem.no_label}
+          disabled={submitting}
+          onPick={handleAnswer}
+        />
+      ) : (
+        <TicketCard>
+          <p className="text-muted text-xs font-semibold uppercase">
+            {categoryLabel(currentItem.category)}
+          </p>
+          <p className="mt-1 font-mono text-base">{currentItem.title}</p>
 
-        {!reveal ? (
-          <div className="mt-4 flex gap-3">
-            <button
-              type="button"
-              onClick={() => handleAnswer('yes')}
-              disabled={submitting}
-              className="bg-side-a min-h-11 flex-1 rounded px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-            >
-              {currentItem.yes_label}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleAnswer('no')}
-              disabled={submitting}
-              className="bg-side-b min-h-11 flex-1 rounded px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-            >
-              {currentItem.no_label}
-            </button>
-          </div>
-        ) : (
-          <div className="mt-4 space-y-3" data-testid="placement-mini-reveal">
-            <Stamp variant={reveal.correct ? 'win' : 'loss'} />
-            <p className="text-ink text-sm">
-              {copy.placement.yourCallPrefix} {outcomeLabel(currentItem, reveal.side)} —{' '}
-              {copy.placement.resolvedPrefix} {outcomeLabel(currentItem, reveal.outcome)}
-            </p>
-            <PriceTag
-              side={reveal.side}
-              label={outcomeLabel(currentItem, reveal.side)}
-              yesProbability={reveal.historical_yes_price}
-            />
-            <CrowdBar
-              {...crowdCountsFromPct(reveal.historical_crowd_yes_pct)}
-              yesLabel={currentItem.yes_label}
-              noLabel={currentItem.no_label}
-            />
-            <p className="text-muted font-mono text-xs">
-              {copy.placement.resolvedOnPrefix} {reveal.resolved_on}
-            </p>
-          </div>
-        )}
-      </TicketCard>
+          {!reveal ? (
+            <div className="mt-4 flex gap-3">
+              <button
+                type="button"
+                onClick={() => handleAnswer('yes')}
+                disabled={submitting}
+                className="bg-side-a min-h-11 flex-1 rounded px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                {currentItem.yes_label}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAnswer('no')}
+                disabled={submitting}
+                className="bg-side-b min-h-11 flex-1 rounded px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                {currentItem.no_label}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3" data-testid="placement-mini-reveal">
+              <Stamp variant={reveal.correct ? 'win' : 'loss'} />
+              <p className="text-ink text-sm">
+                {copy.placement.yourCallPrefix} {outcomeLabel(currentItem, reveal.side)} —{' '}
+                {copy.placement.resolvedPrefix} {outcomeLabel(currentItem, reveal.outcome)}
+              </p>
+              <PriceTag
+                side={reveal.side}
+                label={outcomeLabel(currentItem, reveal.side)}
+                yesProbability={reveal.historical_yes_price}
+              />
+              <CrowdBar
+                {...crowdCountsFromPct(reveal.historical_crowd_yes_pct)}
+                yesLabel={currentItem.yes_label}
+                noLabel={currentItem.no_label}
+              />
+              <p className="text-muted font-mono text-xs">
+                {copy.placement.resolvedOnPrefix} {reveal.resolved_on}
+              </p>
+            </div>
+          )}
+        </TicketCard>
+      )}
 
       {submitError && (
         <p className="text-loss text-sm" role="alert">

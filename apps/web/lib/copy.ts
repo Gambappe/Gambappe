@@ -127,6 +127,8 @@ export const copy = {
   /** WS7-T10 (placement flow UI) section. */
   placement: {
     intro: "Five quick calls on real historical questions — see how you'd have done, tap by tap.",
+    /** SW6-T1: the placement swipe-card eyebrow — the game framing, not a quiz. */
+    callIt: 'Call it',
     progressLabel: (index: number, total: number) => `Item ${index} of ${total}`,
     loading: 'Loading your 5 items…',
     loadErrorTitle: "Couldn't load placement",

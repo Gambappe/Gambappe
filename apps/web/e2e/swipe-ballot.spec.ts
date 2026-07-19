@@ -8,6 +8,10 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
  * spec; this pins the gesture mechanics and the D-SW9 axis (right = for, left = against).
  */
 async function dragCard(page: Page, card: Locator, dxRatio: number): Promise<void> {
+  // `page.mouse.move()` takes raw viewport coordinates and never auto-scrolls (unlike `.click()`),
+  // so the card must be in view first — it sits below the fold on the long gallery page at the
+  // Desktop-Chrome 720px height, and an off-screen card silently receives zero pointer events.
+  await card.scrollIntoViewIfNeeded();
   const b = await card.boundingBox();
   if (!b) throw new Error('card has no bounding box');
   const cx = b.x + b.width / 2;
