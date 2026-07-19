@@ -1,4 +1,5 @@
 import {
+  BallotCard,
   Barcode,
   CountdownTicker,
   CrowdBar,
@@ -6,6 +7,7 @@ import {
   Stamp,
   StreakFlame,
   TicketCard,
+  UnderCard,
 } from '@receipts/ui';
 import ClaimPromptEngine from '@/components/claim/ClaimPromptEngine';
 import ClaimSheetGalleryDemo from './ClaimSheetGalleryDemo';
@@ -37,6 +39,30 @@ export default function UiGalleryPage() {
           <span className="border-gold text-gold inline-block -rotate-6 rounded border-2 px-3 py-1 font-display text-lg font-bold uppercase">
             Called it
           </span>
+        </div>
+      </section>
+
+      {/* SW1-T1: the swipe ballot's card face + the under-card that peeks in the deck. Shown
+          on the dark stage ground the deck (SW2-T1) will place it against. */}
+      <section data-testid="gallery-ballotcard" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">BallotCard</h2>
+        <div className="bg-bg relative rounded-md p-6">
+          <div className="mx-auto max-w-[260px]">
+            <UnderCard
+              label="TOMORROW · opens 9:00 ET"
+              className="absolute inset-x-6 top-8 scale-95"
+            />
+            <BallotCard
+              eyebrow="ECON · DAILY"
+              serial="№ 212"
+              headline="Does the Fed cut rates in September?"
+              yesLabel="CUTS"
+              noLabel="HOLDS"
+              yesProbability={0.71}
+              venue="KALSHI · LIVE"
+              lockLabel="LOCKS 12:00 ET"
+            />
+          </div>
         </div>
       </section>
 
