@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T08:52:55.524Z",
+  "updated_at": "2026-07-19T08:53:27.137Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1425,12 +1425,12 @@
       ],
       "mock_start_ok": true,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-35b05898-7175",
+      "branch": "feat/sw3-t1-reveal-hush",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-19T08:18:25.516Z"
+      "claimed_at": "2026-07-19T08:53:27.136Z",
+      "updated_at": "2026-07-19T08:53:27.136Z"
     },
     "SW3-T2": {
       "title": "Choreography polish + foil/tape/punch stamp inks + obituary handoff",
