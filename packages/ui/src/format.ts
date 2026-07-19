@@ -54,9 +54,10 @@ export function crowdSplit(yesCount: number, noCount: number): CrowdSplit {
  * count) activates. */
 export const HUSH_WINDOW_MS = 10_000;
 
-/** True from `HUSH_WINDOW_MS` before `targetMs` up to (not including) `targetMs` itself — the
- * hush is a pre-reveal-only effect, never shown once the target has passed (the revealed branch
- * takes over at that point). */
+/** True from `HUSH_WINDOW_MS` before `targetMs` up to (not including) `targetMs` itself. This is
+ * the trigger window, not the display window: a caller that latches "hushed" on the first true
+ * result (to avoid flapping) may keep showing it briefly past `targetMs` too, until it stops
+ * polling for the state that supersedes it. */
 export function isHushWindow(targetMs: number, nowMs: number, windowMs = HUSH_WINDOW_MS): boolean {
   const remaining = targetMs - nowMs;
   return remaining > 0 && remaining <= windowMs;
