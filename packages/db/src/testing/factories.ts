@@ -37,8 +37,15 @@ function nextSeq(): number {
   return seq;
 }
 
-/** Deterministic-ish default instant used when the caller doesn't pass one. */
-const T0 = new Date('2026-07-19T13:00:00Z'); // 09:00 ET open on question day
+/**
+ * Default instant used when the caller doesn't pass one — anchored to real wall-clock time
+ * (not a fixed calendar date) so the relative offsets below (`lockAt`/`revealAt`/etc.) stay
+ * safely in the future no matter how long a session or CI run has been going. A fixed date
+ * (e.g. `2026-07-19T13:00:00Z`) is a time bomb: `placePickTx`'s `lock_at > now()` guard (§6.2)
+ * silently rejects picks the moment real time crosses it, breaking every test relying on the
+ * default `openAt`/`lockAt` without warning — see the regression that motivated this comment.
+ */
+const T0 = new Date(Date.now() - 3600_000); // 1h ago, so lockAt (T0+3h) is always ~2h out
 
 /**
  * Unique default question_date per call — the §5.3 partial unique index allows only one
