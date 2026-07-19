@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T14:34:48.833Z",
+  "updated_at": "2026-07-19T14:34:50.257Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1501,13 +1501,13 @@
         "SW1-T4"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "claimed",
+      "note": "Merged to main via PR #73 (commit b486590)",
+      "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/daily-question-swipe-ux-f0p4wq",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/73",
       "claimed_at": "2026-07-19T14:34:48.833Z",
-      "updated_at": "2026-07-19T14:34:48.833Z"
+      "updated_at": "2026-07-19T14:34:50.257Z"
     },
     "SW5-T2": {
       "title": "Verdict cards + rematch-by-swipe (verdict ballot variant)",
