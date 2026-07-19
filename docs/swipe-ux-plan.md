@@ -647,6 +647,9 @@ AC: renders only when previous streak ≥ 3 broke at this reveal (threshold in
 the viewer's pick log fields already returned by the reveal payload (SPEC-GAP note
 for any missing fact, degrade by omitting the line); share path reuses ShareSheet
 `kind="receipt"` with the busted variant; money-word lint passes.
+*(AMENDED — the "broke at this reveal" trigger here is unimplementable against §6.6;
+authoritative trigger semantics: `docs/plans/obituary-handoff.md` (SW9). The card,
+copy, and tone deliverables above shipped and stand.)*
 
 **SW4-T3 · Graveyard shelf · SP2 · Depends: SW4-T1**
 Spec: §2.7; `/p/[handle]` (design doc §10.1 profile polish priority).
@@ -656,6 +659,9 @@ state (`No funerals yet.`).
 AC: public page stays ISR-cacheable (no viewer data); chips link to the day's
 question page; renders nothing (not an empty box) when history is empty and streak
 history is unavailable.
+*(AMENDED — no "profile picks/streak history endpoint" exists; the real data source is
+SW9-T3's `ProfilePublic.graveyard` block, and the chips-link-to-question AC is retired
+there for privacy (run lengths only). See `docs/plans/obituary-handoff.md`.)*
 
 #### SW5 — Modes (SP2; every task respects `nemesis`/`duo_queue` flags)
 

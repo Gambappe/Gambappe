@@ -71,6 +71,9 @@ Known, accepted edges (do not "fix" these without a product decision):
   `OBITUARY_MIN_STREAK` gate then suppresses). Older deaths are graveyard-only.
 - **Reveal pages are replayable.** Revisiting the same question's reveal shows the same
   funeral again. Consistent with reveals generally; not a defect.
+- **Regrade can resurrect the dead.** A regrade / post-reveal void of the gap day
+  un-breaks the run, and `broken_run` (recomputed by replay on every request) goes null.
+  That is regrade-consistency working as designed, not a bug.
 
 ## 3. The contract change (one primitive, three consumers)
 
@@ -79,30 +82,55 @@ Known, accepted edges (do not "fix" these without a product decision):
 `StreakReplayResult` gains (additive — existing callers unaffected):
 
 - `runs: Array<{ length: number; startedOn: string; endedOn: string }>` — every
-  **completed** (broken) run, in chronological order. Recorded at both reset sites (the
-  `answered`-with-broken-gap branch and the non-participant `broken` branch), capturing
-  the counter value and run bounds just before zeroing.
+  **completed** (broken) run, in chronological order. Guard both reset sites (the
+  `answered`-with-broken-gap branch and the non-participant `broken` branch), but
+  **record only when `currentStreak > 0` at the moment of zeroing.** This guard is
+  load-bearing, not defensive: in a full-history replay the answered-branch reset is
+  provably a no-op (every uncovered gap date got its own earlier non-participant
+  iteration that already zeroed the counter — and each *further* missed day re-trips
+  `broken` with the counter still at 0, since `lastCountedDate` does not advance on a
+  break). Recording unconditionally therefore mints one 0-length garbage "run" per
+  missed day, pollutes the graveyard, and — because `runs.length > 0` is the wake
+  condition's first-ever-pick exclusion (§3.2) — breaks the trigger itself.
 - `currentRunStartedOn: string | null` — the first *counted* (answered) date of the
   live run.
 
 Subtleties the implementation and its tests MUST cover:
 
-- `endedOn` is the run's last **counted** date, which — because the voided-day branch
-  advances `lastCountedDate` over contiguous voids — can be a voided date the profile
-  never picked. The run's "last pick" is therefore *the latest answered daily ≤
-  `endedOn` within the run*, not "the pick on `endedOn`". (Test: run with a voided tail,
-  then a fatal gap.)
-- `startedOn` is the first answered date of the run (voided days advance, never start).
-- Freezes that *bridged* mid-run gaps have `coveredDate` within `(startedOn, endedOn)`;
-  freezes burned on the fatal gap have `coveredDate > endedOn` and are not
-  "survived" freezes.
+- `endedOn` is the run's last **counted** date, which can be a date the profile never
+  picked, two ways: the voided-day branch advances `lastCountedDate` over contiguous
+  voids, and — equally — a **freeze-covered missed day advances it onto the covered
+  date** (the non-participant branch's not-broken arm), so a run that dies the day
+  after a freeze bridge has a freeze-covered `endedOn`. The run's "last pick" is
+  therefore *the latest answered daily ≤ `endedOn` within the run*, never "the pick on
+  `endedOn`". (Tests: a voided-tail run, and a freeze-covered-tail run, each followed by
+  a fatal gap.)
+- `startedOn` is the first answered date of the run (voided/covered days advance, never
+  start).
+- **Freeze accounting is half-open: `freezes_survived` = recorded freeze uses with
+  `coveredDate` in `(startedOn, endedOn]`.** The tail-covered case above means the
+  boundary date belongs to the run. Do NOT model a "freezes burned on the fatal gap"
+  class (`coveredDate > endedOn`): it is essentially empty — every covered prefix of a
+  would-be-fatal gap is absorbed into the run (advancing `endedOn`), the killing date is
+  by definition uncovered, and `streak:sweep` only processes profiles with a positive
+  streak, so nothing burns after death.
 
 ### 3.2 `viewer.streak.broken_run` (packages/core §6.7 contract-change)
 
-`revealStreakSchema` gains a nullable block, emitted iff the run that ended most
-recently did so immediately before the current run **and** `currentRunStartedOn ===
-question_date` (the wake condition, §2). No length threshold server-side — the contract
-carries the fact; `OBITUARY_MIN_STREAK` stays a client presentation rule.
+`revealStreakSchema` gains a nullable block. The wake condition (§2), stated
+mechanically to leave nothing to interpretation — both values come from the **after**
+replay (the one through `question_date`; the before-replay would never satisfy it):
+
+> emit `broken_run` (from `runs.at(-1)`) iff `runs.length > 0 && currentRunStartedOn
+> === question_date`
+
+Do not attempt a calendar-adjacency check between the dead run and the live one
+("ended the day before the current run started" is *always* false — a death requires ≥1
+uncovered revealed day strictly between them). Run-sequence adjacency is automatic:
+completed runs and the single live run cannot interleave. The first-ever-pick case is
+excluded by `runs.length > 0` — which is exactly why §3.1's zero-guard is load-bearing.
+No length threshold server-side — the contract carries the fact; `OBITUARY_MIN_STREAK`
+stays a client presentation rule.
 
 ```
 broken_run: {
@@ -115,7 +143,7 @@ broken_run: {
     entry_cents: number,       // implied cents for the held side
     question_slug: string,
   } | null,                    // null if unresolvable → UI omits the line (SW4-T1 degrade rule)
-  freezes_survived: number,    // recorded freeze uses within (started_on, ended_on)
+  freezes_survived: number,    // recorded freeze uses with coveredDate in (started_on, ended_on] — §3.1
   longest_odds_cents: number | null, // cheapest implied entry among the run's picks; null if none
 } | null
 ```
@@ -136,6 +164,13 @@ omitted, and the facts list simply runs short (the card already renders 0–3 fa
    final answered pick of a completed run", permanent and regrade-consistent.
 3. **Graveyard shelf** (SW9-T3): `runs` *is* the `ripDays` data source SW4-T3's
    SPEC-GAP was missing.
+4. **The `streak_busted` notification beat** (SW9-T1): `deriveRevealBeats`'s existing
+   §13.3 beat ("reset from ≥3") is the *same wake moment*, but keyed off live
+   `profiles.current_streak` — so it only fires when the break happens to be applied
+   lazily at the reveal walk, and silently never fires in the normal flow where
+   `streak:sweep` (03:30 ET) zeroed the profile the day before. §1's post-mortem applies
+   to it verbatim. Re-key it onto the same replay-derived wake signal so the
+   notification and the payload can never disagree about whether a funeral happened.
 
 **"Bury it" needs no backend.** The graveyard derives from history, so every dead run is
 "archived to the shelf" automatically; burying is acknowledging the funeral, not filing
@@ -144,46 +179,67 @@ it. Client-side dismiss (per-mount) is spec-faithful. Do not build persistence f
 ## 4. Tasks (registered as SW9 in the workstream-lock registry)
 
 **SW9-T1 · Broken-run derivation + reveal contract · Depends: —** `[contract-change]`
-Spec: this doc §3.1–3.2; design doc §6.6, §6.7.
-Deliverables: `replayStreak` `runs`/`currentRunStartedOn` (additive); `broken_run` on
-`revealStreakSchema` + §6.7 doc note; `computeViewerStreakBlock` emission per the wake
-condition; `last_pick`/`freezes_survived`/`longest_odds_cents` derivation.
+Spec: this doc §3.1–3.2, §3.3(4); design doc §6.6, §6.7, §13.3.
+Deliverables: `replayStreak` `runs`/`currentRunStartedOn` (additive, with the §3.1
+zero-guard); `broken_run` on `revealStreakSchema` + §6.7 doc note;
+`computeViewerStreakBlock` emission per §3.2's mechanical condition;
+`last_pick`/`freezes_survived`/`longest_odds_cents` derivation; `streak_busted`
+notification re-keyed onto the same replay signal (§3.3(4)).
 AC: integration tests against real Postgres seed — (a) a ≥3-day run + uncovered miss +
 first-day-back reveal emits `broken_run` with exact length/dates/last-pick; (b) no gap →
-null; (c) freeze-covered gap → null (no death); (d) voided-tail run resolves `last_pick`
-to the latest answered date; (e) second-day-back reveal → null (fires once); (f) the
+null; (c) freeze-covered gap → null (no death); (d) voided-tail AND freeze-covered-tail
+runs resolve `last_pick` to the latest answered date and count the tail freeze in
+`freezes_survived` (§3.1); (e) second-day-back reveal → null (fires once); (f) the
 falsification case: a loss with an intact streak emits null (`current ≥ 1`, `delta +1` —
-the PR #75 shape stays impossible). Unit tests on the pure replay additions. Existing
-replay callers (merge §6.4, regrade) byte-identical on old fields.
+the PR #75 shape stays impossible); (g) `runs` never contains a zero-length entry, and N
+consecutive missed days record exactly ONE completed run (§3.1 guard); (h)
+`streak_busted` fires at the wake even when `streak:sweep` applied the break (the
+ordering today's live-field beat misses). Unit tests on the pure replay additions.
+Existing replay callers (merge §6.4, regrade) byte-identical on old fields.
 
-**SW9-T2 · The wake: obituary handoff in RevealSequence · Depends: SW9-T1**
+**SW9-T2 · The wake: obituary handoff in RevealSequence · Depends: SW9-T1, SW9-T3**
 Spec: this doc §2, §3.3(1); plan §2.7 card/tone rules (unchanged).
+*(Depends on SW9-T3 because "Share the obituary" routes through the receipt card, and
+until T3 re-keys `loadReceiptOg` the death pick — often a WIN — renders a plain receipt,
+not a tombstone: the funeral would share the wrong artifact. Land T3 first.)*
 Deliverables: final-beat swap to `ObituaryCard` when `broken_run != null && length >=
 OBITUARY_MIN_STREAK`; props mapped from the contract (client formats `b./d.` date
 labels; facts from `freezes_survived`/`longest_odds_cents` via new `obituaryCopy`
 data-slot templates; `causeOfDeath` bound to `last_pick`, line omitted when null);
 `Bury it` = client dismiss for the mount; `Share the obituary` opens the existing
-`ShareSheet` `kind="receipt"` targeting `last_pick.pick_id`; fix `ObituaryCard`'s BUSTED
-stamp to the §2.7 −7° rotation while touching it.
+`ShareSheet` `kind="receipt"` targeting `last_pick.pick_id` (for its `title` prop use
+the current question's headline — the contract deliberately carries no death-question
+headline); fix `ObituaryCard`'s BUSTED stamp to the §2.7 −7° rotation while touching it.
 AC: e2e drives the REAL reveal endpoint against really-seeded history (run + miss +
 return), asserts the funeral and that the share sheet opens on the death pick — no
 `page.route` mock of the reveal payload anywhere in the trigger test; unit tests for the
 copy templates; reduced-motion parity; share button unchanged for all null/short cases.
 
 **SW9-T3 · Honest busted-streak binding + graveyard data · Depends: SW9-T1** `[contract-change]`
-Spec: this doc §3.3(2–3); plan §2.7 graveyard block; SW4-T3 entry's ACs (empty-state,
-ISR-safe) stand.
+Spec: this doc §3.3(2–3); plan §2.7 graveyard block; SW4-T3 entry's empty-state and
+ISR-safe ACs stand — its "chips link to the day's question page" AC is **retired** (see
+the privacy pin below).
 Deliverables: `loadReceiptOg` busted-streak variant re-keyed to the replay binding
 (final answered pick of a completed run ≥ `OBITUARY_MIN_STREAK`), obituary layout fed
 real run length/dates, hash inputs extended so regrade/void invalidates (§10.5 guard
-untouched); `ProfilePublic` gains a public `graveyard` block (completed runs ≥
-threshold, newest-first, cap 12, plus the existing called-it count source if cheaply
-derivable — degrade by omission otherwise, SPEC-GAP note); `/p/[slug]` renders
-`GraveyardShelf` from it (today it is `/dev/ui`-only).
-AC: integration test — a pick that ended a ≥3 run renders the obituary card variant and
-a mid-run loss does NOT (the old heuristic's false-positive case); profile page stays
-viewer-free/ISR-cacheable; shelf renders nothing (not an empty box) when the block is
-absent; graveyard chips match seeded run history exactly.
+untouched). **Say-it-out-loud consequence, intended:** a WIN pick that ended a run gets
+a tombstone as its canonical share card, permanently — including for already-circulating
+links (the `?v=` guard redirects stale hashes to the new render). That is "Died holding
+{SIDE} @ {c}¢" working as designed (§2), not only a loss-card false-positive fix.
+`ProfilePublic` gains a public `graveyard` block **pinned to run lengths only**:
+`{ rip: number[] }` — completed runs ≥ `OBITUARY_MIN_STREAK`, newest-first, cap 12 —
+plus the called-it count if cheaply derivable (degrade by omission, SPEC-GAP note).
+**Privacy pin (why lengths only, and why the link AC is retired):** per-run dates or
+question slugs would make participation on specific dates publicly inferable even where
+the picks themselves are `is_public = false` (§9.2 exposes only public picks); bare
+lengths leak nothing beyond the already-public streak numbers, and `GraveyardShelf`'s
+existing `ripDays: number[]` prop needs nothing more. `/p/[slug]` renders
+`GraveyardShelf` from the block (today it is `/dev/ui`-only).
+AC: integration test — a pick that ended a ≥3 run renders the obituary card variant
+(win-pick case included) and a mid-run loss does NOT (the old heuristic's
+false-positive case); profile page stays viewer-free/ISR-cacheable; shelf renders
+nothing (not an empty box) when the block is absent; graveyard chips match seeded run
+history exactly; no date/slug fields appear in the public block.
 
 ## 5. Out of scope
 
