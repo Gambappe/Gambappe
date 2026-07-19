@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T08:37:22.256Z",
+  "updated_at": "2026-07-19T08:40:27.876Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1605,12 +1605,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": null,
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-session-35b05898-7175",
       "branch": "docs/sw7-t3-native-surfaces-spike",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/70",
       "claimed_at": "2026-07-19T08:36:19.714Z",
-      "updated_at": "2026-07-19T08:36:19.714Z"
+      "updated_at": "2026-07-19T08:40:27.876Z"
     },
     "SW8-T1": {
       "title": "A11y audit: axe pass, keyboard matrix, contrast report",
