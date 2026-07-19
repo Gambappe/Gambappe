@@ -1,5 +1,9 @@
 # Mockups
 
+> **Status update:** the swipe-ballot direction below has been approved and planned —
+> see [`docs/swipe-ux-plan.md`](../swipe-ux-plan.md) for the locked decisions, design
+> spec, and SW task DAG.
+
 Design explorations that are **proposals, not implemented UI**. Nothing in this
 directory ships; each mock's final section maps its ideas onto the real files a
 follow-up task would touch.
