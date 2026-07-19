@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T09:11:02.048Z",
+  "updated_at": "2026-07-19T12:02:13.608Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1424,13 +1424,13 @@
         "SW0-T2"
       ],
       "mock_start_ok": true,
-      "note": null,
+      "note": "PR #71 merged to main (commit 2ff524d) — code is live. Registry can't mark 'done' yet: depends_on SW0-T2, still in_review (not merged). PR #71's RevealHush hardcodes the gold hex value with a TODO(SW0-T2) comment rather than importing the token, so main isn't broken by this — but per §19.2 this technically merged ahead of its dependency. Mark SW3-T1 done once SW0-T2 merges (and swap the hardcoded hex for the real token then).",
       "status": "in_review",
       "owner": "claude-session-35b05898-7175",
       "branch": "feat/sw3-t1-reveal-hush",
       "pr": "https://github.com/suvarna4/Gambappe/pull/71",
       "claimed_at": "2026-07-19T08:53:27.136Z",
-      "updated_at": "2026-07-19T08:59:55.977Z"
+      "updated_at": "2026-07-19T12:02:13.592Z"
     },
     "SW3-T2": {
       "title": "Choreography polish + foil/tape/punch stamp inks + obituary handoff",
