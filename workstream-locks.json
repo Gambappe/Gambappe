@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T12:37:51.228Z",
+  "updated_at": "2026-07-19T12:37:58.654Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1247,12 +1247,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "reassigned to claude-session-35b05898-7175 to take over/finish; see SW0-T1 reclaim",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-35b05898-7175",
+      "branch": "claude/daily-question-swipe-ux-f0p4wq",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-19T12:37:46.668Z"
+      "claimed_at": "2026-07-19T12:37:58.653Z",
+      "updated_at": "2026-07-19T12:37:58.653Z"
     },
     "SW0-T2": {
       "title": "Tokens, fonts, glow/motion scale, side-axis + swipe constants",
