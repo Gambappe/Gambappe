@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T08:59:55.977Z",
+  "updated_at": "2026-07-19T09:02:22.644Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1302,13 +1302,13 @@
         "SW1-T1"
       ],
       "mock_start_ok": true,
-      "note": null,
-      "status": "available",
+      "note": "gesture engine on integration branch; ui+web tests, lint, build green; visual verified",
+      "status": "in_review",
       "owner": null,
       "branch": null,
       "pr": null,
       "claimed_at": null,
-      "updated_at": "2026-07-19T08:18:25.516Z"
+      "updated_at": "2026-07-19T09:02:22.633Z"
     },
     "SW1-T3": {
       "title": "ReceiptSlip print/retract + undo wiring",
