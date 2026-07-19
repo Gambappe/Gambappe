@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T14:34:40.850Z",
+  "updated_at": "2026-07-19T14:34:42.908Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1457,12 +1457,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-35b05898-7175",
+      "branch": "claude/daily-question-swipe-ux-f0p4wq",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-19T08:18:25.516Z"
+      "claimed_at": "2026-07-19T14:34:42.907Z",
+      "updated_at": "2026-07-19T14:34:42.907Z"
     },
     "SW4-T2": {
       "title": "Print-Shop restyle of all share/OG card templates",
