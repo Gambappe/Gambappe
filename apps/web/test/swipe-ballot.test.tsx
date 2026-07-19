@@ -98,11 +98,15 @@ describe('SwipeBallot — open state', () => {
 });
 
 describe('SwipeBallot — receipt state', () => {
+  // `SwipeBallot` computes `secondsLeft` from the real wall clock (`Date.now()` vs
+  // `pick.undoUntilIso`), so a hardcoded past timestamp would eventually make the "shows undo
+  // only while undoable" case below permanently fail once real time passed it — undoUntilIso is
+  // computed relative to test-run time instead.
   const pick: CachedPick = {
     pickId: 'p1',
     side: 'yes',
     pickedAtIso: '2026-07-19T13:05:00Z',
-    undoUntilIso: '2026-07-19T13:06:00Z',
+    undoUntilIso: new Date(Date.now() + 60_000).toISOString(),
   };
 
   it('renders the receipt with the side label and cents when a pick exists', () => {

@@ -46,8 +46,8 @@ export default function SwipeBallotGalleryDemo() {
         setPick({
           pickId: 'demo',
           side,
-          pickedAtIso: DEMO_Q.open_at,
-          undoUntilIso: DEMO_Q.lock_at,
+          pickedAtIso: new Date().toISOString(),
+          undoUntilIso: new Date(Date.now() + 60_000).toISOString(),
           yesPriceAtEntry: DEMO_Q.yes_price ?? undefined,
         })
       }

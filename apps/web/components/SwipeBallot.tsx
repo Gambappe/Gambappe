@@ -252,7 +252,7 @@ export function SwipeBallot({
         <ReceiptSlip
           sideLabel={sideLabel}
           entryCents={entryCents}
-          pickedAtLabel={`${formatEtClock(pick.pickedAtIso)} ET`}
+          pickedAtLabel={formatEtClock(pick.pickedAtIso)}
           serial={`№ ${question.question_date ?? question.slug.slice(0, 10)}`}
           sealedNote={ballotCopy.crowdSealed(formatEtClock(question.lock_at))}
           secondsLeft={secondsLeft}
