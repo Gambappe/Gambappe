@@ -10,6 +10,10 @@ import {
   UnderCard,
 } from '@receipts/ui';
 import { ObituaryCard } from '@/components/ObituaryCard';
+import { NemesisFlip } from '@/components/nemesis/NemesisFlip';
+import { ReactionStamps } from '@/components/nemesis/ReactionStamps';
+import { VerdictCard } from '@/components/nemesis/VerdictCard';
+import { DuoTandem } from '@/components/duo/DuoTandem';
 import ClaimPromptEngine from '@/components/claim/ClaimPromptEngine';
 import ClaimSheetGalleryDemo from './ClaimSheetGalleryDemo';
 import ShareSheetGalleryDemo from './ShareSheetGalleryDemo';
@@ -91,6 +95,52 @@ export default function UiGalleryPage() {
               sideLabel="HOLDS"
               entryCents={29}
             />
+          </div>
+        </div>
+      </section>
+
+      {/* SW5-T1/T3: the "same throw, now personal" receipt sections (on the deck ground). */}
+      <section data-testid="gallery-matchup-flips" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">
+          Nemesis flip · Duo tandem (SP2)
+        </h2>
+        <div className="bg-bg space-y-3 rounded-md p-6">
+          <div className="mx-auto max-w-[300px] space-y-3">
+            <NemesisFlip
+              opponentHandle="Maria O."
+              opponentSide="no"
+              opponentSideLabel="HOLDS"
+              opponentEntryCents={27}
+              narration="She's fading the room again. Tonight one of you eats this."
+              youWins={1}
+              opponentWins={2}
+              weekLabel="Week 30 · Day 2"
+            />
+            <DuoTandem
+              viewerSideLabel="SCORES"
+              viewerSide="yes"
+              partnerHandle="Dre P."
+              partnerSideLabel="BLANKS"
+              partnerSide="no"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* SW5-T2/T4: verdict card + rematch controls, preset reaction stamps. */}
+      <section data-testid="gallery-verdict" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">Verdict + reactions (SP2)</h2>
+        <div className="bg-bg space-y-3 rounded-md p-6">
+          <div className="mx-auto max-w-[300px] space-y-3">
+            <VerdictCard
+              outcome="lost"
+              opponentHandle="Maria O."
+              youWins={2}
+              opponentWins={3}
+              edgeGap={11}
+              dayResults={['loss', 'win', 'loss', 'win', 'split']}
+            />
+            <ReactionStamps selected="Called it" />
           </div>
         </div>
       </section>
