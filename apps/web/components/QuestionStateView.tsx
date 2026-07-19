@@ -1,6 +1,14 @@
 import type { QuestionPublic } from '@receipts/core';
-import { Barcode, CountdownTicker, CrowdBar, PriceTag, Stamp, TicketCard } from '@receipts/ui';
-import { copy } from '@/lib/copy';
+import {
+  Barcode,
+  CountdownTicker,
+  CrowdBar,
+  PriceTag,
+  RevealHush,
+  Stamp,
+  TicketCard,
+} from '@receipts/ui';
+import { copy, hushCopy } from '@/lib/copy';
 import { formatEtClock } from '@/lib/format-et';
 
 export interface QuestionStateViewProps {
@@ -74,21 +82,31 @@ export function QuestionStateView({
           )}
 
           {question.status === 'locked' && (
-            <div className="space-y-3" data-testid="question-locked">
-              {question.crowd ? (
-                <CrowdBar
-                  yesCount={question.crowd.yes}
-                  noCount={question.crowd.no}
-                  yesLabel={question.yes_label}
-                  noLabel={question.no_label}
+            <RevealHush
+              targetIso={question.reveal_at}
+              serverOffsetMs={serverOffsetMs}
+              // §2.6 F1: "already derivable from the reveal/percentile cache" — reusing the same
+              // crowd totals CrowdBar renders just below rather than adding a new field/endpoint.
+              roomCount={question.crowd ? question.crowd.yes + question.crowd.no : undefined}
+              frozenLabel={hushCopy.frozenChip}
+              roomCountLabel={hushCopy.roomCount}
+            >
+              <div className="space-y-3" data-testid="question-locked">
+                {question.crowd ? (
+                  <CrowdBar
+                    yesCount={question.crowd.yes}
+                    noCount={question.crowd.no}
+                    yesLabel={question.yes_label}
+                    noLabel={question.no_label}
+                  />
+                ) : null}
+                <CountdownTicker
+                  targetIso={question.reveal_at}
+                  serverOffsetMs={serverOffsetMs}
+                  label={copy.question.revealInLabel}
                 />
-              ) : null}
-              <CountdownTicker
-                targetIso={question.reveal_at}
-                serverOffsetMs={serverOffsetMs}
-                label={copy.question.revealInLabel}
-              />
-            </div>
+              </div>
+            </RevealHush>
           )}
 
           {question.status === 'revealed' && (
