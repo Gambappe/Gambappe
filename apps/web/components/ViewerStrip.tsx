@@ -16,9 +16,17 @@ import ShareSheet from './share/ShareSheet';
 import { PickButtons } from './PickButtons';
 import { QuestionThread } from './QuestionThread';
 import { RevealSequence } from './RevealSequence';
+import { SwipeBallot } from './SwipeBallot';
 
 export interface ViewerStripProps {
   question: QuestionPublic;
+  /**
+   * SW1-T4: `swipe_ballot` flag (server-read, passed in). When on, the `open` state hydrates the
+   * `SwipeBallot` gesture into this island instead of `PickButtons`. Its SSR output is viewer-free
+   * (card + wells from question props, `pick=null`, age-gate defaulting on) so INV-10 holds; the
+   * flag is not viewer data. Default `false` keeps the flag-off render byte-identical to today.
+   */
+  swipeBallot?: boolean;
 }
 
 type MeState =
@@ -37,7 +45,7 @@ type MeState =
  * from those calls (including plain network failures while unmerged) are caught and shown
  * inline; they never crash this component or the page around it.
  */
-export function ViewerStrip({ question }: ViewerStripProps) {
+export function ViewerStrip({ question, swipeBallot = false }: ViewerStripProps) {
   const [me, setMe] = useState<MeState>({ status: 'loading' });
   const [pick, setPick] = useState<CachedPick | null>(null);
   const [busy, setBusy] = useState(false);
@@ -137,6 +145,33 @@ export function ViewerStrip({ question }: ViewerStripProps) {
         <RevealSequence question={question} />
         {/* WS7-T8 (§10.3 `revealed` state: "thread"): the post-reveal discussion + reactions. */}
         <QuestionThread questionId={question.id} questionSlug={question.slug} />
+      </div>
+    );
+  }
+
+  // SW1-T4: the swipe ballot owns the `open` state when the flag is on. It renders the card,
+  // wells, tint, stamp preview, age gate, and receipt itself — so it replaces the loading
+  // skeleton / PickButtons / pick-view branches below for this state. SSR output is viewer-free
+  // (pick loads from localStorage post-hydration; age-gate defaults on until `/me` resolves), so
+  // the byte-identical-HTML invariant (INV-10) is preserved. Reuses the same handlePick/handleUndo
+  // and error slot as the button flow.
+  if (swipeBallot && question.status === 'open') {
+    return (
+      <div className="space-y-2" data-testid="viewer-strip-swipe">
+        <SwipeBallot
+          question={question}
+          ageGateRequired={me.status === 'ready' ? needsAgeGate(me.ageAttested) : true}
+          disabled={busy}
+          pick={pick}
+          undoable={pick ? canUndo(pick, nowMs, question.lock_at) : false}
+          onPick={handlePick}
+          onUndo={handleUndo}
+        />
+        {error ? (
+          <p className="text-loss text-xs" data-testid="viewer-strip-error">
+            {error}
+          </p>
+        ) : null}
       </div>
     );
   }

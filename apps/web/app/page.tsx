@@ -3,7 +3,7 @@
  * machine UI (§10.3)"). WS7-T2.
  */
 import type { Metadata } from 'next';
-import { nowMs, PRODUCT_NAME } from '@receipts/core';
+import { isFlagEnabled, nowMs, PRODUCT_NAME } from '@receipts/core';
 import { QuestionStateView } from '@/components/QuestionStateView';
 import { ViewerStrip } from '@/components/ViewerStrip';
 import { copy } from '@/lib/copy';
@@ -24,6 +24,9 @@ export default async function HomePage() {
   const nowMsValue = nowMs();
   const question = await getTodayQuestionPublic(getDb(), { nowMsValue });
   const serverOffsetMs = nowMsValue - Date.now();
+  // SW1-T4/SW2-T1: flag read server-side (never viewer data) and threaded to both the shell and
+  // the viewer island; off → today's flow renders byte-identically (INV-10).
+  const swipeBallot = isFlagEnabled('swipe_ballot');
 
   return (
     <main className="mx-auto max-w-xl space-y-6 px-6 py-10">
@@ -32,7 +35,8 @@ export default async function HomePage() {
         <QuestionStateView
           question={question}
           serverOffsetMs={serverOffsetMs}
-          viewerSlot={<ViewerStrip question={question} />}
+          swipeBallot={swipeBallot}
+          viewerSlot={<ViewerStrip question={question} swipeBallot={swipeBallot} />}
         />
       ) : (
         <p className="text-muted text-sm" data-testid="no-question-today">

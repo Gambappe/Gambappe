@@ -14,7 +14,7 @@
  */
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { nowMs, PRODUCT_NAME } from '@receipts/core';
+import { isFlagEnabled, nowMs, PRODUCT_NAME } from '@receipts/core';
 import { QuestionStateView } from '@/components/QuestionStateView';
 import { ViewerStrip } from '@/components/ViewerStrip';
 import { appUrl } from '@/lib/app-url';
@@ -84,12 +84,15 @@ export default async function QuestionPage({ params }: QuestionPageProps) {
     dateModified: question.revealed_at ?? question.lock_at,
   });
 
+  const swipeBallot = isFlagEnabled('swipe_ballot');
+
   return (
     <main className="mx-auto max-w-xl space-y-6 px-6 py-10">
       <QuestionStateView
         question={question}
         serverOffsetMs={serverOffsetMs}
-        viewerSlot={<ViewerStrip question={question} />}
+        swipeBallot={swipeBallot}
+        viewerSlot={<ViewerStrip question={question} swipeBallot={swipeBallot} />}
       />
       <script
         type="application/ld+json"
