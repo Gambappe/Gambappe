@@ -198,6 +198,26 @@ export const ballotCopy = {
   swipeHint: 'Swipe the card, or use the buttons below.',
 } as const;
 
+/**
+ * SW4-T1 · The busted-streak obituary (swipe-ux-plan §2.7, principle P3 — the loser is the
+ * protagonist). Data-generated from the pick log; no user-authored text. Deadpan-affectionate —
+ * the STREAK dies, never the user; no imagery beyond a candle, no real-world death references.
+ * No money words (INV-8).
+ */
+export const obituaryCopy = {
+  eyebrow: 'OBITUARY · STREAK',
+  title: (days: number) => `Here lies a ${days}-day streak.`,
+  dates: (start: string, end: string) => `b. ${start} — d. ${end}`,
+  survivedLabel: 'Survived',
+  causeOfDeath: (sideLabel: string, cents: number) => `Died holding ${sideLabel} @ ${cents}¢.`,
+  stamp: 'Busted',
+  rip: (days: number) => `RIP ${days}`,
+  bury: 'Bury it',
+  share: 'Share the obituary',
+  /** The comeback framing shown beside the tombstone — tomorrow is nine hours away. */
+  consolation: "Streak 0. Everyone's is, eventually.",
+} as const;
+
 export const shareCopy = {
   shareButtonLabel: 'Share your receipt',
   sheetHeading: 'Share this',

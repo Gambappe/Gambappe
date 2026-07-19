@@ -9,6 +9,7 @@ import {
   TicketCard,
   UnderCard,
 } from '@receipts/ui';
+import { ObituaryCard } from '@/components/ObituaryCard';
 import ClaimPromptEngine from '@/components/claim/ClaimPromptEngine';
 import ClaimSheetGalleryDemo from './ClaimSheetGalleryDemo';
 import ShareSheetGalleryDemo from './ShareSheetGalleryDemo';
@@ -71,6 +72,27 @@ export default function UiGalleryPage() {
       <section data-testid="gallery-swipeballot" className="space-y-3">
         <h2 className="text-muted text-sm font-semibold uppercase">SwipeBallot (interactive)</h2>
         <SwipeBallotGalleryDemo />
+      </section>
+
+      {/* SW4-T1: the busted-streak obituary — the loser's artifact (P3). Static (share/OG) form. */}
+      <section data-testid="gallery-obituary" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">ObituaryCard (P3)</h2>
+        <div className="bg-bg rounded-md p-6">
+          <div className="mx-auto max-w-[280px]">
+            <ObituaryCard
+              days={11}
+              startLabel="Jul 08"
+              endLabel="Jul 19"
+              facts={[
+                { text: '3 longshots called' },
+                { text: '1 freeze spent' },
+                { text: 'the jobs report' },
+              ]}
+              sideLabel="HOLDS"
+              entryCents={29}
+            />
+          </div>
+        </div>
       </section>
 
       <section data-testid="gallery-ticketcard" className="space-y-3">
