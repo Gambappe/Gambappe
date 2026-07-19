@@ -171,6 +171,11 @@ omitted, and the facts list simply runs short (the card already renders 0–3 fa
    `streak:sweep` (03:30 ET) zeroed the profile the day before. §1's post-mortem applies
    to it verbatim. Re-key it onto the same replay-derived wake signal so the
    notification and the payload can never disagree about whether a funeral happened.
+   The re-keyed beat DOES apply §13.3's threshold — fire iff the wake condition holds
+   AND `runs.at(-1).length >= 3` (`OBITUARY_MIN_STREAK`'s value; §3.2's "no threshold
+   server-side" is about the *contract block*, not this beat) — and its narration `n`
+   becomes the dead run's length, so notification and obituary card agree on both
+   whether and what-sized a funeral happened.
 
 **"Bury it" needs no backend.** The graveyard derives from history, so every dead run is
 "archived to the shelf" automatically; burying is acknowledging the funeral, not filing
@@ -207,9 +212,12 @@ OBITUARY_MIN_STREAK`; props mapped from the contract (client formats `b./d.` dat
 labels; facts from `freezes_survived`/`longest_odds_cents` via new `obituaryCopy`
 data-slot templates; `causeOfDeath` bound to `last_pick`, line omitted when null);
 `Bury it` = client dismiss for the mount; `Share the obituary` opens the existing
-`ShareSheet` `kind="receipt"` targeting `last_pick.pick_id` (for its `title` prop use
-the current question's headline — the contract deliberately carries no death-question
-headline); fix `ObituaryCard`'s BUSTED stamp to the §2.7 −7° rotation while touching it.
+`ShareSheet` `kind="receipt"` targeting `last_pick.pick_id`, with `pagePath` =
+`/q/${last_pick.question_slug}` — the shared link lands on the death question's page,
+whose canonical receipt card is the tombstone (that is what `question_slug` is in the
+contract for) — and for the `title` prop the current question's headline (the contract
+deliberately carries no death-question headline); fix `ObituaryCard`'s BUSTED stamp to
+the §2.7 −7° rotation while touching it.
 AC: e2e drives the REAL reveal endpoint against really-seeded history (run + miss +
 return), asserts the funeral and that the share sheet opens on the death pick — no
 `page.route` mock of the reveal payload anywhere in the trigger test; unit tests for the
