@@ -169,6 +169,19 @@ export const nemesisCopy = {
   rematchDeclinedLabel: 'Rematch declined',
 
   historyEmpty: 'No nemesis history yet — your first assignment lands Monday 9am ET.',
+
+  /** SW5-T1 · The daily receipt "flip" during an active nemesis week (swipe-ux-plan §2.9). The
+   * opponent's pick is sealed until the viewer locks; the note makes that no-anchoring rule
+   * explicit. Narration is data-generated (§13.3) and passed in. No money words (INV-8). */
+  flipSealedNote: (opponentHandle: string) => `${opponentHandle} · unsealed when you locked`,
+  flipTally: (opponentHandle: string, youWins: number, oppWins: number) =>
+    youWins === oppWins
+      ? `Week even, ${youWins}–${oppWins}`
+      : youWins > oppWins
+        ? `You lead ${youWins}–${oppWins}`
+        : `${opponentHandle} leads ${oppWins}–${youWins}`,
+  /** SW5-T4 preset stamp reactions (matchup trash talk) — preset-only, no free text (P1). */
+  reactionStamps: ['Sweating?', 'Lucky', 'Called it', 'Respect'] as const,
 } as const;
 
 /** WS8-T2 (share cards + share sheet, §10.5) section. */
@@ -369,4 +382,12 @@ export const duoCopy = {
   ladderRatingColumn: 'Rating',
   ladderEmpty: 'No duos on the ladder yet.',
   ladderLoadMore: 'Load more',
+
+  /** SW5-T3 · The duo shared-deck tandem line + receipt (swipe-ux-plan §2.9). Partner's pick is
+   * sealed until the viewer locks; then the split-or-match is its own micro-drama. No money
+   * words (INV-8). */
+  partnerSealed: (partnerHandle: string) => `${partnerHandle} locked · sealed until you pick`,
+  tandemMatched: 'Matched',
+  tandemSplit: 'Split — one of you is wrong',
+  tandemReceiptHeading: 'Tandem receipt',
 } as const;
