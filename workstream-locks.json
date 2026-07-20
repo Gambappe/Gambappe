@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T05:19:58.213Z",
+  "updated_at": "2026-07-20T05:24:24.732Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1745,13 +1745,13 @@
       "phase": "SP2",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": "Spec: docs/plans/sw-revamp-wiring-gaps.md §4 SW10-T4. Separate PAIRING_REACTION_SET (never extend REACTION_SET — it leaks into QuestionThread); server-side ghost rejection + block-severance must be BUILT (none exists to reuse), on write AND read; read path splits per-player stamps (cacheable) from viewer's selected (client-derived or /nemesis-scoped — never on the ISR page).",
-      "status": "claimed",
+      "note": "Implementation complete: PAIRING_REACTION_SET schema split, write-path ghost+block+participant enforcement (lib/nemesis/reactions.ts), read-path today_reactions on pairingPublicSchema with block severance, ReactionStamps mounted read-only per side + interactive client picker (ReactionStampsPanel) on NemesisMatchupCard. pnpm verify green (lint/typecheck/unit/build); full integration suite (web+db+worker) green standalone. Awaiting supervisor review/push.",
+      "status": "in_review",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw10-t4-reaction-stamps",
       "pr": null,
       "claimed_at": "2026-07-20T04:43:57.027Z",
-      "updated_at": "2026-07-20T04:43:57.027Z"
+      "updated_at": "2026-07-20T05:24:24.732Z"
     },
     "SW10-T5": {
       "title": "Visual regression gate for the /dev/ui gallery",
