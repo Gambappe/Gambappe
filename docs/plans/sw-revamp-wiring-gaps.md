@@ -55,6 +55,16 @@ is no data path for "the opponent's pick on today's question" anywhere in
 (`packages/core/src/schemas/questions.ts`) has no nemesis field at all. The primitives to build
 one exist (`getPick(db, questionId, profileId)`, `packages/db/src/repositories/picks.ts`, plus
 `getCurrentPairingForProfile`, `apps/web/lib/nemesis/service.ts`) but nobody has assembled them.
+**AMENDED (fable review, see §7):** the original spec's trigger — "after the viewer's pick
+LANDS during an active nemesis week, the receipt slip gains a second section" — is
+unimplementable as written. The pick-placement response (`createPickResponseSchema`,
+`packages/core/src/schemas/picks.ts:61`) deliberately excludes anything opponent/crowd-shaped
+pre-lock ("NEVER includes crowd counts while the question is open (§9.3 — no probe-by-picking)",
+same file's own comment), and `ReceiptSlip`/`SwipeBallot`'s pre-lock receipt is exactly the
+surface that comment is protecting — mounting an opponent-pick reveal there would let a viewer
+pick, read the opponent's side, undo (`pick-eligibility.ts`'s 60s undo window), and re-pick
+against it. The authoritative trigger is now: **at reveal**, same timing as SW9's `broken_run`.
+See SW10-T1.
 
 **SW5-T2 — Verdict cards + rematch-by-swipe.** `components/nemesis/VerdictCard.tsx` exists,
 gallery-only. The real `/nemesis` hub (`app/nemesis/page.tsx` →
@@ -69,6 +79,10 @@ component by any name for it anywhere in the repo, gallery included; (b)
 unwired pattern as SW5-T1. The data primitive for (b) exists —
 `getActiveDuoForProfile(db, profileId)` (`packages/db/src/repositories/duo-matches.ts`) plus
 `getPick` — nobody has assembled it into the reveal payload either.
+**AMENDED (fable review, see §7):** (b)'s original trigger ("after the viewer's pick") has the
+exact same §9.3 probe-by-picking problem as SW5-T1's — same fix, same timing: at reveal. (a) is
+unaffected by this correction — it shows only a LOCKED/timing status, never the partner's side,
+so it carries no pick content and can stay pre-pick/pre-lock as originally specified.
 
 **SW5-T4 — Preset stamp reactions.** `components/nemesis/ReactionStamps.tsx` exists,
 gallery-only. `components/nemesis/NemesisMatchupCard.tsx` (the real `/vs/[pairingId]` card) has
@@ -85,25 +99,37 @@ of these components would ship silently.
 
 **SW10-T1 · Nemesis daily flip: reveal-payload data + real wiring · Depends: —**
 `[contract-change]`
-Spec: swipe-ux-plan §2.9 SW5-T1; this doc §3.
+Spec: swipe-ux-plan §2.9 SW5-T1; this doc §3, §7 finding 1/2.
+**Trigger timing corrected by fable review — read this before implementing.** The original
+spec's "after the viewer's pick lands" is unimplementable: it would either leak the opponent's
+pick pre-lock (violating §9.3's no-probe-by-picking rule — see `createPickResponseSchema`'s own
+comment, `packages/core/src/schemas/picks.ts:61`) or, if implemented as a block on
+`revealViewerSchema` but mounted on the PRE-reveal receipt (`ReceiptSlip.tsx`/`ViewerStrip.tsx`'s
+pick view), would simply never render — that payload 423s (`REVEAL_NOT_READY`) until
+`question.status === 'revealed'` (`app/api/v1/questions/[id]/reveal/route.ts:44-46`), which is
+always after both lock and grading. This task's actual scope: **the flip fires at reveal, same
+moment as SW9's `broken_run`**, not at pick time.
 Deliverables: a nullable `nemesis_flip` block on `revealViewerSchema`
 (`packages/core/src/schemas/questions.ts`) — `{ opponent_handle, opponent_side, opponent_side_label,
 opponent_entry_cents, narration, you_wins, opponent_wins, week_label }` — emitted from
 `buildRevealPayload` (`apps/web/lib/reveal-payload.ts`) by a new `computeNemesisFlipBlock`,
 mirroring `computeBrokenRunBlock`'s shape. Mechanical emission condition: non-null iff (a) the
-viewer has an active pairing this week (`getCurrentPairingForProfile`) AND (b) the viewer's own
-pick on `question_id` already exists (the same request that's building this payload — never a
-separate pre-check, so "sealed until the viewer locks" is structural, not a timing race) AND
-(c) the opponent has a pick on the same `question_id` (`getPick`). Mount `NemesisFlip` in
-`ReceiptSlip.tsx` (SwipeBallot's receipt) AND in `ViewerStrip.tsx`'s plain-flow pick view,
-behind the block being non-null — both receipt call sites, so parity holds whether or not
-`swipe_ballot` is on.
-AC: integration test proves the opponent-pick query never runs before the viewer's own pick
-exists in the same request (assert via a spy/count, not just "eventually correct"); unit test
-on the mechanical condition (no pairing → null; pairing but opponent hasn't picked → null;
-both picked → populated); e2e: two real seeded profiles in an active pairing, viewer picks and
-locks, `NemesisFlip` renders with the real opponent stamp; flag/feature off (`nemesis` flag off,
-or no active pairing) → today's receipt renders byte-identical.
+viewer has an active pairing this week (`getCurrentPairingForProfile`) AND (b) the opponent has
+a pick on this `question_id` (`getPick`) — no separate "has the viewer locked" check needed:
+the reveal payload is structurally unreachable pre-reveal (§6.5 publication rule, same
+guarantee `computeBrokenRunBlock` already relies on), so there is no pre-lock/pre-undo window
+in which this data could leak. Mount `NemesisFlip` in `RevealSequence.tsx` (the flag-off reveal)
+AND wherever `DeckStates`' revealed branch renders viewer content (SW9-T2 wired `ObituaryCard`
+into exactly this spot — follow that precedent, including its "both receipt call sites get the
+block" posture) — a dashed-separator second section alongside (never replacing) the existing
+result stamp/streak/share content, per the original mock's layout.
+AC: unit test on the mechanical condition (no pairing → null; pairing but opponent hasn't
+picked → null; both picked → populated); integration test proves `getPick` for the opponent is
+never called for a `locked` (not yet `revealed`) question — i.e. the block is unreachable, not
+merely unpopulated, before reveal; e2e: two real seeded profiles in an active pairing, both
+pick, the daily reveals, `NemesisFlip` renders with the real opponent stamp on the viewer's
+reveal; flag/feature off (`nemesis` flag off, or no active pairing) → today's reveal renders
+byte-identical.
 
 **SW10-T2 · Wire VerdictCard + rematch-by-swipe into the real rematch flow · Depends: —**
 Spec: swipe-ux-plan §2.9 SW5-T2; this doc §3.
@@ -113,53 +139,87 @@ mounted from `NemesisHistoryList.tsx`) with `VerdictCard` + a `SwipeBallot varia
 drag/arm/commit logic — implementer's call, but must reuse `SwipeBallot`'s core hook/state
 machine, not fork it) wired to the EXISTING `POST /rematch-requests` /
 `POST /rematch-requests/:id/accept` / `.../decline` endpoints `RematchPanel` already calls — no
-new endpoint added. Winner vs. loser copy variant per the original AC (loser card gets the richer,
-data-derived line — edge diff or streak-of-weeks, both already available on the history entry
-`NemesisHistoryList` renders).
+new endpoint added. Winner vs. loser copy variant per the original AC (loser card gets the
+richer, data-derived line). **Corrected by fable review:** the original doc draft claimed "edge
+diff or streak-of-weeks" data was already available on the history entry — false.
+`nemesisHistoryEntrySchema` (`packages/core/src/schemas/pairings.ts`) carries only
+`my_score`/`their_score` (plus pairing/season/opponent/outcome/rematch metadata) — no edge, no
+streak-of-weeks. The loser card's data-derived line must be built from the score margin
+(`their_score - my_score`) that's actually there. If a future task wants edge/streak-of-weeks
+specifically, that is its own `[contract-change]` against `nemesisHistoryEntrySchema` — not
+in scope here, and this task must NOT carry the `[contract-change]` label since it adds no
+`packages/core` field.
 AC: right-swipe = rematch request (D-SW9 axis, matching every other affirmative-right
-convention in this codebase); `e2e/nemesis-rematch.spec.ts` (WS5-T5's suite) passes against the
-new UI without weakening any of its assertions; both winner/loser cards share one template with
-variant props (grep test or a shared-component unit test proving no copy-pasted markup).
+convention in this codebase); loser-card copy is derived from `their_score - my_score` (not a
+placeholder, not a field that doesn't exist); `e2e/nemesis-rematch.spec.ts` (WS5-T5's suite) —
+its DB/state assertions (the request lands, accept/decline transitions) must still pass, but its
+driving steps (today: click `rematch-request-button`, confirm) may be rewritten for the swipe
+gesture, since a click-driven flow cannot literally survive becoming a swipe; both winner/loser
+cards share one template with variant props (grep test or a shared-component unit test proving
+no copy-pasted markup).
 
 **SW10-T3 · Duo: sealed partner chip + wire the tandem line · Depends: —** `[contract-change]`
-Spec: swipe-ux-plan §2.9 SW5-T3; this doc §3.
+Spec: swipe-ux-plan §2.9 SW5-T3; this doc §3, §7 finding 1/2.
+**Part (b)'s trigger timing corrected by fable review, same fix and same reasoning as
+SW10-T1 — read that task's note before implementing.** Part (a) is unaffected (it never carries
+pick content, only a locked/timing status, so it's fine to stay pre-pick as originally scoped)
+and does NOT need `revealViewerSchema` — source its "locked · {n}h ago" state from the existing
+`fetchCurrentDuo`/`GET /duo/current` data (`apps/web/lib/duo-client.ts`) the caller already has
+available, no new endpoint.
 Deliverables: (a) build the sealed partner chip (`▣ {partner} LOCKED · {n}h AGO`) as a new
 component, mounted in `SwipeBallot`'s footer (behind `duo_queue` AND an active duo — new prop,
 default omitted so every existing `SwipeBallot` call site is unaffected) — sealed means it
-shows LOCKED status only, never the partner's side, until the viewer's own pick exists; (b) a
-nullable `duo_tandem` block on `revealViewerSchema` (same file as SW10-T1's block — coordinate
-the two additions in one contract-change PR if both land close together, otherwise whichever
-lands first adds the field), populated by `getActiveDuoForProfile` + `getPick`, mounted via
-`DuoTandem` in `ReceiptSlip.tsx`/`ViewerStrip.tsx` next to SW10-T1's nemesis section (they are
-independent, mutually-exclusive-in-practice sections — a viewer could theoretically be in both
-a duo and a nemesis pairing; stack them, don't branch).
-AC: same sealed-fetch proof as SW10-T1 (partner pick never queried before viewer's own pick
-exists in the same request); SPLIT renders in gold mono (already implemented in
+shows LOCKED status only, never the partner's side, ever (this chip has no "unsealed" state —
+the partner's actual pick only ever surfaces via (b), post-reveal); (b) a nullable `duo_tandem`
+block on `revealViewerSchema`, populated by `getActiveDuoForProfile` + `getPick`, mechanically
+non-null iff the viewer has an active duo AND the partner has a pick on this `question_id` —
+same "unreachable pre-reveal, not merely unpopulated" structural guarantee as SW10-T1. Mount
+`DuoTandem` in the same `RevealSequence.tsx`/`DeckStates`-revealed spot as SW10-T1's
+`NemesisFlip` (they are independent, mutually-exclusive-in-practice sections — a viewer could
+theoretically be in both a duo and a nemesis pairing; stack both blocks, don't branch between
+them). File coordination: SW10-T1 and this task both add a field to `revealViewerSchema`, but
+they add *different* fields (`nemesis_flip` vs `duo_tandem`) — there's nothing to actually
+share, so whichever contract-change PR lands second just rebases past an adjacent line; per
+design doc §19.4 rule 5/§0.2, each ships as its OWN core-first `[contract-change]` PR, not a
+bundle.
+AC: same "unreachable pre-reveal" integration proof as SW10-T1, for `getPick` on the partner;
+unit test on the mechanical condition; SPLIT renders in gold mono (already implemented in
 `DuoTandem.tsx` — verify the AC, don't re-derive); chemistry/ladder UI (`DuoLadderTable.tsx`
-etc.) untouched; `duo_queue` flag off → today's ballot/receipt render byte-identical.
+etc.) untouched; `duo_queue` flag off → today's ballot/reveal render byte-identical.
 
 **SW10-T4 · Wire ReactionStamps into `/vs/[pairingId]` · Depends: —** `[contract-change]`
-Spec: swipe-ux-plan §2.9 SW5-T4; this doc §3.
+Spec: swipe-ux-plan §2.9 SW5-T4; this doc §3, §7 findings 4/5.
 Deliverables: mount `ReactionStamps` (`components/nemesis/ReactionStamps.tsx` — its own doc
 comment already says "wiring to the reactions API lives in the DB-equipped session", i.e. this
-task) in `NemesisMatchupCard.tsx`, wired to the existing `POST /reactions` endpoint. Half of
-"the existing reactions API if it fits" already does: `context_kind: 'pairing'` is already a
-valid value of `THREAD_CONTEXT` (`packages/core/src/enums.ts`), reused by
-`reactionContextSchema`/`context_kind` (`packages/core/src/schemas/threads.ts`) — no context
-plumbing to add. The other half doesn't fit as-is: `emoji` is strictly
-`z.enum(REACTION_SET)` (`reactionEmojiSchema`, same file) and `REACTION_SET` (`packages/core/
-src/config.ts`) is today's fixed 4-emoji set (🔥💀🧾🫡) — `ReactionStamps`' four text presets
-(`nemesisCopy.reactionStamps`: "Sweating?", "Lucky", "Called it", "Respect") don't validate
-against it. The additive migration: extend `REACTION_SET` with these four values (or add a
-second `z.enum` specifically for pairing-context reactions if mixing text presets into the
-emoji-only thread-reaction picker reads wrong product-wise — implementer's call, discuss in the
-PR if ambiguous) and thread the choice through `reactionEmojiSchema`. One reaction per player
-per day; ghosts see but can't send (claim prompt per design doc §11.3); block/report severs
-delivery both ways (reuse the existing block/report enforcement — verify which layer currently
-owns that check and call through it, don't reimplement).
-AC: preset-only, no free-text input anywhere in the diff; e2e proves a ghost sees existing
-reactions but tapping one triggers the claim prompt instead of a request; a blocked pair's
-reactions don't round-trip either direction.
+task) in `NemesisMatchupCard.tsx`, wired to the existing `POST /reactions` endpoint.
+`context_kind: 'pairing'` is already a valid value of `THREAD_CONTEXT`
+(`packages/core/src/enums.ts`) — no context plumbing needed there. The emoji vocabulary does
+need a change, but **not by extending `REACTION_SET`** (corrected by fable review): that enum
+is rendered directly into every question-thread reaction picker too
+(`QuestionThread.tsx:189`), keyed 1:1 against `copy.ts`'s `reactionLabels` — appending
+`ReactionStamps`' four text presets ("Sweating?", "Lucky", "Called it", "Respect") to it would
+inject them into every thread on the site, unlabeled. Add a SEPARATE `PAIRING_REACTION_SET`
+constant (`packages/core/src/config.ts`) and a `pairingReactionEmojiSchema` validating against
+it, used only when `context_kind === 'pairing'` (a discriminated/refined schema, or two
+sibling request schemas — implementer's call) — this is the additive migration, not a shared
+enum extension.
+Server-side enforcement (corrected by fable review — do not rely on anything "existing" here,
+there isn't any to reuse): `app/api/v1/reactions/route.ts` today has no block-check and no
+ghost-rejection for pairing context (the route is `ghost+`, i.e. ghosts are allowed by
+default — `packages/db/src/schema/social.ts:47`). Both must be added IN this task: (a) reject
+a `context_kind: 'pairing'` reaction from a ghost profile server-side (the client-side claim
+prompt alone is not enforcement — a direct POST would otherwise succeed); (b) block/report
+severance for pairing reactions has no existing layer to call through — `lib/moderation.ts`'s
+`applyBlock` only cancels the pairing/rematch state, it doesn't touch reactions — so this task
+must add the block check to the reactions write path itself (mirroring whatever block-check
+shape another `ghost+`-plus-block-aware endpoint in this codebase already uses as a pattern,
+if one exists — otherwise a straightforward "is either party blocking the other" guard).
+AC: preset-only, no free-text input anywhere in the diff; a direct `POST /reactions` with
+`context_kind: 'pairing'` from a ghost session is rejected server-side (test this directly, not
+just via the UI's claim prompt); a blocked pair's reactions don't round-trip either direction
+(test via direct API calls, not just UI); `PAIRING_REACTION_SET` values never appear in
+`QuestionThread.tsx`'s picker and `REACTION_SET`'s four emoji never appear in
+`ReactionStamps`' picker (grep test).
 
 **SW10-T5 · Visual regression gate for the `/dev/ui` gallery · Depends: —**
 Spec: swipe-ux-plan §3.3 SW8-T2's un-met AC; this doc §3.
@@ -189,3 +249,45 @@ sees the correction without needing to rediscover it.
   about wiring, not restyling anything already built.
 - Native surfaces (SW7-T3, doc-only, unaffected).
 - Any workstream outside SW (the WS-prefixed and other SW9-adjacent work is unaffected).
+
+## 7. Fable adversarial review — round 1 findings (fixed in this doc)
+
+The first draft of §4 was reviewed before registration. §2/§3's audit facts held up completely
+(every "genuinely wired" claim and every gap claim was independently re-verified against the
+code); §4's task designs had two critical, codebase-invariant-violating flaws and three lesser
+issues, all fixed above:
+
+1. **CRITICAL — wrong data path/mount pair.** SW10-T1/T3(b) originally put the opponent/partner
+   block on `revealViewerSchema` (post-reveal-only data) but mounted it on `ReceiptSlip`/
+   `ViewerStrip`'s PRE-reveal pick view — the data would never reach the mount point. Fixed:
+   both tasks now mount at reveal (`RevealSequence.tsx`, SW9-T2's precedent), matching where
+   the data actually becomes available.
+2. **CRITICAL — probe-by-picking hole.** The original "sealed until viewer's own pick exists"
+   condition is satisfiable mid-lock-window while picks are still undoable (60s), which would
+   let a viewer pick, read the opponent's/partner's side, undo, and re-pick against it —
+   violating design doc §9.3. Fixed: the reveal-time redesign (finding 1) resolves this
+   structurally — the data is unreachable until well after lock, undo, and grading, not merely
+   gated by a same-request ordering check.
+3. **HIGH — false data-availability claim.** SW10-T2's original draft claimed "edge diff or
+   streak-of-weeks" were already on the nemesis history entry; `nemesisHistoryEntrySchema` only
+   has `my_score`/`their_score`. Fixed: loser-card copy now specified as score-margin-derived,
+   and the task no longer carries an unwarranted `[contract-change]` implication.
+4. **MEDIUM — enforcement hand-waved to a layer that doesn't exist.** SW10-T4 originally said
+   "reuse the existing block/report enforcement" for reactions; no such enforcement exists on
+   the reactions write path, and the route is `ghost+` with no pairing-context ghost rejection.
+   Fixed: both are now explicit first-class deliverables of the task, not assumed reuse.
+5. **MEDIUM — enum blast radius.** Extending `REACTION_SET` directly would inject the four
+   pairing-reaction text presets into every question-thread reaction picker site-wide
+   (`QuestionThread.tsx`), unlabeled. Fixed: a separate `PAIRING_REACTION_SET` is now the
+   specified design, not a secondary option.
+6. **MEDIUM — contract-change process guidance.** The original draft suggested SW10-T1 and
+   SW10-T3 could land as one bundled contract-change PR. Fixed: each ships its own core-first
+   `[contract-change]` PR per design doc §19.4/§0.2; they touch different fields in the same
+   file, so the only real coordination cost is a routine rebase.
+7. **LOW — untestable-as-written AC.** SW10-T2's "e2e passes without weakening any assertions"
+   didn't account for `e2e/nemesis-rematch.spec.ts` driving a button click that cannot survive
+   becoming a swipe gesture. Fixed: the AC now explicitly scopes "no weakening" to the
+   state/DB assertions, not the interaction steps.
+
+A second adversarial review of this revised version is in progress before the tasks are
+registered in the workstream-lock registry.
