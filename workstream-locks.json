@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T23:35:03.615Z",
+  "updated_at": "2026-07-20T01:18:01.586Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1700,6 +1700,71 @@
       "pr": "https://github.com/Gambappe/Gambappe/pull/81",
       "claimed_at": "2026-07-19T19:15:01.355Z",
       "updated_at": "2026-07-19T22:57:10.041Z"
+    },
+    "SW10-T1": {
+      "title": "Nemesis daily flip: reveal-payload data + real wiring [contract-change]",
+      "phase": "SP2",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "Spec: docs/plans/sw-revamp-wiring-gaps.md §4 SW10-T1 (authoritative — supersedes swipe-ux-plan SW5-T1's pick-time trigger). Fires AT REVEAL like SW9's broken_run; nemesis_flip block .nullish() in a core-first PR; tallies replay the scoreboard, NEVER pairing.score (0 until conclude); narration via existing catalog beats only, all slots pinned in the doc; single mount in RevealSequence.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-20T01:18:01.583Z"
+    },
+    "SW10-T2": {
+      "title": "Wire VerdictCard + rematch-by-swipe into the real rematch flow",
+      "phase": "SP2",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "Spec: docs/plans/sw-revamp-wiring-gaps.md §4 SW10-T2. Replaces RematchPanel's plain button; dayResults derive from GET /pairings/:id scoreboard (viewer's OWN result per row, all rows incl. bonus); edgeGap retyped to score margin with BOTH verdict copy lines reworded (no edge wording); cancelled weeks get no card; NOT a contract-change.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-20T01:18:01.583Z"
+    },
+    "SW10-T3": {
+      "title": "Duo: sealed partner chip + wire the tandem line [contract-change]",
+      "phase": "SP2",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "Spec: docs/plans/sw-revamp-wiring-gaps.md §4 SW10-T3. (a) partner chip needs a NEW side-free partner_pick_today field on GET /duo/current (.nullish(), core-first; getTodayDailyQuestion lookup; minute-truncated picked_at); (b) duo_tandem block fires AT REVEAL inside the existing viewer gate, single mount in RevealSequence next to SW10-T1's section.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-20T01:18:01.583Z"
+    },
+    "SW10-T4": {
+      "title": "Wire ReactionStamps into /vs/[pairingId] [contract-change]",
+      "phase": "SP2",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "Spec: docs/plans/sw-revamp-wiring-gaps.md §4 SW10-T4. Separate PAIRING_REACTION_SET (never extend REACTION_SET — it leaks into QuestionThread); server-side ghost rejection + block-severance must be BUILT (none exists to reuse), on write AND read; read path splits per-player stamps (cacheable) from viewer's selected (client-derived or /nemesis-scoped — never on the ISR page).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-20T01:18:01.583Z"
+    },
+    "SW10-T5": {
+      "title": "Visual regression gate for the /dev/ui gallery",
+      "phase": "SPQ",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "Spec: docs/plans/sw-revamp-wiring-gaps.md §4 SW10-T5 (completes SW8-T2's unmet snapshot AC). toHaveScreenshot over every gallery tile, baselines committed, CI-gating; deliberate-pixel-change demo in the PR; extend the existing playwright-report artifact upload.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-20T01:18:01.583Z"
     }
   }
 }
