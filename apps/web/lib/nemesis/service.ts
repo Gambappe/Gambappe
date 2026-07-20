@@ -22,16 +22,18 @@
  * gracefully (it's conditionally rendered), so this is a safe, non-breaking gap — flagged here
  * rather than inventing new pinned copy outside `copy.ts`/the beat catalog (§10.6).
  */
-import { addDaysToDateString, PAGINATION_MAX_LIMIT } from '@receipts/core';
+import { addDaysToDateString, etDateString, PAGINATION_MAX_LIMIT } from '@receipts/core';
 import { getNemesisHistoryResponseSchema, getPairingResponseSchema, nemesisHistoryEntrySchema } from '@receipts/core';
 import type { z } from 'zod';
 import {
+  areProfilesBlocked,
   findActivePairingInvolving,
   getPairingScoreboardQuestions,
   getPairingWithProfiles,
   getProfileById,
   getProfileBySlug,
   getRatingByProfileId,
+  getTodayPairingReactions,
   listNemesisHistoryForProfile,
   listRematchRequestsInvolving,
   type Db,
@@ -82,13 +84,30 @@ export async function buildPairingPublic(
   at: Date,
 ): Promise<PairingPublic> {
   const weekEnd = addDaysToDateString(pairing.weekStart, 6);
-  const questions = await getPairingScoreboardQuestions(
-    db,
-    { id: pairing.id, weekStart: pairing.weekStart, weekEnd },
-    pairing.profileAId,
-    pairing.profileBId,
-  );
+  const [questions, blocked, todayReactionRows] = await Promise.all([
+    getPairingScoreboardQuestions(
+      db,
+      { id: pairing.id, weekStart: pairing.weekStart, weekEnd },
+      pairing.profileAId,
+      pairing.profileBId,
+    ),
+    // §14.3 block severance, on the READ side too (SW10-T4): a blocked pair's reactions never
+    // round-trip either direction. Checked once here — viewer-free between the two named
+    // participants, so this belongs in the payload build, not client-side filtering.
+    areProfilesBlocked(db, pairing.profileAId, pairing.profileBId),
+    getTodayPairingReactions(db, pairing.id, etDateString(at)),
+  ]);
   const scoreboard = questions.map((row) => toScoreboardRow(toSharedQuestionRecord(row), at));
+
+  // SW10-T4: today's per-player stamps (`ReactionStamps`) — viewer-free (each side's OWN
+  // reaction, not the viewer's `selected`), so safe on `/vs/[pairingId]`'s cached ISR render
+  // (INV-10). `null` for a leg with no stamp today, OR unconditionally both-null when blocked.
+  const todayReactions = blocked
+    ? { a: null, b: null }
+    : {
+        a: todayReactionRows.find((r) => r.profileId === pairing.profileAId)?.emoji ?? null,
+        b: todayReactionRows.find((r) => r.profileId === pairing.profileBId)?.emoji ?? null,
+      };
 
   return getPairingResponseSchema.parse({
     id: pairing.id,
@@ -102,6 +121,7 @@ export async function buildPairingPublic(
     winner_profile_id: pairing.winnerProfileId,
     narrative_line: null, // SPEC-GAP(ws5-t4) — see file header.
     scoreboard,
+    today_reactions: todayReactions,
   });
 }
 

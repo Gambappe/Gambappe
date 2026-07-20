@@ -1,9 +1,12 @@
 import { CountdownTicker, Stamp, TicketCard } from '@receipts/ui';
+import type { PairingReactionEmoji } from '@receipts/core';
 import { nemesisConcludeAt } from '@/lib/nemesis/clock';
 import { sideOutcome } from '@/lib/nemesis/verdict';
 import type { PairingPublic, PairingSide } from '@/lib/nemesis/types';
 import { DrawBadge } from './DrawBadge';
 import { NemesisScoreboard } from './NemesisScoreboard';
+import { ReactionStamps } from './ReactionStamps';
+import { ReactionStampsPanel } from './ReactionStampsPanel';
 
 export interface NemesisMatchupCardProps {
   pairing: PairingPublic;
@@ -20,10 +23,16 @@ function SideBlock({
   side,
   isViewer,
   outcome,
+  stamp,
 }: {
   side: PairingSide;
   isViewer: boolean;
   outcome: 'pending' | 'cancelled' | 'win' | 'loss' | 'draw';
+  /** SW10-T4: this side's own preset stamp reaction for today, if any — viewer-free, public
+   * per-player data (`pairing.today_reactions`), safe on the ISR render. Read-only here: this
+   * is the "show both players' stamps" half of the feature; the viewer's own INTERACTIVE picker
+   * is `ReactionStampsPanel`, mounted once, separately, below. */
+  stamp: PairingReactionEmoji | null;
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -43,6 +52,7 @@ function SideBlock({
       ) : outcome === 'draw' ? (
         <DrawBadge />
       ) : null}
+      {stamp ? <ReactionStamps selected={stamp} className="mt-1" /> : null}
     </div>
   );
 }
@@ -57,6 +67,18 @@ function SideBlock({
  * deliberately OBJECTIVE — computed from `winner_profile_id` vs. each side's own id, not
  * relative to `viewerProfileId`. A spectator viewing the public page with no identity at all
  * must still see who won; "You"-framing is a separate, purely cosmetic label swap.
+ *
+ * SW10-T4 (wiring-gaps doc §4): wires `ReactionStamps` in, split along the same read/write
+ * lines the task pins. Read: each `SideBlock` renders that side's own today-stamp read-only,
+ * straight off `pairing.today_reactions` — viewer-free, public, cache-safe (INV-10). Write: the
+ * viewer's OWN interactive picker is `ReactionStampsPanel` (a client island, mounted once below,
+ * same "self-fetch identity post-hydration" posture as `QuestionThread`/`ViewerStrip`) — it
+ * derives `selected`/whether the viewer even CAN react entirely client-side, matching the
+ * pairing's own `a`/`b` participant ids against the viewer's own `/me` profile id, so the
+ * viewer's own stamp never appears in this component's SERVER render on EITHER page it mounts
+ * on (`/vs/[pairingId]`'s ISR shell always passes `viewerProfileId={null}`; `/nemesis` is
+ * `force-dynamic` with a real one, but this component still never computes `selected`
+ * server-side — see `ReactionStampsPanel`'s own header for why that's true unconditionally).
  */
 export function NemesisMatchupCard({
   pairing,
@@ -79,6 +101,7 @@ export function NemesisMatchupCard({
           side={sides.a}
           isViewer={viewerSide === 'a'}
           outcome={sideOutcome(pairing, pairing.a.profile_id)}
+          stamp={pairing.today_reactions?.a ?? null}
         />
         <div className="flex flex-col items-center gap-1">
           <span className="text-muted font-mono text-xs uppercase">vs</span>
@@ -94,6 +117,7 @@ export function NemesisMatchupCard({
             side={sides.b}
             isViewer={viewerSide === 'b'}
             outcome={sideOutcome(pairing, pairing.b.profile_id)}
+            stamp={pairing.today_reactions?.b ?? null}
           />
         </div>
       </div>
@@ -116,6 +140,15 @@ export function NemesisMatchupCard({
           <p className="text-ink mt-2 text-sm">{pairing.narrative_line}</p>
         ) : null}
       </div>
+
+      {/* SW10-T4: the viewer's own interactive stamp picker — a client island, entirely
+          post-hydration (never server-rendered with real viewer state; see file header). */}
+      <ReactionStampsPanel
+        pairingId={pairing.id}
+        sideProfileIds={{ a: pairing.a.profile_id, b: pairing.b.profile_id }}
+        stamps={pairing.today_reactions ?? null}
+        className="mt-3"
+      />
 
       {pairing.scoreboard.length > 0 ? (
         <NemesisScoreboard rows={pairing.scoreboard} viewerSide={viewerSide} className="mt-4" />

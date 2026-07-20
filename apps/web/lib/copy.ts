@@ -15,7 +15,7 @@
  *  - The two claim-nudge strings and the publicness sentence below are PINNED VERBATIM —
  *    do not paraphrase them (§11.3, §13.3 both point back at this file for the rendered text).
  */
-import { PRODUCT_NAME } from '@receipts/core';
+import { PAIRING_REACTION_SET, PRODUCT_NAME } from '@receipts/core';
 
 /** INV-6, pinned verbatim (§10.6): shown on the claim/signup screen. */
 export const CLAIM_PUBLICNESS_STATEMENT =
@@ -184,8 +184,11 @@ export const nemesisCopy = {
       : youWins > oppWins
         ? `You lead ${youWins}–${oppWins}`
         : `${opponentHandle} leads ${oppWins}–${youWins}`,
-  /** SW5-T4 preset stamp reactions (matchup trash talk) — preset-only, no free text (P1). */
-  reactionStamps: ['Sweating?', 'Lucky', 'Called it', 'Respect'] as const,
+  /** SW5-T4 preset stamp reactions (matchup trash talk) — preset-only, no free text (P1).
+   * SW10-T4: re-exports `@receipts/core`'s `PAIRING_REACTION_SET` rather than a second literal
+   * (§0.1 rule 4 — single source of truth); that constant's own doc comment explains why this
+   * is a SEPARATE set from `REACTION_SET`/`reactionLabels` below. */
+  reactionStamps: PAIRING_REACTION_SET,
 
   /** SW5-T2 · The Friday verdict card + rematch-by-swipe (swipe-ux-plan §2.9). Both players get
    * a card; the loser's is the richer one (P3). The week's last swipe is emotional — right =
