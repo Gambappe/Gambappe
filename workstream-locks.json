@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T01:18:16.272Z",
+  "updated_at": "2026-07-20T01:18:17.644Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1531,13 +1531,13 @@
         "SW1-T4"
       ],
       "mock_start_ok": false,
-      "note": "Merged to main via PR #73 (commit b486590)",
+      "note": "Partner chip never built; DuoTandem shipped gallery-only (audit: docs/plans/sw-revamp-wiring-gaps.md §3). Completion work re-scoped as SW10-T3, incl. a corrected reveal-time trigger for the tandem line.",
       "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/daily-question-swipe-ux-f0p4wq",
       "pr": "https://github.com/suvarna4/Gambappe/pull/73",
       "claimed_at": "2026-07-19T14:34:54.570Z",
-      "updated_at": "2026-07-19T14:34:55.980Z"
+      "updated_at": "2026-07-20T01:18:17.644Z"
     },
     "SW5-T4": {
       "title": "Preset stamp reactions on matchup pages",
