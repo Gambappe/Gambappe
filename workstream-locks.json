@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T04:43:55.566Z",
+  "updated_at": "2026-07-20T04:43:57.027Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1746,12 +1746,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "Spec: docs/plans/sw-revamp-wiring-gaps.md §4 SW10-T4. Separate PAIRING_REACTION_SET (never extend REACTION_SET — it leaks into QuestionThread); server-side ghost rejection + block-severance must be BUILT (none exists to reuse), on write AND read; read path splits per-player stamps (cacheable) from viewer's selected (client-derived or /nemesis-scoped — never on the ISR page).",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-35b05898-7175",
+      "branch": "claude/sw10-t4-reaction-stamps",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-20T01:18:01.583Z"
+      "claimed_at": "2026-07-20T04:43:57.027Z",
+      "updated_at": "2026-07-20T04:43:57.027Z"
     },
     "SW10-T5": {
       "title": "Visual regression gate for the /dev/ui gallery",
