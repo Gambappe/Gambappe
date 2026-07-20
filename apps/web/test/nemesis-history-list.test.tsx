@@ -56,4 +56,41 @@ describe('NemesisHistoryList (SW10-T2)', () => {
     // SSR coverage, matching this file's sibling tests' posture).
     expect(html.match(/rounded-full border/g)?.length).toBe(4);
   });
+
+  describe('head-to-head banner (design-diff gap fix)', () => {
+    it('renders the banner above a decisive row when viewerHandle is provided', () => {
+      const html = renderToStaticMarkup(
+        <NemesisHistoryList
+          viewerProfileId={VIEWER_ID}
+          viewerHandle="Fox #4821"
+          entries={[entry()]}
+        />,
+      );
+      expect(html).toContain('data-testid="head-to-head-banner"');
+      expect(html).toContain('Fox #4821');
+      // The banner comes before the verdict card in document order (mounted "directly above").
+      expect(html.indexOf('data-testid="head-to-head-banner"')).toBeLessThan(
+        html.indexOf('data-testid="verdict-card"'),
+      );
+    });
+
+    it('renders no banner at all when viewerHandle is not supplied (optional plumbing)', () => {
+      const html = renderToStaticMarkup(
+        <NemesisHistoryList viewerProfileId={VIEWER_ID} entries={[entry()]} />,
+      );
+      expect(html).not.toContain('data-testid="head-to-head-banner"');
+    });
+
+    it('renders no banner for a cancelled row even with viewerHandle supplied — no verdict card, no banner', () => {
+      const html = renderToStaticMarkup(
+        <NemesisHistoryList
+          viewerProfileId={VIEWER_ID}
+          viewerHandle="Fox #4821"
+          entries={[entry({ outcome: 'cancelled' })]}
+        />,
+      );
+      expect(html).not.toContain('data-testid="head-to-head-banner"');
+      expect(html).not.toContain('data-testid="verdict-card"');
+    });
+  });
 });
