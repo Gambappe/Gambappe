@@ -88,7 +88,9 @@ export function VerdictCard({
   const line =
     outcome === 'lost'
       ? nemesisCopy.verdictLoserLine(opponentHandle, scoreMargin)
-      : nemesisCopy.verdictWinnerLine(opponentHandle, scoreMargin);
+      : outcome === 'drew'
+        ? nemesisCopy.verdictDrawLine(opponentHandle)
+        : nemesisCopy.verdictWinnerLine(opponentHandle, scoreMargin);
   const interactive = Boolean(onRunItBack || onNewFate);
 
   const [leftAction, rightAction] = sideAxisPair(

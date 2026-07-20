@@ -199,6 +199,10 @@ export const nemesisCopy = {
     `${opponentHandle} closed it out ${scoreMargin} clear. The rematch button is right there.`,
   verdictWinnerLine: (opponentHandle: string, scoreMargin: number) =>
     `You closed it out ${scoreMargin} clear of ${opponentHandle}.`,
+  /** Drawn card's line — `scoreMargin` is always 0 for a draw, so the winner/loser lines'
+   * "closed it out N clear" framing would render a false "0 clear" boast (fable review of
+   * PR #84). A draw has no margin to report at all. */
+  verdictDrawLine: (opponentHandle: string) => `Dead even with ${opponentHandle}. Break the tie?`,
   newFate: 'New fate',
   runItBack: 'Run it back',
 } as const;

@@ -38,6 +38,14 @@ describe('VerdictCard', () => {
     expect(winner.toLowerCase()).not.toContain('edge');
   });
 
+  it('a draw gets its own line, never a false "0 clear" margin boast (fable review of PR #84)', () => {
+    const html = renderToStaticMarkup(<VerdictCard {...base} outcome="drew" scoreMargin={0} />);
+    expect(html).toContain('Dead even');
+    expect(html).toContain('Break the tie?');
+    expect(html).not.toContain('0 clear');
+    expect(html).not.toContain('closed it out');
+  });
+
   it('orders rematch-by-swipe new-fate-left / run-it-back-right (affirmative right, D-SW9)', () => {
     const html = renderToStaticMarkup(
       <VerdictCard {...base} outcome="lost" onNewFate={() => {}} onRunItBack={() => {}} />,

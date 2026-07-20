@@ -36,8 +36,8 @@
  * pattern for the identical reason.
  */
 import { randomUUID } from 'node:crypto';
-import { expect, test } from '@playwright/test';
-import { eq } from 'drizzle-orm';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { and, eq } from 'drizzle-orm';
 import {
   connect,
   nemesisPairings,
@@ -57,6 +57,29 @@ const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://receipts:receipts@l
 // with `NODE_ENV=production`, so `useSecureCookies` (`apps/web/auth.ts`) is always true here.
 const SESSION_COOKIE_NAME = '__Secure-authjs.session-token';
 
+/** Drags `card` by `dxRatio` × its own width and releases — same shape as
+ * `swipe-ballot.spec.ts`'s helper, reused here (fable review of PR #84) to prove
+ * `VerdictSwipeCard`'s ACTUAL drag→action mapping, not just the always-present tap-button
+ * fallback the other tests in this file drive. The shared gesture MATH (`useDragCommit`) is
+ * already covered by `swipe-ballot.spec.ts`; what wasn't covered anywhere is this component's
+ * own `onCommit` wiring (right → `onRunItBack`, left → `onNewFate`) — a swapped mapping here
+ * would ship a "Run it back" swipe that silently does nothing, or a "New fate" swipe that
+ * accidentally files a real rematch request. */
+async function dragCard(page: Page, card: Locator, dxRatio: number): Promise<void> {
+  await card.scrollIntoViewIfNeeded();
+  const b = await card.boundingBox();
+  if (!b) throw new Error('card has no bounding box');
+  const cx = b.x + b.width / 2;
+  const cy = b.y + b.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  const target = cx + b.width * dxRatio;
+  for (let i = 1; i <= 12; i++) {
+    await page.mouse.move(cx + (target - cx) * (i / 12), cy);
+  }
+  await page.mouse.up();
+}
+
 let pool: pg.Pool;
 let db: Db;
 
@@ -68,11 +91,45 @@ test.afterAll(async () => {
   await pool.end();
 });
 
-/** A wide-enough season to cover "today" on whatever real calendar date this suite runs. */
+const WIDE_SEASON_STARTS_ON = '2020-01-01';
+const WIDE_SEASON_ENDS_ON = '2035-12-31';
+
+/**
+ * A wide-enough season to cover "today" on whatever real calendar date this suite runs —
+ * find-or-create on the exact `(kind, starts_on, ends_on)` triple, so every test in this file
+ * (and every prior local run of it) converges on ONE canonical row instead of each minting its
+ * own.
+ *
+ * Fable review of PR #84: this file's tests share ONE local Postgres across many runs (unlike
+ * CI's fresh-per-job instance), and `getNemesisSeasonCoveringDate` picks `ORDER BY starts_on ASC
+ * LIMIT 1` with no secondary tiebreaker — a real production invariant (nemesis:window-roll never
+ * runs two overlapping seasons at once). Every prior version of this helper inserted a NEW row
+ * per call, which violates that invariant the moment two exist: `requestRematch`'s subsequent
+ * `wasNemesisThisSeason` check requires an EXACT `season_id` match, so as soon as a second wide
+ * season exists, the lookup can resolve to a DIFFERENT test's row than the one this test's own
+ * pairing was actually seeded under, and the request 400s with "target must be a past nemesis
+ * this season" — reproduced locally after this file accumulated leftover rows from earlier runs
+ * (a randomized-`starts_on` per-call attempt was tried and rejected: it makes collisions between
+ * two calls unlikely, but does nothing to guarantee any ONE call's row is the specific one
+ * `ORDER BY starts_on ASC LIMIT 1` returns among several). Find-or-create removes the ambiguity
+ * at the root — there is only ever one row to find.
+ */
 async function seedWideSeason(): Promise<string> {
+  const [existing] = await db
+    .select()
+    .from(seasons)
+    .where(
+      and(
+        eq(seasons.kind, 'nemesis'),
+        eq(seasons.startsOn, WIDE_SEASON_STARTS_ON),
+        eq(seasons.endsOn, WIDE_SEASON_ENDS_ON),
+      ),
+    )
+    .limit(1);
+  if (existing) return existing.id as string;
   const [season] = await db
     .insert(seasons)
-    .values(buildSeason({ startsOn: '2020-01-01', endsOn: '2035-12-31' }))
+    .values(buildSeason({ startsOn: WIDE_SEASON_STARTS_ON, endsOn: WIDE_SEASON_ENDS_ON }))
     .returning();
   return season!.id;
 }
@@ -193,5 +250,80 @@ test.describe('/nemesis rematch-request flow (§8.4 step 0, §9.2, real Postgres
     await page.getByRole('button', { name: 'Accept' }).click();
 
     await expect(page.getByTestId('rematch-accepted')).toBeVisible();
+  });
+
+  test('a real right-drag (not just the tap fallback) fires "Run it back" and requests a rematch', async ({
+    page,
+    context,
+  }) => {
+    const unique = randomUUID();
+    const seasonId = await seedWideSeason();
+    const { profileId: viewerId, sessionToken } = await seedClaimedProfileWithSession(`E2E Dragger ${unique}`);
+    const [opponent] = await db
+      .insert(profiles)
+      .values(buildProfile({ kind: 'claimed', status: 'active', handle: `E2E Drag Opponent ${unique}` }))
+      .returning();
+    const opponentId = opponent!.id as string;
+    const [a, b] = viewerId < opponentId ? [viewerId, opponentId] : [opponentId, viewerId];
+    await db.insert(nemesisPairings).values(buildNemesisPairing(seasonId, a, b, { weekStart: '2026-06-01' }));
+
+    await context.addCookies([
+      {
+        name: SESSION_COOKIE_NAME,
+        value: sessionToken,
+        domain: 'localhost',
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax',
+      },
+    ]);
+
+    await page.goto('/nemesis');
+    const card = page.getByTestId('verdict-card-face');
+    await expect(card).toBeVisible();
+    await dragCard(page, card, 0.6);
+
+    await expect(page.getByTestId('rematch-pending')).toBeVisible();
+    const [row] = await db.select().from(rematchRequests).where(eq(rematchRequests.requesterProfileId, viewerId));
+    expect(row?.targetProfileId).toBe(opponentId);
+    expect(row?.status).toBe('open');
+  });
+
+  test('a real left-drag fires "New fate" — no rematch request is ever filed', async ({ page, context }) => {
+    const unique = randomUUID();
+    const seasonId = await seedWideSeason();
+    const { profileId: viewerId, sessionToken } = await seedClaimedProfileWithSession(`E2E LeftDrag ${unique}`);
+    const [opponent] = await db
+      .insert(profiles)
+      .values(buildProfile({ kind: 'claimed', status: 'active', handle: `E2E LeftDrag Opponent ${unique}` }))
+      .returning();
+    const opponentId = opponent!.id as string;
+    const [a, b] = viewerId < opponentId ? [viewerId, opponentId] : [opponentId, viewerId];
+    await db.insert(nemesisPairings).values(buildNemesisPairing(seasonId, a, b, { weekStart: '2026-06-01' }));
+
+    await context.addCookies([
+      {
+        name: SESSION_COOKIE_NAME,
+        value: sessionToken,
+        domain: 'localhost',
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax',
+      },
+    ]);
+
+    await page.goto('/nemesis');
+    const card = page.getByTestId('verdict-card-face');
+    await expect(card).toBeVisible();
+    await dragCard(page, card, -0.6);
+
+    // "New fate" is a client-only pass (no existing request to decline in this terminal state,
+    // per the doc) — the proof is negative: no row was ever created, distinguishing this from a
+    // swapped-direction bug that would fire "Run it back" instead.
+    await page.waitForTimeout(300);
+    const rows = await db.select().from(rematchRequests).where(eq(rematchRequests.requesterProfileId, viewerId));
+    expect(rows).toHaveLength(0);
   });
 });

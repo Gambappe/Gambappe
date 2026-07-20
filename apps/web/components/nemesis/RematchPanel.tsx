@@ -78,6 +78,7 @@ export function RematchPanel({ viewerProfileId, opponent, rematchRequest, verdic
   const [error, setError] = useState<string | null>(null);
   const [confirmPhase, setConfirmPhase] = useState<ConfirmPhase>('idle');
   const [state, setState] = useState<RematchState | null>(rematchRequest);
+  const [busy, setBusy] = useState(false);
 
   function toState(wire: RematchRequestWire): RematchState {
     return {
@@ -88,6 +89,8 @@ export function RematchPanel({ viewerProfileId, opponent, rematchRequest, verdic
   }
 
   async function handleRequest() {
+    if (busy) return; // guards the verdict-card swipe/tap against a double-fire (fable review of PR #84)
+    setBusy(true);
     setError(null);
     try {
       const res = await fetch(BASE, {
@@ -100,6 +103,8 @@ export function RematchPanel({ viewerProfileId, opponent, rematchRequest, verdic
       setConfirmPhase('idle');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -187,6 +192,7 @@ export function RematchPanel({ viewerProfileId, opponent, rematchRequest, verdic
           dayResults={verdict.dayResults}
           onRunItBack={() => void handleRequest()}
           onNewFate={() => {}}
+          disabled={busy}
         />
         {error ? (
           <p className="text-loss mt-1 text-xs" data-testid="rematch-error">
