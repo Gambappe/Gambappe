@@ -18,6 +18,7 @@ import type pg from 'pg';
 import { connect, type Db } from '../../src/client.js';
 import {
   getDailyQuestion,
+  getDailyQuestionAnyStatus,
   getPriorDayDailyQuestion,
   insertMarket,
   insertQuestion,
@@ -101,6 +102,19 @@ describe('getDailyQuestion (WS15-T2)', () => {
   it('returns null for a voided-only date (the slot reads as free)', async () => {
     await insertDaily('voided');
     expect(await getDailyQuestion(db, DATE)).toBeNull();
+  });
+});
+
+describe('getDailyQuestionAnyStatus (WS15-T2 — streak:sweep needs voided days as history)', () => {
+  it('returns the voided row for a voided-only date', async () => {
+    const voided = await insertDaily('voided');
+    expect((await getDailyQuestionAnyStatus(db, DATE))?.id).toBe(voided);
+  });
+
+  it('prefers the active replacement when both exist', async () => {
+    await insertDaily('voided');
+    const active = await insertDaily('revealed');
+    expect((await getDailyQuestionAnyStatus(db, DATE))?.id).toBe(active);
   });
 });
 

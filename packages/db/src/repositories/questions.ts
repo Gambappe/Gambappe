@@ -127,6 +127,21 @@ export async function getTodayDailyQuestion(db: Db, questionDateEt: string): Pro
   return getDailyQuestion(db, questionDateEt);
 }
 
+/** The date's daily INCLUDING a voided-only day — active row preferred when a voided daily
+ * coexists with its replacement (WS15-T2). For consumers that process voided days as real
+ * history rather than treating the slot as free: `streak:sweep` must still advance
+ * `last_counted_date` across a contiguous voided day (§6.6), which requires finding the
+ * voided row when it's all that date has. */
+export async function getDailyQuestionAnyStatus(db: Db, questionDate: string): Promise<QuestionRow | null> {
+  const [row] = await db
+    .select()
+    .from(questions)
+    .where(and(eq(questions.kind, 'daily'), eq(questions.questionDate, questionDate)))
+    .orderBy(sql`(${questions.status} = 'voided') asc`)
+    .limit(1);
+  return row ?? null;
+}
+
 // --- §5.7 state machine transitions ------------------------------------------------------------
 
 export interface OpenQuestionResult {
