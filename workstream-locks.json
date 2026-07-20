@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T01:24:56.092Z",
+  "updated_at": "2026-07-20T02:04:16.907Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1765,6 +1765,19 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-20T01:18:01.583Z"
+    },
+    "WS15-T1": {
+      "title": "Kalshi adapter: current API schema (*_dollars fields) + listing strategy",
+      "phase": "P0",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "Live-verified 2026-07-20: trade-api/v2 now returns dollars-string fields (liquidity_dollars, yes_bid_dollars, last_price_dollars); legacy cents-int fields gone. Unfiltered /markets dominated by zero-interest KXMVE combos. Staging synced 0 kalshi markets.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-20T02:04:16.892Z"
     }
   }
 }
