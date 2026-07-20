@@ -144,6 +144,16 @@ export const DUO_SEASON_WEEKS = 4;
 export const POST_MAX_CHARS = 500;
 /** The complete allowed reaction emoji set. */
 export const REACTION_SET = ['🔥', '💀', '🧾', '🫡'] as const;
+/**
+ * SW10-T4 (wiring-gaps doc §4): the four preset "trash talk" stamps for a nemesis matchup
+ * (`ReactionStamps`, `context_kind: 'pairing'`). Deliberately SEPARATE from `REACTION_SET`
+ * above — that set is rendered directly into every question-thread reaction picker
+ * (`QuestionThread.tsx`), keyed 1:1 against `copy.ts`'s `reactionLabels`; appending these text
+ * presets to it would inject them, unlabeled, into every thread on the site. This is the
+ * single source of truth `apps/web/lib/copy.ts`'s `nemesisCopy.reactionStamps` re-exports
+ * (§0.1 rule 4 — no duplicated literal elsewhere).
+ */
+export const PAIRING_REACTION_SET = ['Sweating?', 'Lucky', 'Called it', 'Respect'] as const;
 
 // --- Handles & identity (§6.1) ---------------------------------------------------------------
 
@@ -399,6 +409,7 @@ export const CONFIG = {
   DUO_SEASON_WEEKS,
   POST_MAX_CHARS,
   REACTION_SET,
+  PAIRING_REACTION_SET,
   HANDLE_CHANGE_COOLDOWN_DAYS,
   GHOST_MINT_PER_IP_PER_DAY,
   BOT_EXCLUDE_THRESHOLD,

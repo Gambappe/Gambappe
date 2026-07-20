@@ -6,6 +6,7 @@ import { MARKET_SIDE, PAIRING_STATUS, PICK_RESULT, QUESTION_KIND, REMATCH_STATUS
 import { zPairingId, zProfileId, zQuestionId, zRematchRequestId, zSeasonId } from '../ids.js';
 import { listEnvelopeSchema, paginationQuerySchema, zDateOnly, zSlug, zTimestamp } from './common.js';
 import { profileRefSchema } from './profiles.js';
+import { pairingReactionEmojiSchema } from './threads.js';
 
 /**
  * One shared question on the pairing scoreboard. Opponent picks on a shared question are
@@ -24,6 +25,23 @@ export const pairingScoreboardRowSchema = z.object({
     .nullable(),
 });
 
+/**
+ * SW10-T4 (wiring-gaps doc §4): today's preset-stamp reaction for each participant, keyed to
+ * the pairing's own `a`/`b` sides — deliberately VIEWER-FREE (each side's OWN stamp, not "the
+ * viewer's selected stamp") so it's safe on the cached `/vs/[pairingId]` ISR render (INV-10,
+ * `revalidate = 30`, `viewerProfileId` always null there). Either leaf is `null` when that
+ * player hasn't stamped today, OR when the pairing's two participants have blocked each other
+ * (block severance applies to the read too — a blocked pair's reactions never round-trip
+ * either direction; enforced in `buildPairingPublic`, not client-side). The viewer's OWN
+ * `selected` stamp (for `ReactionStamps`' picker) is derived client-side by matching the
+ * viewer's own profile id (from `/me`) against `a`/`b` here — it must never be computed
+ * server-side into this object, since that would leak viewer data into the ISR render.
+ */
+export const pairingReactionsTodaySchema = z.object({
+  a: pairingReactionEmojiSchema.nullable(),
+  b: pairingReactionEmojiSchema.nullable(),
+});
+
 /** Public matchup shape (both handles, daily-by-daily scoreboard, narration line — §9.2). */
 export const pairingPublicSchema = z.object({
   id: zPairingId,
@@ -37,6 +55,11 @@ export const pairingPublicSchema = z.object({
   winner_profile_id: zProfileId.nullable(),
   narrative_line: z.string().nullable(),
   scoreboard: z.array(pairingScoreboardRowSchema),
+  /** `.nullish()` per SW10-T1's contract-PR sequencing rule (wiring-gaps doc §4) — this task
+   * ships the field and its emitter together, but the declaration stays optional-or-null for
+   * the same deploy-safety reason (and because a block-severed pairing legitimately has no
+   * meaningful value to report here either). */
+  today_reactions: pairingReactionsTodaySchema.nullish(),
 });
 
 // --- GET /pairings/current (claimed): my active pairing + scoreboard --------------------------

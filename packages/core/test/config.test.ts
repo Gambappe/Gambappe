@@ -54,6 +54,12 @@ describe('Appendix D constants', () => {
         "OG_CACHE_S_MAXAGE_S": 86400,
         "OVERLAP_FLOOR": 0.25,
         "PAGINATION_MAX_LIMIT": 50,
+        "PAIRING_REACTION_SET": [
+          "Sweating?",
+          "Lucky",
+          "Called it",
+          "Respect",
+        ],
         "POST_MAX_CHARS": 500,
         "PRE_LOCK_REMINDER_LEAD_MIN": 60,
         "PRICE_FALLBACK_STALENESS_S": 300,
