@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T05:24:24.732Z",
+  "updated_at": "2026-07-20T05:25:07.460Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1736,9 +1736,9 @@
       "status": "in_review",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw10-t3-duo-tandem",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/90",
       "claimed_at": "2026-07-20T04:43:55.566Z",
-      "updated_at": "2026-07-20T05:19:58.212Z"
+      "updated_at": "2026-07-20T05:25:07.460Z"
     },
     "SW10-T4": {
       "title": "Wire ReactionStamps into /vs/[pairingId] [contract-change]",
