@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T01:18:19.045Z",
+  "updated_at": "2026-07-20T01:18:20.508Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1634,13 +1634,13 @@
         "SW1-T5"
       ],
       "mock_start_ok": false,
-      "note": "Merged to main via PR #73 (commit b486590)",
+      "note": "Gallery tiles shipped, but the snapshot-gate AC was never met — no toHaveScreenshot anywhere (audit: docs/plans/sw-revamp-wiring-gaps.md §3). Completion work re-scoped as SW10-T5.",
       "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/daily-question-swipe-ux-f0p4wq",
       "pr": "https://github.com/suvarna4/Gambappe/pull/73",
       "claimed_at": "2026-07-19T14:35:13.278Z",
-      "updated_at": "2026-07-19T14:35:14.668Z"
+      "updated_at": "2026-07-20T01:18:20.508Z"
     },
     "SW8-T3": {
       "title": "Pick-source analytics property (swipe|well|key|push|widget)",
