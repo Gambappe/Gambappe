@@ -50,7 +50,7 @@ describe('NemesisHeadToHeadBanner', () => {
     expect(html.match(/width:50%/g)?.length).toBe(2);
   });
 
-  it('colors the winner\'s side "shine" and the loser\'s "fade" off the authoritative outcome, not the raw scores — a tiebreak win keeps a real shine/fade split even at an even score', () => {
+  it('dims the loser\'s half off the authoritative outcome, not the raw scores — a tiebreak win still dims the right side even at an even score', () => {
     const html = renderToStaticMarkup(
       <NemesisHeadToHeadBanner
         viewerHandle="You"
@@ -60,16 +60,19 @@ describe('NemesisHeadToHeadBanner', () => {
         outcome="won"
       />,
     );
-    // Winner ("shine"): win-colored gradient, name, and bar segment.
-    expect(html).toContain('from-win/35');
-    expect(html).toContain('text-win');
-    // Loser ("fade"): loss-colored gradient dialed down via opacity, not switched to a
-    // different, unrelated color family.
-    expect(html).toContain('from-loss/20');
-    expect(html).toContain('opacity-60');
+    // Fixed by position (mockup's own scheme for this exhibit): viewer's half is always
+    // side-a-tinted, opponent's is always side-b-tinted, regardless of who won.
+    expect(html).toContain('from-side-a/45');
+    expect(html).toContain('from-side-b/45');
+    // The ONLY outcome-driven visual: the loser's whole half dialed down via opacity, the
+    // winner's left untouched. Here the viewer won, so only the opponent's half carries the
+    // dim class.
+    const halves = html.match(/<div class="[^"]*flex-1[^"]*">/g) ?? [];
+    expect(halves[0]).not.toContain('opacity-[0.55]');
+    expect(halves[1]).toContain('opacity-[0.55]');
   });
 
-  it('draws both sides neutral for an actual draw — no shine, no fade, no win/loss color', () => {
+  it('dims neither side for an actual draw', () => {
     const html = renderToStaticMarkup(
       <NemesisHeadToHeadBanner
         viewerHandle="You"
@@ -79,11 +82,7 @@ describe('NemesisHeadToHeadBanner', () => {
         outcome="drew"
       />,
     );
-    expect(html).not.toContain('win');
-    expect(html).not.toContain('loss');
-    // Muted renders on both the two half-card backgrounds ("bg-muted/10") and the two bar
-    // segments ("bg-muted") — 4 occurrences of the class name total.
-    expect(html.match(/bg-muted/g)?.length).toBe(4);
+    expect(html).not.toContain('opacity-[0.55]');
   });
 
   it('keeps the score badge structurally outside both truncating handle spans, so a long handle can never clip the score away', () => {

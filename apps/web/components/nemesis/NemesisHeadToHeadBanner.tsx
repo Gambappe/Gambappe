@@ -5,9 +5,9 @@ export interface NemesisHeadToHeadBannerProps {
   opponentHandle: string;
   viewerScore: number;
   opponentScore: number;
-  /** Same authoritative outcome `VerdictCard` renders for this entry — used only to color the
-   * banner (never re-derived from the raw scores here), because a tiebreak week can have
-   * `viewerScore === opponentScore` and still carry a real `won`/`lost` outcome (§SW10-T2's
+  /** Same authoritative outcome `VerdictCard` renders for this entry — used only to decide
+   * which side dims (never re-derived from the raw scores here), because a tiebreak week can
+   * have `viewerScore === opponentScore` and still carry a real `won`/`lost` outcome (§SW10-T2's
    * "closed it out on the tiebreak" case, `copy.ts`'s `verdictWinnerLine`/`verdictLoserLine`
    * margin-0 branch) — recomputing from the scores alone would render that week as a false
    * dead-even split. */
@@ -17,56 +17,48 @@ export interface NemesisHeadToHeadBannerProps {
 
 interface SideVisual {
   half: string;
-  name: string;
   bar: string;
 }
 
-/** Every visual role, spelled out as complete literal Tailwind class strings (never
- * `` `bg-${x}` `` template concatenation) — Tailwind's compiler statically greps source files
- * for whole class names, so a dynamically-assembled string is invisible to it and gets purged
- * from the production CSS, silently rendering unstyled. */
-const SHINE_WIN: SideVisual = {
-  half: 'bg-gradient-to-br from-win/35 via-win/10 to-transparent',
-  name: 'text-win',
-  bar: 'bg-win',
+/** Fixed by POSITION, not by outcome — this is the mockup's actual scheme for this exhibit
+ * (`docs/mockups/swipe-ux.html`'s `.vsplit .a`/`.vsplit .b`: a dark navy gradient + bright
+ * `--yes-hot` blue on the left, a dark maroon gradient + bright `--no-hot` orange on the right,
+ * same left/right pairing regardless of who's who). Reusing this app's own `side-a`/`side-b`
+ * tokens (already `#3B82F6`/`#F97316`, functionally the same "voltage" blue/orange the mockup's
+ * custom `--yes-hot`/`--no-hot` values approximate) rather than inventing a third color pair —
+ * one match instead of a near-miss. Complete literal Tailwind class strings throughout (never
+ * `` `bg-${x}` `` template concatenation): Tailwind's compiler statically greps source files for
+ * whole class names, so a dynamically-assembled string is invisible to it and gets purged from
+ * the production CSS, silently rendering unstyled. */
+const VIEWER_HALF: SideVisual = {
+  half: 'bg-gradient-to-br from-side-a/45 via-side-a/15 to-transparent text-side-a',
+  bar: 'bg-side-a',
 };
-const SHINE_LOSS: SideVisual = {
-  half: 'bg-gradient-to-bl from-win/35 via-win/10 to-transparent',
-  name: 'text-win',
-  bar: 'bg-win',
-};
-/** The losing side keeps its own loss-red family (so the split still reads red-vs-green at a
- * glance) but at reduced opacity — "the winner shines, the loser fades" (the mockup's own trick
- * for this exhibit: both halves share one gradient treatment, the loser dialed down via a flat
- * `opacity:.55` on that whole half — see swipe-ux.html's "Friday — the verdict" exhibit). */
-const FADE: SideVisual = {
-  half: 'bg-gradient-to-br from-loss/20 via-loss/5 to-transparent opacity-60',
-  name: 'text-loss/80',
-  bar: 'bg-loss',
-};
-const NEUTRAL: SideVisual = {
-  half: 'bg-muted/10',
-  name: 'text-ink',
-  bar: 'bg-muted',
+const OPPONENT_HALF: SideVisual = {
+  half: 'bg-gradient-to-bl from-side-b/45 via-side-b/15 to-transparent text-side-b',
+  bar: 'bg-side-b',
 };
 
-function outcomeVisuals(outcome: VerdictOutcome): { viewer: SideVisual; opponent: SideVisual } {
-  if (outcome === 'won') return { viewer: SHINE_WIN, opponent: FADE };
-  if (outcome === 'lost') return { viewer: FADE, opponent: SHINE_LOSS };
-  return { viewer: NEUTRAL, opponent: NEUTRAL };
+/** Which side dims — the ONLY outcome-driven visual in this banner. The mockup's own trick:
+ * both halves keep their fixed blue/orange treatment; the *loser's* whole half (background AND
+ * text together) is simply dialed down via a flat `opacity:.55` — "the winner shines, the loser
+ * fades" — rather than either side switching color families. A draw dims neither. */
+function loserOpacity(outcome: VerdictOutcome): { viewer: string; opponent: string } {
+  if (outcome === 'won') return { viewer: '', opponent: 'opacity-[0.55]' };
+  if (outcome === 'lost') return { viewer: 'opacity-[0.55]', opponent: '' };
+  return { viewer: '', opponent: '' };
 }
 
 /**
  * Head-to-head summary banner for a settled nemesis week (design-diff audit: the mockup's
  * Friday verdict exhibit, `docs/mockups/swipe-ux.html` "WEEK 30 · VERDICT" — its `.vsplit`
- * block: two big display-type name halves and a clipped "vbolt" score badge between them).
- * Matches the mockup's actual color trick, not a flat red/green split: BOTH halves share one
- * rich, dark, saturated gradient treatment (`--yes-hot`-style "voltage" energy, not a pastel
- * tint), and the *loser's* half is simply dialed down via opacity ("the winner shines, the
- * loser fades") rather than switched to a different, quieter color family. The center badge
- * keeps the real score (`4–1`), matching this exact exhibit — the mockup's separate "assignment
- * day" exhibit uses a static "VS" there instead, but that's a different moment in the product
- * (the pairing announcement, before any score exists), not this one.
+ * block: two big display-type name halves and a clipped "vbolt" score badge between them, a
+ * `.tug` bar below). Matches the mockup's actual color scheme, not a red/green win/loss split:
+ * fixed dark navy/blue (viewer, left) and dark maroon/orange (opponent, right) gradients — the
+ * SAME pairing regardless of who won — with only the loser's half dimmed via opacity. The
+ * `.tug` bar below keeps the same fixed blue/orange pairing too (the mockup's own bar never
+ * changes color by winner either, `.tug .ty`/`.tug .tn` are plain fixed yes/no colors). The
+ * center badge keeps the real score (`4–1`), matching this exact exhibit.
  *
  * Still real-data-only: the mockup's own subtitle text for this exhibit is "3 right · edge +11"
  * — a fabricated per-day/edge stat that doesn't exist on `nemesisHistoryEntrySchema`
@@ -92,15 +84,15 @@ export function NemesisHeadToHeadBanner({
   // bar evenly rather than divide by zero.
   const viewerPct = total > 0 ? (viewerScore / total) * 100 : 50;
   const opponentPct = 100 - viewerPct;
-  const visuals = outcomeVisuals(outcome);
+  const dim = loserOpacity(outcome);
 
   return (
     <div dir="ltr" data-testid="head-to-head-banner" className={`space-y-2 ${className}`}>
       <div className="bg-bg relative flex overflow-hidden rounded-lg">
-        <div className={`flex min-w-0 flex-1 items-center px-3 py-3 pr-6 ${visuals.viewer.half}`}>
-          <span
-            className={`font-display min-w-0 truncate text-lg leading-none font-bold uppercase ${visuals.viewer.name}`}
-          >
+        <div
+          className={`flex min-w-0 flex-1 items-center px-3 py-3 pr-6 ${VIEWER_HALF.half} ${dim.viewer}`}
+        >
+          <span className="font-display min-w-0 truncate text-lg leading-none font-bold uppercase">
             {viewerHandle}
           </span>
         </div>
@@ -112,11 +104,9 @@ export function NemesisHeadToHeadBanner({
           {viewerScore}–{opponentScore}
         </div>
         <div
-          className={`flex min-w-0 flex-1 items-center justify-end px-3 py-3 pl-6 text-right ${visuals.opponent.half}`}
+          className={`flex min-w-0 flex-1 items-center justify-end px-3 py-3 pl-6 text-right ${OPPONENT_HALF.half} ${dim.opponent}`}
         >
-          <span
-            className={`font-display min-w-0 truncate text-lg leading-none font-bold uppercase ${visuals.opponent.name}`}
-          >
+          <span className="font-display min-w-0 truncate text-lg leading-none font-bold uppercase">
             {opponentHandle}
           </span>
         </div>
@@ -126,8 +116,8 @@ export function NemesisHeadToHeadBanner({
         aria-label={`Score split: ${viewerHandle} ${viewerScore}, ${opponentHandle} ${opponentScore}`}
         className="bg-surface flex h-2 w-full overflow-hidden rounded-full"
       >
-        <span className={visuals.viewer.bar} style={{ width: `${viewerPct}%` }} />
-        <span className={visuals.opponent.bar} style={{ width: `${opponentPct}%` }} />
+        <span className={VIEWER_HALF.bar} style={{ width: `${viewerPct}%` }} />
+        <span className={OPPONENT_HALF.bar} style={{ width: `${opponentPct}%` }} />
       </div>
     </div>
   );
