@@ -133,21 +133,31 @@ catalog, and this repo forbids freehand copy outside `copy.ts`/the `narrate()` c
 via the EXISTING catalog beats only, with these mechanical triggers and slot derivations
 (rounds 5-6 pinned every value — do not invent semantics):
 - `nemesis_lead_taken`: emit when this question's grading flipped the week-tally leader
-  (before-tally vs after-tally, as derived above). Slot `questionsLeft` = scoreboard rows whose
-  `result` is still `pending` (count by the result field, NOT by `isPubliclyResolved` — an
-  unsettled nemesis-bonus row must still count as remaining).
-- `nemesis_comeback`: emit iff the after-tally is LEVEL and the running deficit over the
-  date-ordered resolved rows peaked at ≥ 2 (the design doc's own "≥2 down" condition,
-  §13.3 — a 1-point deficit never fires; `numberWord` has no entry for 1). Slots: `deficit` =
-  that peak; `downDay` = the date the peak was first reached; `levelDay` = today's
-  `question_date`. `downDay`/`levelDay` render as WEEKDAY NAMES ("Thursday"), matching the
-  catalog copy — no weekday formatter exists in the repo (`format-et.ts` has only clock +
-  "Jul 08" formats), so this task adds a `formatWeekdayName(dateOnly)` to `format-et.ts`,
-  same plain-text-parse, timezone-immune posture as `formatShortDate`.
-Otherwise `narration` is null. Degrade rule: if any required slot is unresolvable (e.g. the
-relevant row is a nemesis-bonus question with `question_date: null`), `narration` is null —
-and the UI omits the line (make `NemesisFlip`'s `narration` prop optional accordingly —
-SW4-T1's degrade-by-omission precedent).
+  (before-tally vs after-tally, as derived above). Slot `questionsLeft` = count of scoreboard
+  rows with ANY non-null side whose `result === 'pending'` (per-side fields — the row has no
+  top-level result; a both-sides-null row does NOT count; compute server-side where question
+  status is at hand, NOT via `isPubliclyResolved`, which would wrongly exclude an unsettled
+  nemesis-bonus row).
+- `nemesis_comeback`: this beat is about the VIEWER coming back — all values viewer-relative,
+  pinned (fable round 7): the running deficit is `opponent_wins − you_wins` over the
+  date-ordered resolved DAILY rows (see the null-date rule below); emit iff the after-tally is
+  LEVEL and that deficit peaked at ≥ 2 (the design doc's own "≥2 down" condition, §13.3 — a
+  1-point deficit never fires; `numberWord` has no entry for 1). An OPPONENT's comeback to
+  level emits nothing. Slots: `handle` = the VIEWER's own handle (the leveling player the
+  template's "`${handle}` is not done" refers to — never `opponent_handle`); `deficit` = the
+  peak; `downDay` = the date the peak was first reached; `levelDay` = today's `question_date`.
+  `downDay`/`levelDay` render as WEEKDAY NAMES ("Thursday"), matching the catalog copy — no
+  weekday formatter exists in the repo (`format-et.ts` has only clock + "Jul 08" formats), so
+  this task adds a `formatWeekdayName(dateOnly)` to `format-et.ts`. Timezone-immune means:
+  never parse the bare date in LOCAL time — `Date.UTC(y, m-1, d)` + `getUTCDay()` (or pure
+  Zeller arithmetic) is fine; `new Date('YYYY-MM-DD')` interpreted locally is not.
+  Null-date rule for the running sum: a peak is order-dependent, and nemesis-bonus rows have
+  `question_date: null` with no defined position — so the comeback trace uses DAILY (dated)
+  rows only; if that makes the trace's tally diverge from the full after-tally at level-check
+  time in a way that flips the emission decision, emit null (degrade, don't guess).
+Otherwise `narration` is null. Degrade rule: if any required slot is unresolvable,
+`narration` is null — and the UI omits the line (make `NemesisFlip`'s `narration` prop
+optional accordingly — SW4-T1's degrade-by-omission precedent).
 Mechanical emission condition, **stated inside the existing viewer gate (fable round 5)**:
 `buildRevealPayload` only constructs the `viewer` block at all when the viewer's own pick
 exists and is graded non-void (`reveal-payload.ts:219-221`) — this block lives inside that
@@ -514,3 +524,23 @@ narration paragraph — fixed above:
    plain-text-parse posture as `formatShortDate`).
 3. **NIT — `questionsLeft` re-pinned to count rows with `result === 'pending'`** rather than
    via `isPubliclyResolved`, which would wrongly exclude an unsettled nemesis-bonus row.
+
+## 13. Fable adversarial review — round 7 findings (fixed in this doc)
+
+Round 7 verified the round-6 re-pins (the ≥2 trigger matches §13.3 exactly; `numberWord`
+renders 2-7; the tally replay is computable; §12's log matches the text) and found one
+blocking item plus three nits, all in the same narration bullet — fixed above:
+
+1. **BLOCKING — the comeback pin never said WHOSE deficit, and the beat's `handle` slot was
+   unpinned.** An either-player reading would fire the beat on the OPPONENT's comeback at the
+   viewer's reveal, and the only handle in the block is `opponent_handle` — a verbatim
+   implementation would narrate the wrong player's comeback. Fixed: viewer-relative deficit
+   (`opponent_wins − you_wins`), `handle` = the viewer's own, opponent comebacks emit nothing.
+2. **NIT — null-date bonus rows have no defined position in an order-dependent running sum.**
+   Fixed: the comeback trace uses dated (daily) rows only, with a degrade-don't-guess rule if
+   that diverges from the full tally at the level check.
+3. **NIT — "plain-text-parse posture" read literally forbids `Date` entirely,** which honest
+   weekday math doesn't satisfy. Fixed: reworded to "never parse in local time; `Date.UTC` +
+   `getUTCDay()` or pure arithmetic".
+4. **NIT — `questionsLeft` named a top-level `result` field the row doesn't have.** Fixed:
+   any non-null side with `result === 'pending'`; both-null rows don't count.
