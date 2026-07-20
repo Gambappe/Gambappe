@@ -6,6 +6,7 @@ import { formatShortDate } from '@/lib/format-et';
 import { ApiClientError, fetchReveal } from '@/lib/pick-client';
 import { DuoTandem } from './duo/DuoTandem';
 import { NemesisFlip } from './nemesis/NemesisFlip';
+import { ReactionStampsPanel } from './nemesis/ReactionStampsPanel';
 import { ObituaryCard } from './ObituaryCard';
 import ShareSheet from './share/ShareSheet';
 
@@ -245,6 +246,28 @@ export function RevealSequence({ question }: RevealSequenceProps) {
           youWins={viewer.nemesis_flip.you_wins}
           opponentWins={viewer.nemesis_flip.opponent_wins}
           weekLabel={viewer.nemesis_flip.week_label}
+        />
+      ) : null}
+      {/* design-diff audit: the mockup's daily nemesis reveal card (`docs/mockups/swipe-ux.html`)
+          puts an inline "STAMP REPLY ▾" affordance right on this card — the shipped app split
+          that into a separate step on the `/nemesis` hub. Reusing `ReactionStampsPanel` verbatim
+          (same component `NemesisMatchupCard` already mounts there) rather than building a
+          second picker; `pairing_id`/`side_profile_ids` are checked alongside `nemesis_flip`
+          itself even though they're `.nullish()` at the schema level — they're always populated
+          together by `computeNemesisFlipBlock` (`reveal-payload.ts`), this just satisfies
+          TypeScript without asserting past a real (if theoretically-never-hit) contract gap. Kept
+          as a SIBLING of `NemesisFlip`, not nested inside it, so `NemesisFlip` stays pure/
+          presentational (its own header comment) — the interactive, self-fetching part is
+          entirely this panel's job, same "self-fetch identity post-hydration" posture as
+          everywhere else it mounts (see its own header comment on why that's INV-10-safe here
+          too: this whole `phase === 'result'` branch already only renders after `RevealSequence`'s
+          own client-side reveal fetch resolves, well past hydration). */}
+      {viewer.nemesis_flip?.pairing_id && viewer.nemesis_flip.side_profile_ids ? (
+        <ReactionStampsPanel
+          pairingId={viewer.nemesis_flip.pairing_id}
+          sideProfileIds={viewer.nemesis_flip.side_profile_ids}
+          stamps={viewer.nemesis_flip.today_stamps}
+          className="mt-1"
         />
       ) : null}
       {/* SW10-T3(b) (wiring-gaps doc §4 SW10-T3): the duo tandem block — an INDEPENDENT section

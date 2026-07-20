@@ -9,8 +9,9 @@ import {
   QUESTION_STATUS,
   VENUE,
 } from '../enums.js';
-import { zPickId, zQuestionId } from '../ids.js';
+import { zPairingId, zPickId, zProfileId, zQuestionId } from '../ids.js';
 import { zDateOnly, zProbability, zSlug, zTimestamp } from './common.js';
+import { pairingReactionsTodaySchema } from './pairings.js';
 import { pickSchema } from './picks.js';
 
 /** Crowd split — only ever present once the question is locked (§9.3: hidden while `open`). */
@@ -140,6 +141,26 @@ export const nemesisFlipSchema = z.object({
   opponent_wins: z.number().int().nonnegative(),
   /** e.g. "Week of Jul 06 · Day 2". */
   week_label: z.string(),
+  /** design-diff audit (mockup's inline "STAMP REPLY ▾" on the daily reveal card, §6 this
+   * section): `ReactionStampsPanel`'s three required props, carried on the flip block so the
+   * daily reveal card can mount the SAME panel `NemesisMatchupCard` already uses on `/nemesis`
+   * instead of a second reaction-picker implementation. `.nullish()` per the same contract-PR
+   * sequencing rule `opponent_handle` and friends above already follow (wiring-gaps doc §4/§9
+   * finding 1) — this task ships the fields and the reveal-payload emitter together, but the
+   * declaration stays optional-or-null for the same deploy-safety reason. Non-null exactly when
+   * the rest of `nemesis_flip` is (same active-pairing-and-opponent-picked gate) — there is no
+   * independent condition for these three fields.
+   *
+   * `pairing_id`/`side_profile_ids` are `ReactionStampsPanel`'s `pairingId`/`sideProfileIds`
+   * verbatim (the pairing's own id and both participants' profile ids — public, already part of
+   * the payload every viewer with an active pairing receives elsewhere). `today_stamps` is
+   * `ReactionStampsPanel`'s `stamps` prop — the SAME viewer-free per-player shape and SAME
+   * `getTodayPairingReactions` query `pairingPublicSchema.today_reactions`
+   * (`pairingReactionsTodaySchema`) already uses on `/nemesis`/`/vs/[pairingId]` (SW10-T4); reused
+   * here rather than re-derived so the two surfaces can never disagree about today's stamps. */
+  pairing_id: zPairingId.nullish(),
+  side_profile_ids: z.object({ a: zProfileId, b: zProfileId }).nullish(),
+  today_stamps: pairingReactionsTodaySchema.nullish(),
 });
 
 /**
