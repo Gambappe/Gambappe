@@ -80,6 +80,25 @@ describe('NemesisHeadToHeadBanner', () => {
     expect(html.match(/bg-muted/g)?.length).toBe(2);
   });
 
+  it('keeps each score outside the truncating handle span, so a long handle never clips its own score away', () => {
+    const html = renderToStaticMarkup(
+      <NemesisHeadToHeadBanner
+        viewerHandle="A Genuinely Extremely Long Display Handle That Would Overflow"
+        opponentHandle="Them"
+        viewerScore={4}
+        opponentScore={1}
+        outcome="won"
+      />,
+    );
+    // The score marker must sit in a span that is NOT itself truncating — only the handle span
+    // truncates. This asserts the fix for the bug where `{handle} {score}` shared one
+    // `truncate` span, so ellipsis clipped the score itself on long handles.
+    expect(html).toMatch(/<span class="[^"]*shrink-0[^"]*">4<\/span>/);
+    expect(html).toMatch(/<span class="[^"]*shrink-0[^"]*">1<\/span>/);
+    const handleSpan = html.match(/<span class="[^"]*truncate[^"]*">A Genuinely[^<]*<\/span>/);
+    expect(handleSpan).not.toBeNull();
+  });
+
   it('never asserts "edge" facts — score-margin framing only, matching VerdictCard\'s own pinned AC', () => {
     const html = renderToStaticMarkup(
       <NemesisHeadToHeadBanner

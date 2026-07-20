@@ -59,11 +59,13 @@ export function NemesisHeadToHeadBanner({
   return (
     <div data-testid="head-to-head-banner" className={`space-y-1.5 ${className}`}>
       <div className="flex items-baseline justify-between gap-2 font-mono text-xs">
-        <span className="truncate font-semibold">
-          {viewerHandle} <span className="text-muted font-normal">{viewerScore}</span>
+        <span className="flex min-w-0 items-baseline gap-1 font-semibold">
+          <span className="min-w-0 truncate">{viewerHandle}</span>
+          <span className="text-muted shrink-0 font-normal">{viewerScore}</span>
         </span>
-        <span className="truncate text-right font-semibold">
-          <span className="text-muted font-normal">{opponentScore}</span> {opponentHandle}
+        <span className="flex min-w-0 items-baseline gap-1 font-semibold">
+          <span className="text-muted shrink-0 font-normal">{opponentScore}</span>
+          <span className="min-w-0 truncate">{opponentHandle}</span>
         </span>
       </div>
       <div

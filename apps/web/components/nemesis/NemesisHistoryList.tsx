@@ -70,10 +70,14 @@ export function NemesisHistoryList({
         return (
           <li key={entry.pairing_id} className="space-y-2 py-3">
             {/* Design-diff gap fix: the mockup's Friday verdict exhibit pairs its card with a
-                head-to-head handle/score banner above it — only for entries that actually get a
-                verdict card (`verdict` non-null, mirroring `verdictFor`'s own cancelled → null
-                convention). Needs the viewer's own handle, which is optional here so callers
-                that don't have it (or tests) just render without the banner. */}
+                head-to-head handle/score banner above it — for any settled entry (`verdict`
+                non-null, mirroring `verdictFor`'s own cancelled → null convention). This does
+                NOT guarantee `RematchPanel` below renders its own `VerdictSwipeCard` — that
+                panel shows text-only states (pending/accepted/declined rematch) for some
+                non-cancelled rows, so the banner can appear above a rematch-status line rather
+                than a card; that's an intentional score summary for the row, not a strict
+                pairing with the card. Needs the viewer's own handle, which is optional here so
+                callers that don't have it (or tests) just render without the banner. */}
             {verdict && viewerHandle ? (
               <NemesisHeadToHeadBanner
                 viewerHandle={viewerHandle}
