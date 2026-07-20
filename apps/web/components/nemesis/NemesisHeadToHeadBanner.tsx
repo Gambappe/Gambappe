@@ -66,7 +66,10 @@ function loserOpacity(outcome: VerdictOutcome): { viewer: string; opponent: stri
  * SAME pairing regardless of who won — with only the loser's half dimmed via opacity. The
  * `.tug` bar below keeps the same fixed blue/orange pairing too (the mockup's own bar never
  * changes color by winner either, `.tug .ty`/`.tug .tn` are plain fixed yes/no colors). The
- * center badge keeps the real score (`4–1`), matching this exact exhibit.
+ * center badge keeps the real score (`4–1`), matching this exact exhibit, in the same bold
+ * `font-display` face `NemesisAssignmentCard`'s "VS" badge uses (not `font-mono` — the mockup's
+ * `.vbolt` inherits `.vsplit`'s display-type weight for both exhibits). Square split (no
+ * `rounded-lg`), by explicit design feedback, rather than the mockup's own rounded `.vsplit`.
  *
  * Still real-data-only: the mockup's own subtitle text for this exhibit is "3 right · edge +11"
  * — a fabricated per-day/edge stat that doesn't exist on `nemesisHistoryEntrySchema`
@@ -98,12 +101,12 @@ export function NemesisHeadToHeadBanner({
   return (
     <div dir="ltr" data-testid="head-to-head-banner" className={`space-y-2 ${className}`}>
       {weekStart ? (
-        <div className="flex items-center justify-between font-mono text-[10px] tracking-widest uppercase">
+        <div className="flex items-center justify-between px-4 font-mono text-[10px] tracking-widest uppercase">
           <span className="text-muted">{`Week of ${formatShortDate(weekStart)}`}</span>
           <span className="text-gold font-semibold">Verdict</span>
         </div>
       ) : null}
-      <div className="bg-bg relative flex h-24 overflow-hidden rounded-lg">
+      <div className="bg-bg relative flex h-24 overflow-hidden">
         <div
           className={`flex min-w-0 flex-1 items-center px-4 pr-8 ${VIEWER_HALF.half} ${dim.viewer}`}
         >
@@ -113,7 +116,7 @@ export function NemesisHeadToHeadBanner({
         </div>
         <div
           aria-hidden="true"
-          className="bg-paper text-ink absolute top-0 left-1/2 flex h-full w-12 -translate-x-1/2 items-center justify-center font-mono text-xs font-bold"
+          className="bg-paper text-ink absolute top-0 left-1/2 flex h-full w-14 -translate-x-1/2 items-center justify-center font-display text-base font-bold"
           style={{ clipPath: 'polygon(32% 0, 100% 0, 68% 100%, 0 100%)' }}
         >
           {viewerScore}–{opponentScore}
