@@ -111,7 +111,12 @@ always after both lock and grading. This task's actual scope: **the flip fires a
 moment as SW9's `broken_run`**, not at pick time.
 Deliverables: a nullable `nemesis_flip` block on `revealViewerSchema`
 (`packages/core/src/schemas/questions.ts`) — `{ opponent_handle, opponent_side, opponent_side_label,
-opponent_entry_cents, narration, you_wins, opponent_wins, week_label }` — emitted from
+opponent_entry_cents, narration, you_wins, opponent_wins, week_label }`. **Contract-PR
+sequencing (fable round 3):** the core-first `[contract-change]` PR must declare the field
+`.nullish()` (optional-or-null), NOT a required nullable key — `buildRevealPayload`'s return is
+`z.infer`-typed, so a required key fails `pnpm verify` in a core-only PR that doesn't touch the
+emitter. The follow-up implementation PR adds the emitter and may then tighten to
+`.nullable()`. The block is emitted from
 `buildRevealPayload` (`apps/web/lib/reveal-payload.ts`) by a new `computeNemesisFlipBlock`,
 mirroring `computeBrokenRunBlock`'s shape. Mechanical emission condition: non-null iff (a) the
 viewer has an active pairing this week (`getCurrentPairingForProfile`) AND (b) the opponent has
@@ -154,19 +159,26 @@ week dot strip) and `edgeGap` (`VerdictCard.tsx:11-14`). Resolve as follows, no 
 needed:
 - `dayResults`: derive from the EXISTING public `GET /pairings/:id`
   (`pairingPublicSchema.scoreboard` — per-question `{a,b}.{side,result}`, fully unmasked for a
-  completed pairing), fetched by the `pairing_id` the history entry already carries. Map
-  viewer-relative per row.
-- `edgeGap` + `verdictLoserLine`: today's copy (`copy.ts:196-197`) says "`{handle}`'s edge beat
-  yours by `{edgeGap}` points" — feeding it the score margin would render a factually false
-  sentence (day-wins are not edge points). This task REWORDS the loser line to score-margin
+  completed pairing), fetched by the `pairing_id` the history entry already carries. Mapping,
+  pinned (fable round 3 — the scoreboard has more states than the card's four dots): use only
+  rows with a non-null `question_date` (the shared dailies; nemesis-bonus rows have null dates
+  and get no dot); viewer-relative per row — `win` = viewer's result `win` and opponent's not
+  `win`; `loss` = the mirror; `split` = both `win` or both `loss` (same result, no day taken);
+  `pending` = either side's result null/`pending`; a `void` result or a no-pick (null side)
+  row maps to `split`'s neutral dot (nobody took the day).
+- `edgeGap` + the verdict copy: today's LOSER line (`copy.ts:196-197`) says "`{handle}`'s edge
+  beat yours by `{edgeGap}` points", and the WINNER line ("You out-edged `{handle}` when it
+  counted", `copy.ts:198`) has the same problem — feeding day-win margins into edge-points
+  copy renders factually false sentences. This task REWORDS BOTH lines to score-margin
   language (e.g. "took the week by {n}") and renames/retypes the prop accordingly —
   `VerdictCard` has no production call sites (that's this doc's whole point), so its prop API
   is freely changeable here.
 - `outcome: 'cancelled'`: `VerdictOutcome` is `'won'|'lost'|'drew'` — a cancelled week gets NO
   verdict card; keep the existing plain history row for it.
 AC: right-swipe = rematch request (D-SW9 axis, matching every other affirmative-right
-convention in this codebase); loser-card copy asserts only score-margin facts (no "edge"
-wording anywhere it isn't true); a cancelled-week history row renders without a verdict card;
+convention in this codebase); BOTH verdict cards' copy asserts only score-margin facts (no
+"edge"/"out-edged" wording on either card — grep both lines); a cancelled-week history row
+renders without a verdict card;
 `e2e/nemesis-rematch.spec.ts` (WS5-T5's suite) — its DB/state assertions (the request lands,
 accept/decline transitions) must still pass, but its driving steps (today: click
 `rematch-request-button`, confirm) may be rewritten for the swipe gesture, since a click-driven
@@ -182,15 +194,22 @@ pre-pick as originally scoped) — but its DATA claim was corrected in round 2: 
 (`getCurrentDuoResponseSchema`, `packages/core/src/schemas/duos.ts:53-57`) returns only
 `{duo, match}` — nothing about whether the partner picked today, so the chip is NOT buildable
 from existing data. This task extends that response with a side-free
-`partner_pick_today: { picked: boolean, picked_at: timestamp | null } | null` field
-(existence + timing only — never the side, so §9.3 is untouched; this is part of why the task
-carries `[contract-change]`).
+`partner_pick_today: { picked: boolean, picked_at: timestamp | null }` field (existence +
+timing only — never the side, so §9.3 is untouched; this is part of why the task carries
+`[contract-change]`). **Contract-PR sequencing (fable round 3):** declare it `.nullish()` in
+the core-first PR — `fetchCurrentDuo` (`apps/web/lib/duo-client.ts`) runtime-parses responses
+through this schema, so a required key deployed ahead of the handler change breaks the live duo
+hub; the implementation PR updates the handler (`api/v1/duo/current/route.ts`) and may then
+tighten. Handler detail: "today's question" needs a lookup the handler doesn't do today — use
+the existing `getTodayDailyQuestion` (`packages/db/src/repositories/questions.ts`); truncate
+`picked_at` to the minute, matching §9.2's public pick-timestamp precision posture.
 Deliverables: (a) build the sealed partner chip (`▣ {partner} LOCKED · {n}h AGO`) as a new
 component, mounted in `SwipeBallot`'s footer (behind `duo_queue` AND an active duo — new prop,
 default omitted so every existing `SwipeBallot` call site is unaffected) — sealed means it
 shows LOCKED status only, never the partner's side, ever (this chip has no "unsealed" state —
-the partner's actual pick only ever surfaces via (b), post-reveal); (b) a nullable `duo_tandem`
-block on `revealViewerSchema`, populated by `getActiveDuoForProfile` + `getPick`, mechanically
+the partner's actual pick only ever surfaces via (b), post-reveal); (b) a `duo_tandem`
+block on `revealViewerSchema` (`.nullish()` in the core-first PR, same sequencing rule as
+SW10-T1's block), populated by `getActiveDuoForProfile` + `getPick`, mechanically
 non-null iff the viewer has an active duo AND the partner has a pick on this `question_id` —
 same "unreachable pre-reveal, not merely unpopulated" structural guarantee as SW10-T1. Mount
 `DuoTandem` **once, in `RevealSequence.tsx`**, next to SW10-T1's `NemesisFlip` section (same
@@ -235,19 +254,30 @@ severance for pairing reactions has no existing layer to call through — `lib/m
 must add the block check to the reactions write path itself (mirroring whatever block-check
 shape another `ghost+`-plus-block-aware endpoint in this codebase already uses as a pattern,
 if one exists — otherwise a straightforward "is either party blocking the other" guard).
-Read path (added by fable review round 2 — POST alone is half a feature): `ReactionStamps`
-needs the viewer's own `selected` stamp, and the matchup page needs to SHOW both players'
-stamps, but no pairing-scoped reactions read exists (`app/api/v1` has only
-`questions/[id]/thread`, and the read-side `reactionCountSchema` is
-`z.enum(REACTION_SET)`-typed, so it can't carry the presets either). Deliver the read as
-fields on the pairing/matchup payload (`pairingPublicSchema` or the `/vs/[pairingId]` page's
-own server load — implementer's call, but it must respect the block-severance rule on the read
-side too, not just the write side).
+Read path (added by fable review round 2, INV-10 split pinned by round 3 — POST alone is half
+a feature): `ReactionStamps` needs the viewer's own `selected` stamp, and the matchup page
+needs to SHOW both players' stamps, but no pairing-scoped reactions read exists (`app/api/v1`
+has only `questions/[id]/thread`, and the read-side `reactionCountSchema` is
+`z.enum(REACTION_SET)`-typed, so it can't carry the presets either). The read MUST split along
+the two pages' caching postures — do not blur this:
+- **Per-player stamps** (today's reaction for player A and player B, keyed to the two
+  participants): viewer-free data → carried on the cached pairing payload
+  (`pairingPublicSchema`, covered by this task's `[contract-change]`; `.nullish()` sequencing
+  per SW10-T1's rule) and safe for `/vs/[pairingId]` (INV-10, `revalidate = 30` — that page
+  renders `viewerProfileId={null}` always and must stay that way).
+- **The viewer's `selected`**: viewer data → NEVER on the ISR page's server render. Derive it
+  client-side (viewer's own profile id from `/me`, matched against the per-player stamps), or
+  scope the interactive picker to `/nemesis` (already `force-dynamic` with a real
+  `viewerProfileId`; `NemesisMatchupCard` is mounted on both pages).
+Block-severance applies on the read too; between the two players it's viewer-free, so it
+belongs in the payload build, not the client.
 AC: preset-only, no free-text input anywhere in the diff; a direct `POST /reactions` with
 `context_kind: 'pairing'` from a ghost session is rejected server-side (test this directly, not
 just via the UI's claim prompt); a blocked pair's reactions don't round-trip either direction —
 verified on the READ side via the API/page payload, not just as a write rejection; the viewer's
-own current stamp round-trips (post → reload page → `selected` reflects it); one reaction per
+own current stamp round-trips (post → reload → `selected` reflects it — assert on `/nemesis` or
+via the client-derived path, NOT on `/vs/[pairingId]`'s ISR render, which may serve a ≤30s-stale
+snapshot by design); one reaction per
 player per day enforced server-side (a second same-day POST replaces or 409s — implementer
 documents which); `PAIRING_REACTION_SET` values never appear in `QuestionThread.tsx`'s picker
 and `REACTION_SET`'s four emoji never appear in `ReactionStamps`' picker (grep test).
@@ -349,3 +379,27 @@ someone-else's-receipt is impossible; stacking the two blocks in `RevealSequence
    contract.** Fixed: updating them is now an SW10-T1 deliverable.
 
 Further review rounds continue until one returns clean; only then are the tasks registered.
+
+## 9. Fable adversarial review — round 3 findings (fixed in this doc)
+
+Round 3 verified round 2's fixes held structurally (the scoreboard genuinely unmasks completed
+pairings; `/nemesis` already imports the service for the pairing fetch; the single-mount claim
+is exactly right in both flag states; all cross-references and `Depends: —` claims check out)
+and found four spec-precision issues, all fixed above:
+
+1. **MEDIUM — contract-PR sequencing.** Speccing the new fields (`nemesis_flip`, `duo_tandem`,
+   `partner_pick_today`) as required-but-nullable keys would break the mandated core-first
+   `[contract-change]` PR: a required key fails monorepo typecheck before the emitter exists
+   (`buildRevealPayload` is `z.infer`-typed), and `fetchCurrentDuo` runtime-parses against the
+   schema, so a required key deployed ahead of the handler breaks the live duo hub. Fixed: all
+   three declared `.nullish()` in the core-first PR; the implementation PR may tighten.
+2. **MEDIUM — SW10-T4's read path could lead into an INV-10 violation.** The viewer's
+   `selected` stamp is viewer data and can never ride `/vs/[pairingId]`'s ISR render
+   (`viewerProfileId={null}` always, `revalidate = 30`). Fixed: the read now explicitly splits —
+   per-player stamps on the cached payload (viewer-free), the viewer's `selected` derived
+   client-side or scoped to the `force-dynamic` `/nemesis` page; the round-trip AC asserts off
+   the ISR page.
+3. **LOW — `dayResults` mapping under-specified** (scoreboard has null-date bonus rows, `void`
+   results, and no-pick rows; the card has four dot states). Fixed: mapping pinned in the task.
+4. **LOW — the edge-copy reword missed the winner line**, which is equally edge-worded and
+   equally unbacked by day-win data. Fixed: both lines reworded, grep AC covers both.
