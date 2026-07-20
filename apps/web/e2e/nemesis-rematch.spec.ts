@@ -80,11 +80,20 @@ const SESSION_COOKIE_NAME = '__Secure-authjs.session-token';
  * there in full).
  */
 function recentFreshWeekStart(): string {
+  // A 12h buffer before snapping to the ISO week Monday. Without it, `now` between roughly
+  // 00:00 and 02:00-03:00 UTC on a Monday (i.e. before that week's own Sunday-22:00-ET
+  // conclusion instant, ~02:00/03:00 UTC depending on EDT/EST) would snap to THIS week's
+  // Monday and produce a not-yet-concluded (future) `nemesisConcludeAt`, failing the
+  // `msSinceConcluded >= 0` guard — a real, narrow flake this exact form of the helper hit in
+  // review. Verified numerically (not just by hand) across a full year of 30-minute samples,
+  // including the EST/EDT transition: a 12h buffer keeps the worst-case margin to either edge
+  // of `VERDICT_FRESH_WINDOW_MS` (8 days) at roughly 10 hours, comfortably away from both.
   const now = new Date();
-  const isoDow = now.getUTCDay() === 0 ? 7 : now.getUTCDay(); // Mon=1..Sun=7
+  const buffered = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+  const isoDow = buffered.getUTCDay() === 0 ? 7 : buffered.getUTCDay(); // Mon=1..Sun=7
   const daysSinceThisMonday = isoDow - 1;
-  const lastWeekMonday = new Date(now);
-  lastWeekMonday.setUTCDate(now.getUTCDate() - daysSinceThisMonday - 7);
+  const lastWeekMonday = new Date(buffered);
+  lastWeekMonday.setUTCDate(buffered.getUTCDate() - daysSinceThisMonday - 7);
   return lastWeekMonday.toISOString().slice(0, 10);
 }
 
