@@ -118,19 +118,37 @@ sequencing (fable round 3):** the core-first `[contract-change]` PR must declare
 emitter. The follow-up implementation PR adds the emitter and may then tighten to
 `.nullable()`. The block is emitted from
 `buildRevealPayload` (`apps/web/lib/reveal-payload.ts`) by a new `computeNemesisFlipBlock`,
-mirroring `computeBrokenRunBlock`'s shape. `narration` is `string | null`, pinned in fable
-round 4 (no daily-flip beat exists in the catalog, and this repo forbids freehand copy outside
-`copy.ts`/the `narrate()` catalog): render via the EXISTING catalog beats only —
-`nemesis_lead_taken` when this question's grading flipped the week-tally leader,
-`nemesis_comeback` when it leveled the tally from behind (both already in
-`packages/engine/src/narration.ts`, currently derivation-less); null otherwise, and the UI
-omits the line (make `NemesisFlip`'s `narration` prop optional accordingly — SW4-T1's
-degrade-by-omission precedent). Mechanical emission condition: non-null iff (a) the
+mirroring `computeBrokenRunBlock`'s shape.
+**Week-tally sourcing (fable round 5, HIGH — this is where a verbatim implementation would
+ship a visibly wrong feature):** `you_wins`/`opponent_wins` must NEVER read `pairing.score`
+(`nemesis_pairings.score_a/score_b`) — those columns default 0 and are written only at week
+conclusion (`apps/worker/src/jobs/nemesis-conclude.ts` / `pairing-lifecycle.ts`), so every
+mid-week flip would print "0–0". Derive the tallies by replaying the pairing's scoreboard
+rows — count `result === 'win'` per side, skipping `pending`/`void`, mirroring
+`scoreNemesisWeek`'s independent accrual — which is sound at reveal time because prior days
+are already publicly resolved and unmasked (`masking.ts`). The narration triggers need a
+BEFORE-tally too: same sum excluding this `question_id`.
+`narration` is `string | null`, pinned in fable rounds 4-5 (no daily-flip beat exists in the
+catalog, and this repo forbids freehand copy outside `copy.ts`/the `narrate()` catalog): render
+via the EXISTING catalog beats only — `nemesis_lead_taken` when this question's grading flipped
+the week-tally leader (before-tally vs after-tally, as derived above), `nemesis_comeback` when
+it leveled the tally from behind (both already in `packages/engine/src/narration.ts`, currently
+derivation-less). Their data slots are derivable from the same scoreboard replay:
+`questionsLeft` = rows not yet publicly resolved; `nemesis_comeback`'s `deficit`/`downDay`/
+`levelDay` come from the date-ordered rows via the repo's existing date formatting. Degrade
+rule: if any required slot is unresolvable (e.g. the relevant row is a nemesis-bonus question
+with `question_date: null`), `narration` is null — and the UI omits the line (make
+`NemesisFlip`'s `narration` prop optional accordingly — SW4-T1's degrade-by-omission
+precedent).
+Mechanical emission condition, **stated inside the existing viewer gate (fable round 5)**:
+`buildRevealPayload` only constructs the `viewer` block at all when the viewer's own pick
+exists and is graded non-void (`reveal-payload.ts:219-221`) — this block lives inside that
+gate, so "viewer never picked / pick voided → the whole `viewer` object is absent, hence no
+flip block" is the outermost case, not a separate check. Within the gate: non-null iff (a) the
 viewer has an active pairing this week (`getCurrentPairingForProfile`) AND (b) the opponent has
-a pick on this `question_id` (`getPick`) — no separate "has the viewer locked" check needed:
+a pick on this `question_id` (`getPick`). No pre-lock/pre-undo leak window exists:
 the reveal payload is structurally unreachable pre-reveal (§6.5 publication rule, same
-guarantee `computeBrokenRunBlock` already relies on), so there is no pre-lock/pre-undo window
-in which this data could leak. Mount `NemesisFlip` **once, in `RevealSequence.tsx`** — a
+guarantee `computeBrokenRunBlock` already relies on). Mount `NemesisFlip` **once, in `RevealSequence.tsx`** — a
 dashed-separator second section alongside (never replacing) the existing result
 stamp/streak/share content, per the original mock's layout. One mount serves BOTH flag states
 (corrected by fable review round 2): `DeckStates`' revealed branch is viewer-free by INV-10 and
@@ -141,12 +159,15 @@ comments (lines ~6-7, ~25-26): they still describe the abandoned pick-time trigg
 only once the viewer has locked", "must not fetch before the viewer's own pick exists") and
 will contradict this task's reveal-time semantics if left stale.
 AC: unit test on the mechanical condition (no pairing → null; pairing but opponent hasn't
-picked → null; both picked → populated); integration test proves `getPick` for the opponent is
-never called for a `locked` (not yet `revealed`) question — i.e. the block is unreachable, not
-merely unpopulated, before reveal; e2e: two real seeded profiles in an active pairing, both
-pick, the daily reveals, `NemesisFlip` renders with the real opponent stamp on the viewer's
-reveal; flag/feature off (`nemesis` flag off, or no active pairing) → today's reveal renders
-byte-identical.
+picked → null; both picked → populated; viewer no-pick or void pick → the whole `viewer` block
+is absent, hence no flip block — the impossible-state case, asserted as such); tally test: a
+mid-week flip on a really-seeded 3-day scoreboard shows the replay-derived tally, NOT the
+`pairing.score` columns (seed them at 0 to prove it); integration test proves `getPick` for the
+opponent is never called for a `locked` (not yet `revealed`) question — i.e. the block is
+unreachable, not merely unpopulated, before reveal; e2e: two real seeded profiles in an active
+pairing, both pick, the daily reveals, `NemesisFlip` renders with the real opponent stamp on
+the viewer's reveal; flag/feature off (`nemesis` flag off, or no active pairing) → today's
+reveal renders byte-identical.
 
 **SW10-T2 · Wire VerdictCard + rematch-by-swipe into the real rematch flow · Depends: —**
 Spec: swipe-ux-plan §2.9 SW5-T2; this doc §3.
@@ -221,11 +242,15 @@ shows LOCKED status only, never the partner's side, ever (this chip has no "unse
 the partner's actual pick only ever surfaces via (b), post-reveal); (b) a `duo_tandem`
 block on `revealViewerSchema` (`.nullish()` in the core-first PR, same sequencing rule as
 SW10-T1's block) — fields, matching `DuoTandem`'s props (`DuoTandem.tsx:4-12`; the viewer's
-own side comes from the payload's existing `viewer.pick`):
+own side comes from the payload's existing `viewer.pick`, and `viewerSideLabel` from the
+question's `yes_label`/`no_label` already in `RevealSequence`'s props):
 `{ partner_handle, partner_side, partner_side_label }` — populated by
-`getActiveDuoForProfile` + `getPick`, mechanically
-non-null iff the viewer has an active duo AND the partner has a pick on this `question_id` —
-same "unreachable pre-reveal, not merely unpopulated" structural guarantee as SW10-T1. Mount
+`getActiveDuoForProfile` + `getPick`, emitted inside the same existing viewer gate as SW10-T1's
+block (`buildRevealPayload` constructs `viewer` only for a graded, non-void own pick — a
+no-pick/void viewer gets no `viewer` object at all, hence no tandem block), and within that
+gate non-null iff the viewer has an active duo AND the partner has a pick on this
+`question_id` — same "unreachable pre-reveal, not merely unpopulated" structural guarantee as
+SW10-T1. Mount
 `DuoTandem` **once, in `RevealSequence.tsx`**, next to SW10-T1's `NemesisFlip` section (same
 single-mount rule as that task: `DeckStates` gets viewer content only via `viewerSlot` →
 `ViewerStrip` → `RevealSequence`, so one mount covers both flag states — never a second mount
@@ -440,3 +465,25 @@ all fixed above:
    clean review round."
 5. **LOW — `duo_tandem`'s fields were never enumerated.** Fixed:
    `{ partner_handle, partner_side, partner_side_label }`, matching `DuoTandem`'s props.
+
+## 11. Fable adversarial review — round 5 findings (fixed in this doc)
+
+Round 5 verified round 4's fixes (the viewer-own-result dot mapping is deterministic and
+computable from the scoreboard's four `result` states; `duo_tandem`'s fields cover the
+component's props; all cross-references exact) and found three issues one level deeper in the
+data plumbing, all fixed above:
+
+1. **HIGH — `you_wins`/`opponent_wins` had no valid source.** `pairing.score` columns default 0
+   and are written only at week conclusion — a verbatim implementation would print "0–0" on
+   every mid-week flip and the narration triggers would never fire. Fixed: tallies (and the
+   before-tally the flip trigger needs) are pinned to a scoreboard-row replay mirroring
+   `scoreNemesisWeek`'s accrual, with an AC seeding `score_a/b = 0` to prove the derivation.
+2. **MEDIUM — the pinned narration beats' data slots were unfilled** (`questionsLeft`,
+   `deficit`/`downDay`/`levelDay`), with an unhandled null-date edge on nemesis-bonus rows.
+   Fixed: slot derivations pinned to the same scoreboard replay; any unresolvable slot →
+   `narration` null (existing omission precedent).
+3. **MEDIUM — the emission condition contradicted its host object.** `buildRevealPayload` only
+   constructs `viewer` for a graded, non-void own pick, so "no viewer-lock check needed" was
+   unsatisfiable as a standalone case. Fixed: both blocks are now stated as living inside that
+   existing viewer gate, with the no-pick/void case added to the unit AC as the
+   impossible-state assertion.
