@@ -31,6 +31,15 @@ export const DAILY_LOCK_LOCAL = '12:00';
 /** Daily reveal target (local ET, HH:mm). */
 export const DAILY_REVEAL_LOCAL = '20:00';
 
+/**
+ * DISPLAY timezone for user-facing clock times (WS15-T9): the product speaks Pacific — the
+ * WS15-T7 "open at midnight PT" decision set the framing, and every rendered time follows it
+ * (one zone everywhere; no mixed ET/PT copy). Scheduling stays ET-anchored via SCHEDULE_TZ
+ * above (§4.3/DD-1) — these constants affect DISPLAY ONLY, never when anything fires.
+ */
+export const DISPLAY_TZ = 'America/Los_Angeles';
+export const DISPLAY_TZ_LABEL = 'PT';
+
 // --- Picks (§6.2) ----------------------------------------------------------------------------
 
 /** Undo (hard delete) window after a pick, seconds (DD-2). */

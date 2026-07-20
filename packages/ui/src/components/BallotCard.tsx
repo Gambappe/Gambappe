@@ -58,7 +58,7 @@ export interface BallotCardProps {
   yesProbability: number;
   /** Footer left — e.g. "KALSHI · LIVE". */
   venue: string;
-  /** Footer right — e.g. "LOCKS 12:00 ET". */
+  /** Footer right — e.g. "LOCKS 9:00 AM PT". */
   lockLabel: string;
   className?: string;
   /**
@@ -130,7 +130,7 @@ export function BallotCard({
 }
 
 export interface UnderCardProps {
-  /** e.g. "TOMORROW · opens 9:00 ET"; omit for a blank slip. */
+  /** e.g. "TOMORROW · opens 12:00 AM PT"; omit for a blank slip. */
   label?: string;
   className?: string;
 }

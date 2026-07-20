@@ -1,14 +1,18 @@
 /**
- * ET clock formatting for question-page copy (§10.3 "opens 9:00 ET", §13.2 "Reveal at 8").
- * Pure/deterministic given an ISO instant — no wall-clock reads — so it's safe to call from
- * both the server render and tests.
+ * Clock formatting for question-page copy (§10.3, §13.2). Pure/deterministic given an ISO
+ * instant — no wall-clock reads — so it's safe to call from both the server render and tests.
+ *
+ * WS15-T9: every user-facing clock renders in the product's DISPLAY timezone (Pacific,
+ * `DISPLAY_TZ` in core config) — one zone across static copy and dynamic labels, matching the
+ * "open at midnight PT" framing. Scheduling itself stays ET-anchored (§4.3); this is display
+ * only. (File name kept for import stability; "et" here is historical.)
  */
-import { SCHEDULE_TZ } from '@receipts/core';
+import { DISPLAY_TZ, DISPLAY_TZ_LABEL } from '@receipts/core';
 
-/** "9:00am ET" / "8:00pm ET". */
-export function formatEtClock(iso: string): string {
+/** "9:00 AM PT" / "5:00 PM PT" — the one clock style every UI surface uses (WS15-T9). */
+export function formatClock(iso: string): string {
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: SCHEDULE_TZ,
+    timeZone: DISPLAY_TZ,
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
@@ -17,7 +21,7 @@ export function formatEtClock(iso: string): string {
   for (const p of parts) {
     if (p.type !== 'literal') map[p.type] = p.value;
   }
-  return `${map['hour']}:${map['minute']}${(map['dayPeriod'] ?? '').toLowerCase()} ET`;
+  return `${map['hour']}:${map['minute']} ${(map['dayPeriod'] ?? '').toUpperCase()} ${DISPLAY_TZ_LABEL}`;
 }
 
 const SHORT_MONTH_NAMES = [

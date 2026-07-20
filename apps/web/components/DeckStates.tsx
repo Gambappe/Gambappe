@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { QuestionPublic } from '@receipts/core';
 import { CountdownTicker, CrowdBar, RevealHush, Stamp } from '@receipts/ui';
 import { copy, hushCopy } from '@/lib/copy';
-import { formatEtClock } from '@/lib/format-et';
+import { formatClock } from '@/lib/format-et';
 
 /** The dark stage ground shared by every flag-on state (§2.5) — the deck's paper-on-dark world,
  * minus the open-state rails (those belong to the gesture, `DeckStage`). */
@@ -47,7 +47,7 @@ export function DeckStates({ question, serverOffsetMs, viewerSlot }: DeckStatesP
             serverOffsetMs={serverOffsetMs}
             label={copy.question.opensLabel}
           />
-          <p className="text-muted font-mono text-xs">{formatEtClock(question.open_at)}</p>
+          <p className="text-muted font-mono text-xs">{formatClock(question.open_at)}</p>
         </div>
       )}
 

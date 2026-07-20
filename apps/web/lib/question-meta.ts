@@ -3,17 +3,17 @@
  * state", example given: "The crowd says 63%. Lock is at noon ET."). Pure/testable.
  */
 import type { QuestionPublic } from '@receipts/core';
-import { formatEtClock } from './format-et';
+import { formatClock } from './format-et';
 
 export function describeQuestionState(question: QuestionPublic): string {
   switch (question.status) {
     case 'scheduled':
-      return `Opens at ${formatEtClock(question.open_at)}.`;
+      return `Opens at ${formatClock(question.open_at)}.`;
     case 'open':
-      return `Pick your side — locks at ${formatEtClock(question.lock_at)}.`;
+      return `Pick your side — locks at ${formatClock(question.lock_at)}.`;
     case 'locked': {
-      if (!question.crowd) return `Locked. Reveal at ${formatEtClock(question.reveal_at)}.`;
-      return `The crowd says ${question.crowd.pct_yes}% ${question.yes_label}. Reveal at ${formatEtClock(question.reveal_at)}.`;
+      if (!question.crowd) return `Locked. Reveal at ${formatClock(question.reveal_at)}.`;
+      return `The crowd says ${question.crowd.pct_yes}% ${question.yes_label}. Reveal at ${formatClock(question.reveal_at)}.`;
     }
     case 'revealed': {
       const outcomeLabel = question.outcome === 'yes' ? question.yes_label : question.no_label;

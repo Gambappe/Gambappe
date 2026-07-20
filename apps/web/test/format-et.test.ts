@@ -1,20 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { formatEtClock, formatHoursAgo, formatShortDate, formatWeekdayName } from '@/lib/format-et';
+import { formatClock, formatHoursAgo, formatShortDate, formatWeekdayName } from '@/lib/format-et';
 
-describe('formatEtClock', () => {
-  it('formats a UTC morning instant as ET (EDT, UTC-4, in July)', () => {
-    // 13:00 UTC on 2026-07-19 = 9:00am EDT.
-    expect(formatEtClock('2026-07-19T13:00:00Z')).toBe('9:00am ET');
+describe('formatClock (WS15-T9: one display zone — Pacific — for every rendered clock)', () => {
+  it('formats a UTC morning instant in PT (PDT, UTC-7, in July)', () => {
+    // 13:00 UTC on 2026-07-19 = 6:00 AM PDT.
+    expect(formatClock('2026-07-19T13:00:00Z')).toBe('6:00 AM PT');
   });
 
   it('formats an evening instant', () => {
-    // 00:00 UTC on 2026-07-20 = 8:00pm EDT the prior day.
-    expect(formatEtClock('2026-07-20T00:00:00Z')).toBe('8:00pm ET');
+    // 00:00 UTC on 2026-07-20 = 5:00 PM PDT the prior day.
+    expect(formatClock('2026-07-20T00:00:00Z')).toBe('5:00 PM PT');
   });
 
-  it('handles winter (EST, UTC-5)', () => {
-    // 14:00 UTC on 2026-01-15 = 9:00am EST.
-    expect(formatEtClock('2026-01-15T14:00:00Z')).toBe('9:00am ET');
+  it('handles winter (PST, UTC-8)', () => {
+    // 14:00 UTC on 2026-01-15 = 6:00 AM PST.
+    expect(formatClock('2026-01-15T14:00:00Z')).toBe('6:00 AM PT');
+  });
+
+  it('renders the daily open (03:00 ET) as midnight PT — the WS15-T7 product framing', () => {
+    // 2026-07-20 03:00 EDT = 07:00 UTC = 00:00 PDT.
+    expect(formatClock('2026-07-20T07:00:00Z')).toBe('12:00 AM PT');
   });
 });
 

@@ -15,22 +15,17 @@
  *  - The two claim-nudge strings and the publicness sentence below are PINNED VERBATIM —
  *    do not paraphrase them (§11.3, §13.3 both point back at this file for the rendered text).
  */
-import { DAILY_OPEN_LOCAL, PAIRING_REACTION_SET, PRODUCT_NAME } from '@receipts/core';
+import { DAILY_OPEN_LOCAL, PAIRING_REACTION_SET, PRODUCT_NAME, SCHEDULE_TZ } from '@receipts/core';
+import { zonedTimeToUtc } from './curation';
+import { formatClock } from './format-et';
 
 /**
- * WS15-T8: the daily open time, displayed in PACIFIC time — the product decision behind
- * WS15-T7 was "the question is live from midnight PT," so that's the moment the copy names.
- * Derived from `DAILY_OPEN_LOCAL` (ET, HH:mm) rather than hardcoded (§0.1 rule 4): ET and PT
- * shift DST together, so PT is a constant −3h from ET.
+ * WS15-T8/T9: the daily open time, rendered by the SAME display-timezone formatter every
+ * dynamic clock label uses (`formatClock` → `DISPLAY_TZ`, Pacific) — one zone, one style,
+ * derived from `DAILY_OPEN_LOCAL` (§0.1 rule 4). The reference date is arbitrary: ET and PT
+ * shift DST together, so the ET→PT rendering of a fixed ET wall time is date-independent.
  */
-function dailyOpenDisplayPt(): string {
-  const [etHour, minute] = DAILY_OPEN_LOCAL.split(':').map(Number);
-  const ptHour = ((etHour ?? 0) - 3 + 24) % 24;
-  const meridiem = ptHour < 12 ? 'AM' : 'PM';
-  const hour12 = ptHour % 12 === 0 ? 12 : ptHour % 12;
-  return `${hour12}:${String(minute ?? 0).padStart(2, '0')} ${meridiem} PT`;
-}
-const DAILY_OPEN_PT = dailyOpenDisplayPt(); // "12:00 AM PT" while DAILY_OPEN_LOCAL is 03:00 ET
+const DAILY_OPEN_PT = formatClock(zonedTimeToUtc('2026-01-15', DAILY_OPEN_LOCAL, SCHEDULE_TZ).toISOString()); // "12:00 AM PT" while DAILY_OPEN_LOCAL is 03:00 ET
 
 /** INV-6, pinned verbatim (§10.6): shown on the claim/signup screen. */
 export const CLAIM_PUBLICNESS_STATEMENT =
