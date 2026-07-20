@@ -173,8 +173,9 @@ test.describe('/nemesis rematch-request flow (§8.4 step 0, §9.2, real Postgres
     context,
   }) => {
     const unique = randomUUID();
+    const viewerHandle = `E2E Viewer ${unique}`;
     const seasonId = await seedWideSeason();
-    const { profileId: viewerId, sessionToken } = await seedClaimedProfileWithSession(`E2E Viewer ${unique}`);
+    const { profileId: viewerId, sessionToken } = await seedClaimedProfileWithSession(viewerHandle);
     const [opponent] = await db
       .insert(profiles)
       .values(buildProfile({ kind: 'claimed', status: 'active', handle: `E2E Opponent ${unique}` }))
@@ -209,6 +210,15 @@ test.describe('/nemesis rematch-request flow (§8.4 step 0, §9.2, real Postgres
     // equivalent of a right-swipe (D-SW9 affirmative-right) — it fires the same
     // `POST /rematch-requests` `RematchPanel`'s old plain button used to.
     await expect(page.getByTestId('verdict-card')).toBeVisible();
+
+    // Design-diff gap fix: the head-to-head banner above the verdict card needs the viewer's
+    // own handle, threaded server-side from `app/nemesis/page.tsx`'s already-fetched `profile`
+    // row (no extra DB round trip) — this is the one real, end-to-end proof that plumbing
+    // actually reaches the rendered page, not just a unit test's hand-built props.
+    await expect(page.getByTestId('head-to-head-banner')).toBeVisible();
+    await expect(page.getByTestId('head-to-head-banner')).toContainText(viewerHandle);
+    await expect(page.getByTestId('head-to-head-banner')).toContainText(opponent!.handle as string);
+
     await page.getByTestId('verdict-run-it-back').click();
 
     await expect(page.getByTestId('rematch-pending')).toBeVisible();

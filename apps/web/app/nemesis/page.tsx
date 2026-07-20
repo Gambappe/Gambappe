@@ -43,6 +43,11 @@ import type { PairingSide } from '@/lib/nemesis/types';
  * A ghost (ineligible) or signed-out visitor is redirected to `/claim` — this page has no
  * spectator-safe empty state to fall back to (unlike `/vs/[pairingId]`, which is public by
  * design).
+ *
+ * Design-diff gap fix: `NemesisHistoryList`'s new head-to-head banner needs the viewer's own
+ * handle. That's `profile.handle` — the very row this page already fetches via
+ * `getProfileByUserId` to resolve `viewerProfileId` — so it's threaded straight through with no
+ * additional query.
  */
 export const dynamic = 'force-dynamic';
 
@@ -132,6 +137,7 @@ export default async function NemesisHomePage() {
         <h2 className="mb-3 text-lg font-semibold">History</h2>
         <NemesisHistoryList
           viewerProfileId={viewerProfileId}
+          viewerHandle={profile.handle}
           entries={historyPage.data}
           dayResultsByPairingId={dayResultsByPairingId}
         />
