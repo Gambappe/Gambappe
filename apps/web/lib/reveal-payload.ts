@@ -298,6 +298,16 @@ async function computeNemesisFlipBlock(
     you_wins: after.you,
     opponent_wins: after.opponent,
     week_label: weekLabel,
+    // design-diff audit (mockup's inline "STAMP REPLY ▾" on the daily reveal card, §6): the
+    // props `ReactionStampsPanel` needs to mount inline here, same panel `NemesisMatchupCard`
+    // already uses on `/nemesis`. `pairing` above is already the full `PairingPublic` returned
+    // by `getCurrentPairingForProfile` -> `buildPairingPublic` (nemesis/service.ts), which has
+    // ALREADY run the SW10-T4 `getTodayPairingReactions` read (block-severance-aware, §14.3) to
+    // populate `pairing.today_reactions` — reusing it here costs no extra query and guarantees
+    // this block can never disagree with `/nemesis`'s own read of "today's stamps".
+    pairing_id: pairing.id,
+    side_profile_ids: { a: pairing.a.profile_id, b: pairing.b.profile_id },
+    today_stamps: pairing.today_reactions ?? null,
   };
 }
 

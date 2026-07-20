@@ -1002,6 +1002,147 @@ test.describe('reveal sequence (§10.3, WS7-T3)', () => {
   });
 
   /**
+   * design-diff audit: mocked-payload branch-coverage for the inline reply picker
+   * (`ReactionStampsPanel`, mounted as a sibling of `NemesisFlip` in `RevealSequence`) — same
+   * rationale as the `nemesis_flip` block above: the TRIGGER itself (the reveal payload actually
+   * carrying real `pairing_id`/`side_profile_ids`/`today_stamps`) is
+   * `test/integration/nemesis-flip-payload.test.ts`'s real-Postgres coverage and
+   * `e2e/nemesis-reveal-reply.spec.ts`'s real-HTTP reply-round-trip coverage; these cases only
+   * exercise `RevealSequence`'s own branching once it already has a `nemesis_flip` shape in hand.
+   */
+  test('a nemesis_flip with pairing_id/side_profile_ids mounts the reply panel for a claimed participant', async ({
+    page,
+  }) => {
+    const { question } = await seedQuestion(
+      {},
+      { status: 'revealed', outcome: 'yes', crowdYesAtLock: 6, crowdNoAtLock: 4, revealedAt: new Date() },
+    );
+    const viewerProfileId = '018f1e2b-0000-7000-8000-0000000000e1';
+    const opponentProfileId = '018f1e2b-0000-7000-8000-0000000000e2';
+
+    await page.route('**/api/v1/me', (route) =>
+      route.fulfill({
+        status: 200,
+        json: {
+          data: {
+            ...FRESH_ME_BODY.data,
+            profile: { ...FRESH_ME_BODY.data.profile, profile_id: viewerProfileId, kind: 'claimed' },
+          },
+        },
+      }),
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000fe',
+            question_id: question.id,
+            profile_id: viewerProfileId,
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'win',
+            edge: 0.37,
+          },
+          result: 'win',
+          edge: 0.37,
+          percentile: 82,
+          streak: { current: 4, best: 4, delta: 1, freeze_used: false, broken_run: null },
+          badges: [],
+          nemesis_flip: {
+            opponent_handle: 'Maria O.',
+            opponent_side: 'no',
+            opponent_side_label: 'No it will not',
+            opponent_entry_cents: 27,
+            narration: 'You takes the lead, 3–2, with 1 questions left.',
+            you_wins: 3,
+            opponent_wins: 2,
+            week_label: 'Week of Jul 13 · Day 3',
+            pairing_id: '018f1e2b-0000-7000-8000-0000000000aa',
+            side_profile_ids: { a: viewerProfileId, b: opponentProfileId },
+            today_stamps: { a: null, b: null },
+          },
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    await expect(page.getByTestId('nemesis-flip')).toBeVisible();
+    // Alongside, not nested inside, the flip card.
+    const panel = page.getByTestId('reaction-stamps-panel');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId('reaction-Lucky')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('a nemesis_flip WITHOUT pairing_id/side_profile_ids (older-payload contract-sequencing case): NemesisFlip still renders, no reply panel', async ({
+    page,
+  }) => {
+    const { question } = await seedQuestion(
+      {},
+      { status: 'revealed', outcome: 'yes', crowdYesAtLock: 6, crowdNoAtLock: 4, revealedAt: new Date() },
+    );
+
+    await page.route('**/api/v1/me', (route) =>
+      route.fulfill({
+        status: 200,
+        json: {
+          data: {
+            ...FRESH_ME_BODY.data,
+            profile: { ...FRESH_ME_BODY.data.profile, kind: 'claimed' },
+          },
+        },
+      }),
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000ff',
+            question_id: question.id,
+            profile_id: '018f1e2b-0000-7000-8000-0000000000e1',
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'win',
+            edge: 0.37,
+          },
+          result: 'win',
+          edge: 0.37,
+          percentile: 82,
+          streak: { current: 4, best: 4, delta: 1, freeze_used: false, broken_run: null },
+          badges: [],
+          // `.nullish()` fields simply absent — matches an old cached/rolling-deploy response
+          // shape from before this task's contract change.
+          nemesis_flip: {
+            opponent_handle: 'Maria O.',
+            opponent_side: 'no',
+            opponent_side_label: 'No it will not',
+            opponent_entry_cents: 27,
+            narration: 'You takes the lead, 3–2, with 1 questions left.',
+            you_wins: 3,
+            opponent_wins: 2,
+            week_label: 'Week of Jul 13 · Day 3',
+          },
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    await expect(page.getByTestId('nemesis-flip')).toBeVisible();
+    await expect(page.getByTestId('reaction-stamps-panel')).toHaveCount(0);
+  });
+
+  /**
    * SW10-T3(b) (wiring-gaps doc §4 SW10-T3): mocked-payload branch-coverage for the
    * `duo_tandem` UI branching — same rationale as the `nemesis_flip` block above. The TRIGGER
    * itself (`computeDuoTandemBlock` off a real seeded duo + partner pick) is proven by

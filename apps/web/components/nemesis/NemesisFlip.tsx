@@ -34,6 +34,11 @@ export interface NemesisFlipProps {
  * the client until the reveal payload does, well after lock, undo, and grading. `RevealSequence`
  * mounts this once, alongside (never replacing) the existing result stamp/streak/share content,
  * gated on the `nemesis` flag and an active pairing.
+ *
+ * design-diff audit: `RevealSequence` also mounts `ReactionStampsPanel` (the inline
+ * "STAMP REPLY ▾" affordance from `docs/mockups/swipe-ux.html`) as a SIBLING right after this
+ * component, not nested inside it — this component stays presentational-only; the interactive,
+ * self-fetching reply picker is that panel's job.
  */
 export function NemesisFlip({
   opponentHandle,

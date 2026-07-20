@@ -40,6 +40,7 @@ import {
 } from '@receipts/db';
 import { buildMarket, buildNemesisPairing, buildPick, buildProfile, buildQuestion, buildSeason, computeEdge } from '@receipts/db/testing';
 import { buildRevealPayload } from '@/lib/reveal-payload';
+import { submitPairingReaction } from '@/lib/nemesis/reactions';
 
 const dbUrl = process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
 const redisUrl = process.env.TEST_REDIS_URL ?? process.env.REDIS_URL ?? 'redis://localhost:6379';
@@ -189,7 +190,7 @@ describe('buildRevealPayload — nemesis_flip mechanical condition (SW10-T1)', (
       makeClaimedProfile({ handle: 'Viewer H.' }),
       makeClaimedProfile({ handle: 'Opponent H.' }),
     ]);
-    await makePairing(seasonId, viewer.id, opponent.id, { scoreA: 0, scoreB: 0 });
+    const pairingId = await makePairing(seasonId, viewer.id, opponent.id, { scoreA: 0, scoreB: 0 });
 
     const qId = await makeRevealedDailyQuestion(0, { yesLabel: 'Yes it will', noLabel: 'No it will not' });
     await makePick(qId, viewer.id, { side: 'yes', result: 'win', edge: computeEdge('yes', 0.6, true), yesPriceAtEntry: 0.6 });
@@ -202,6 +203,36 @@ describe('buildRevealPayload — nemesis_flip mechanical condition (SW10-T1)', (
     expect(flip!.opponent_side).toBe('no');
     expect(flip!.opponent_side_label).toBe('No it will not');
     expect(flip!.opponent_entry_cents).toBe(40); // side=no, yesPriceAtEntry=0.6 -> 1-0.6=0.4 -> 40c
+    // design-diff audit: the fields `ReactionStampsPanel` needs to mount inline on this card.
+    expect(flip!.pairing_id).toBe(pairingId);
+    expect(flip!.side_profile_ids).toEqual({ a: viewer.id, b: opponent.id });
+    // Neither side has stamped today yet.
+    expect(flip!.today_stamps).toEqual({ a: null, b: null });
+  });
+
+  it('today_stamps reflects a real posted reaction — the SAME read `pairing.today_reactions` on /nemesis uses (SW10-T4), not a re-derived query', async () => {
+    const seasonId = await makeSeasonRow();
+    const [viewer, opponent] = await Promise.all([
+      makeClaimedProfile({ handle: 'Viewer H.' }),
+      makeClaimedProfile({ handle: 'Opponent H.' }),
+    ]);
+    const pairingId = await makePairing(seasonId, viewer.id, opponent.id, { scoreA: 0, scoreB: 0 });
+
+    const qId = await makeRevealedDailyQuestion(0);
+    await makePick(qId, viewer.id, { side: 'yes', result: 'win', edge: computeEdge('yes', 0.6, true), yesPriceAtEntry: 0.6 });
+    await makePick(qId, opponent.id, { side: 'no', result: 'loss', edge: computeEdge('no', 0.6, false), yesPriceAtEntry: 0.6 });
+
+    const question = await getQuestionById(db, qId);
+    const at = new Date(`${question!.questionDate}T20:05:00Z`);
+    await submitPairingReaction(
+      db,
+      { pairingId, profileId: opponent.id, profileKind: 'claimed', emoji: 'Lucky' },
+      at,
+    );
+
+    const payload = await getPayloadFor(qId, viewer.id);
+    const flip = payload.viewer!.nemesis_flip;
+    expect(flip!.today_stamps).toEqual({ a: null, b: 'Lucky' });
   });
 
   it('viewer no-pick: the whole `viewer` block is absent, hence no flip block (impossible-state case)', async () => {
