@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T04:43:57.027Z",
+  "updated_at": "2026-07-20T05:19:58.213Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1732,13 +1732,13 @@
       "phase": "SP2",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": "Spec: docs/plans/sw-revamp-wiring-gaps.md §4 SW10-T3. (a) partner chip needs a NEW side-free partner_pick_today field on GET /duo/current (.nullish(), core-first; getTodayDailyQuestion lookup; minute-truncated picked_at); (b) duo_tandem block fires AT REVEAL inside the existing viewer gate, single mount in RevealSequence next to SW10-T1's section.",
-      "status": "claimed",
+      "note": "Implemented: (a) partner_pick_today on GET /duo/current + PartnerLockedChip in SwipeBallot footer; (b) duo_tandem on revealViewerSchema, computeDuoTandemBlock in reveal-payload.ts, DuoTandem mounted in RevealSequence alongside NemesisFlip. Unit+integration+e2e tests added, pnpm verify green (build via direct next build per known sandbox proxy issue).",
+      "status": "in_review",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw10-t3-duo-tandem",
       "pr": null,
       "claimed_at": "2026-07-20T04:43:55.566Z",
-      "updated_at": "2026-07-20T04:43:55.566Z"
+      "updated_at": "2026-07-20T05:19:58.212Z"
     },
     "SW10-T4": {
       "title": "Wire ReactionStamps into /vs/[pairingId] [contract-change]",
