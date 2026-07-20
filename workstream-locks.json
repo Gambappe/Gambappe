@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T07:00:00.431Z",
+  "updated_at": "2026-07-20T07:04:31.789Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1863,12 +1863,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "noQuestionToday/tomorrowTeaser hardcoded 9:00 ET; WS15-T7 moved open to 03:00 ET (midnight PT). Copy now derives from the constant.",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws15-t8-open-time-copy",
       "pr": "https://github.com/Gambappe/Gambappe/pull/96",
       "claimed_at": "2026-07-20T06:56:17.016Z",
-      "updated_at": "2026-07-20T07:00:00.430Z"
+      "updated_at": "2026-07-20T07:04:31.789Z"
     }
   }
 }
