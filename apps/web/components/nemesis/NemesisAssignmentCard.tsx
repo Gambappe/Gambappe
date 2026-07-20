@@ -48,7 +48,7 @@ export function NemesisAssignmentCard({
   return (
     <div
       data-testid="nemesis-assignment-card"
-      className={`bg-paper text-ink overflow-hidden rounded-lg shadow-[0_14px_34px_rgba(0,0,0,0.35)] ${className}`}
+      className={`bg-bg overflow-hidden rounded-lg shadow-[0_14px_34px_rgba(0,0,0,0.35)] ${className}`}
     >
       <div className="flex items-center justify-between px-4 pt-3 font-mono text-[10px] tracking-widest uppercase">
         <span className="text-muted">{`Week of ${formatShortDate(weekStart)}`}</span>

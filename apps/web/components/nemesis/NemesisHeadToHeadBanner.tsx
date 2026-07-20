@@ -1,3 +1,4 @@
+import { formatShortDate } from '@/lib/format-et';
 import type { VerdictOutcome } from './VerdictCard';
 
 export interface NemesisHeadToHeadBannerProps {
@@ -5,6 +6,13 @@ export interface NemesisHeadToHeadBannerProps {
   opponentHandle: string;
   viewerScore: number;
   opponentScore: number;
+  /** The settled pairing's `week_start` (`YYYY-MM-DD`) — when present, renders a "Week of
+   * {date} / Verdict" eyebrow above the split, the same topbar treatment
+   * `NemesisAssignmentCard` uses for its "Week of {date} / Assignment day" row (one eyebrow
+   * convention for both nemesis-week split moments). Optional so existing callers that don't
+   * have a promoted entry in hand (`NemesisHistoryList`'s per-row banners, which already print
+   * their own inline "week of ..." line beneath the row) keep rendering without it.  */
+  weekStart?: string;
   /** Same authoritative outcome `VerdictCard` renders for this entry — used only to decide
    * which side dims (never re-derived from the raw scores here), because a tiebreak week can
    * have `viewerScore === opponentScore` and still carry a real `won`/`lost` outcome (§SW10-T2's
@@ -77,6 +85,7 @@ export function NemesisHeadToHeadBanner({
   viewerScore,
   opponentScore,
   outcome,
+  weekStart,
   className = '',
 }: NemesisHeadToHeadBannerProps) {
   const total = viewerScore + opponentScore;
@@ -88,9 +97,15 @@ export function NemesisHeadToHeadBanner({
 
   return (
     <div dir="ltr" data-testid="head-to-head-banner" className={`space-y-2 ${className}`}>
-      <div className="bg-bg relative flex overflow-hidden rounded-lg">
+      {weekStart ? (
+        <div className="flex items-center justify-between font-mono text-[10px] tracking-widest uppercase">
+          <span className="text-muted">{`Week of ${formatShortDate(weekStart)}`}</span>
+          <span className="text-gold font-semibold">Verdict</span>
+        </div>
+      ) : null}
+      <div className="bg-bg relative flex h-24 overflow-hidden rounded-lg">
         <div
-          className={`flex min-w-0 flex-1 items-center px-3 py-3 pr-6 ${VIEWER_HALF.half} ${dim.viewer}`}
+          className={`flex min-w-0 flex-1 items-center px-4 pr-8 ${VIEWER_HALF.half} ${dim.viewer}`}
         >
           <span className="font-display min-w-0 truncate text-lg leading-none font-bold uppercase">
             {viewerHandle}
@@ -104,7 +119,7 @@ export function NemesisHeadToHeadBanner({
           {viewerScore}–{opponentScore}
         </div>
         <div
-          className={`flex min-w-0 flex-1 items-center justify-end px-3 py-3 pl-6 text-right ${OPPONENT_HALF.half} ${dim.opponent}`}
+          className={`flex min-w-0 flex-1 items-center justify-end px-4 pl-8 text-right ${OPPONENT_HALF.half} ${dim.opponent}`}
         >
           <span className="font-display min-w-0 truncate text-lg leading-none font-bold uppercase">
             {opponentHandle}

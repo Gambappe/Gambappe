@@ -159,6 +159,7 @@ export default async function NemesisHomePage() {
             viewerScore={promotedEntry.my_score}
             opponentScore={promotedEntry.their_score}
             outcome={promotedVerdict.outcome}
+            weekStart={promotedEntry.week_start}
           />
           <RematchPanel
             viewerProfileId={viewerProfileId}
