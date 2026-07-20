@@ -5,7 +5,7 @@ import type { MarketSide, QuestionPublic } from '@receipts/core';
 import { copy, shareCopy } from '@/lib/copy';
 import { postAnalyticsEvent } from '@/lib/analytics-client';
 import { DEFAULT_PICK_SOURCE, type PickInputSource } from '@/lib/pick-input-source';
-import { formatEtClock } from '@/lib/format-et';
+import { formatClock } from '@/lib/format-et';
 import { ApiClientError, fetchMe, placePick, undoPick } from '@/lib/pick-client';
 import { canPick, canUndo, needsAgeGate } from '@/lib/pick-eligibility';
 import {
@@ -291,7 +291,7 @@ export function ViewerStrip({
           {copy.question.yourPickLabel}: {sideLabel}
         </p>
         <p className="text-muted text-xs">
-          {copy.question.comeBackAt(formatEtClock(question.reveal_at))}
+          {copy.question.comeBackAt(formatClock(question.reveal_at))}
         </p>
         {undoable ? (
           <button

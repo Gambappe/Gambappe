@@ -10,7 +10,7 @@ import {
   sideAxisPair,
 } from '@receipts/ui';
 import { copy, hushCopy } from '@/lib/copy';
-import { formatEtClock } from '@/lib/format-et';
+import { formatClock } from '@/lib/format-et';
 import { DeckStage } from './DeckStage';
 import { DeckStates } from './DeckStates';
 
@@ -84,7 +84,7 @@ export function QuestionStateView({
                 serverOffsetMs={serverOffsetMs}
                 label={copy.question.opensLabel}
               />
-              <p className="text-muted text-xs">{formatEtClock(question.open_at)}</p>
+              <p className="text-muted text-xs">{formatClock(question.open_at)}</p>
             </div>
           )}
 
@@ -114,7 +114,7 @@ export function QuestionStateView({
                 label={copy.question.locksInLabel}
               />
               <p className="text-muted text-xs">
-                {copy.question.crowdLocksAt(formatEtClock(question.lock_at))}
+                {copy.question.crowdLocksAt(formatClock(question.lock_at))}
               </p>
             </div>
           )}

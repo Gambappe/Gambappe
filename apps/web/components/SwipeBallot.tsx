@@ -20,7 +20,7 @@ import {
   tintOpacity,
 } from '@receipts/ui';
 import { ballotCopy, copy } from '@/lib/copy';
-import { formatEtClock } from '@/lib/format-et';
+import { formatClock } from '@/lib/format-et';
 import type { PickInputSource } from '@/lib/pick-input-source';
 import type { CachedPick } from '@/lib/pick-storage';
 import { haptic, useDragCommit } from '@/lib/use-drag-commit';
@@ -230,16 +230,16 @@ export function SwipeBallot({
         <ReceiptSlip
           sideLabel={sideLabel}
           entryCents={entryCents}
-          pickedAtLabel={formatEtClock(pick.pickedAtIso)}
+          pickedAtLabel={formatClock(pick.pickedAtIso)}
           serial={`№ ${question.question_date ?? question.slug.slice(0, 10)}`}
-          sealedNote={ballotCopy.crowdSealed(formatEtClock(question.lock_at))}
+          sealedNote={ballotCopy.crowdSealed(formatClock(question.lock_at))}
           secondsLeft={secondsLeft}
           onUndo={handleUndo}
           disabled={disabled}
           reducedMotion={reducedMotion}
         />
         <p className="text-muted px-1 font-mono text-xs">
-          {copy.question.comeBackAt(formatEtClock(question.reveal_at))}
+          {copy.question.comeBackAt(formatClock(question.reveal_at))}
         </p>
         {partnerChip}
       </div>
@@ -353,7 +353,7 @@ export function SwipeBallot({
             noLabel={noLabel}
             yesProbability={yesProbability}
             venue={`${question.venue.toUpperCase()} · LIVE`}
-            lockLabel={`LOCKS ${formatEtClock(question.lock_at)}`}
+            lockLabel={`LOCKS ${formatClock(question.lock_at)}`}
             overlay={
               <>
                 {showPreview ? (
