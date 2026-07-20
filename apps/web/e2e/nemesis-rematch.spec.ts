@@ -1,9 +1,20 @@
 /**
  * WS5-T5 E2E: the rematch-request flow on `/nemesis` (design doc §8.4 step 0, §9.2
  * `POST /rematch-requests*`) through REAL HTTP routes against real Postgres — `RematchPanel`
- * (inside `NemesisHistoryList`) now calls `/api/v1/rematch-requests*` instead of the deleted
- * mock backend (`lib/nemesis/mock-api.ts`, see `/nemesis/page.tsx`'s header for the handoff).
+ * (inside `NemesisHistoryList`, or promoted directly onto `/nemesis` as primary content, see
+ * below) now calls `/api/v1/rematch-requests*` instead of the deleted mock backend
+ * (`lib/nemesis/mock-api.ts`, see `/nemesis/page.tsx`'s header for the handoff).
  *
+ * Structural redesign (design-diff audit): `/nemesis` is now a state machine
+ * (`selectNemesisPageState`, `lib/nemesis/page-state.ts`) that shows exactly one of
+ * assignment/verdict/empty as primary content. Every pairing seeded in this file omits a
+ * `status` override, so `buildNemesisPairing`'s default (`'completed'`) applies — with no active
+ * pairing and this as the viewer's only history entry, `getCurrentPairingForProfile` returns
+ * `null` and this pairing becomes the promoted "verdict state" entry (`NemesisHeadToHeadBanner`
+ * + `RematchPanel`/`VerdictCard`, rendered directly on `/nemesis`, not nested inside a history
+ * row) — which is exactly the flow this suite already exercised, just relocated on the page.
+ *
+
  * SW10-T2: the "ask for a rematch" affordance is now `VerdictCard`'s rematch-by-swipe close
  * (`VerdictSwipeCard`, wired in `RematchPanel`) instead of the old plain "Request rematch"
  * button + confirm dialog — a click-driven flow can't literally survive becoming a swipe. This
@@ -202,9 +213,11 @@ test.describe('/nemesis rematch-request flow (§8.4 step 0, §9.2, real Postgres
     ]);
 
     await page.goto('/nemesis');
-    // Scoped to the history row's link specifically — SW10-T2's verdict card ALSO prints the
-    // opponent's handle in its own copy line, so a bare `getByText` now matches both.
-    await expect(page.getByRole('link', { name: opponent!.handle as string })).toBeVisible();
+    // Structural redesign: with no active pairing and this pairing as the only (non-cancelled)
+    // history entry, `/nemesis` promotes it into the primary "verdict state" (`selectNemesisPageState`,
+    // `lib/nemesis/page-state.ts`) rather than rendering it as a row inside the history list below —
+    // so it's asserted on the verdict-state container, not a history-row link.
+    await expect(page.getByTestId('nemesis-verdict-state')).toBeVisible();
 
     // SW10-T2: `VerdictCard`'s always-present "Run it back" tap button is the accessible
     // equivalent of a right-swipe (D-SW9 affirmative-right) — it fires the same
