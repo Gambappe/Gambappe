@@ -126,8 +126,11 @@ export function ViewerStrip({
     // question-state + identity are all confirmed — a claimed profile id is needed to tell the
     // partner apart from the viewer's own entry in `duo.partners`. Best-effort: any failure (not
     // claimed, not in a duo, network error) just leaves the chip unrendered, matching
-    // `DuoHubClient`'s own best-effort `loadCurrent` posture.
-    if (!duoQueue || question.status !== 'open' || me.status !== 'ready') return;
+    // `DuoHubClient`'s own best-effort `loadCurrent` posture. Also requires `swipeBallot` — the
+    // chip only ever renders inside that branch below, so fetching without it would just be
+    // wasted network traffic for every claimed viewer on every page view (fable review of
+    // PR #90).
+    if (!duoQueue || !swipeBallot || question.status !== 'open' || me.status !== 'ready') return;
     let cancelled = false;
     const viewerProfileId = me.profileId;
     fetchCurrentDuo()
@@ -147,7 +150,7 @@ export function ViewerStrip({
     return () => {
       cancelled = true;
     };
-  }, [duoQueue, question.status, me]);
+  }, [duoQueue, swipeBallot, question.status, me]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

@@ -26,13 +26,24 @@ import {
   getMarketById,
   getQuestionById,
   markets,
+  nemesisPairings,
   picks,
   profiles,
   questions,
+  seasons,
   type Db,
   type ProfileRow,
 } from '@receipts/db';
-import { buildDuo, buildMarket, buildPick, buildProfile, buildQuestion, computeEdge } from '@receipts/db/testing';
+import {
+  buildDuo,
+  buildMarket,
+  buildNemesisPairing,
+  buildPick,
+  buildProfile,
+  buildQuestion,
+  buildSeason,
+  computeEdge,
+} from '@receipts/db/testing';
 import { buildRevealPayload } from '@/lib/reveal-payload';
 
 const dbUrl = process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
@@ -61,11 +72,12 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await db.execute(
-    sql`TRUNCATE TABLE duo_match_questions, duo_matches, duos, picks, questions, markets, profiles RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE TABLE duo_match_questions, duo_matches, duos, pairing_questions, nemesis_pairings, seasons, picks, questions, markets, profiles RESTART IDENTITY CASCADE`,
   );
 });
 
 const ORIGINAL_FLAG_DUO_QUEUE = process.env.FLAG_DUO_QUEUE;
+const ORIGINAL_FLAG_NEMESIS = process.env.FLAG_NEMESIS;
 
 beforeEach(() => {
   process.env.FLAG_DUO_QUEUE = 'true';
@@ -73,6 +85,7 @@ beforeEach(() => {
 
 afterEach(() => {
   process.env.FLAG_DUO_QUEUE = ORIGINAL_FLAG_DUO_QUEUE;
+  process.env.FLAG_NEMESIS = ORIGINAL_FLAG_NEMESIS;
 });
 
 async function makeClaimedProfile(overrides: Partial<ProfileRow> = {}): Promise<ProfileRow> {
@@ -84,6 +97,21 @@ async function makeActiveDuo(memberAId: string, memberBId: string): Promise<stri
   const [a, b] = memberAId < memberBId ? [memberAId, memberBId] : [memberBId, memberAId];
   const [inserted] = await db.insert(duos).values(buildDuo(a, b, { status: 'active' })).returning();
   return inserted!.id;
+}
+
+/** Real nemesis-pairing machinery (mirrors `nemesis-flip-payload.test.ts`'s own helpers) — used
+ * only by the "both blocks populate together" test below, which needs a genuine second
+ * relationship (a nemesis pairing) alongside the duo, both covering the SAME question. */
+async function makeSeasonRow(weekStart: string): Promise<string> {
+  const [row] = await db.insert(seasons).values(buildSeason({ startsOn: weekStart, endsOn: '2026-09-28' })).returning();
+  return row!.id;
+}
+
+async function makeNemesisPairing(seasonId: string, weekStart: string, profileAId: string, profileBId: string): Promise<void> {
+  await db
+    .insert(nemesisPairings)
+    .values(buildNemesisPairing(seasonId, profileAId, profileBId, { weekStart, status: 'active', scoreA: 0, scoreB: 0 }))
+    .returning();
 }
 
 /** A real, revealed `daily` question. */
@@ -223,9 +251,7 @@ describe('buildRevealPayload — duo_tandem mechanical condition (SW10-T3)', () 
     expect(payload.viewer!.result).toBe('win');
   });
 
-  it('is independent of nemesis_flip: both blocks populate together when the viewer is in both a duo and a mutual pick exists', async () => {
-    // Establishes the doc's "stack both blocks, don't branch between them" AC without needing a
-    // real nemesis pairing — asserts duo_tandem alone is unaffected by nemesis_flip being null.
+  it('is independent of nemesis_flip when only a duo exists: duo_tandem populates, nemesis_flip stays null', async () => {
     const [viewer, partner] = await Promise.all([makeClaimedProfile(), makeClaimedProfile()]);
     await makeActiveDuo(viewer.id, partner.id);
 
@@ -236,6 +262,34 @@ describe('buildRevealPayload — duo_tandem mechanical condition (SW10-T3)', () 
     const payload = await getPayloadFor(qId, viewer.id);
     expect(payload.viewer!.duo_tandem).not.toBeNull();
     expect(payload.viewer!.nemesis_flip).toBeNull(); // no nemesis pairing seeded — independently null
+  });
+
+  it('BOTH blocks populate together for the same viewer on the same question (fable review of PR #90 — the one-sided version above only proved nemesis_flip stays null when absent, not that both fire together)', async () => {
+    const WEEK_START = '2026-07-13'; // a Monday
+    const [viewer, duoPartner, nemesisOpponent] = await Promise.all([
+      makeClaimedProfile({ handle: 'Viewer H.' }),
+      makeClaimedProfile({ handle: 'Duo Partner H.' }),
+      makeClaimedProfile({ handle: 'Nemesis Opponent H.' }),
+    ]);
+    await makeActiveDuo(viewer.id, duoPartner.id);
+    const seasonId = await makeSeasonRow(WEEK_START);
+    await makeNemesisPairing(seasonId, WEEK_START, viewer.id, nemesisOpponent.id);
+
+    // One real daily question, dated inside the nemesis pairing's week, that all THREE profiles
+    // pick — proving the viewer can be in both relationships at once and have both blocks
+    // populate from the SAME reveal, not two separately-mocked scenarios.
+    const qId = await makeRevealedDailyQuestion({ questionDate: '2026-07-14' });
+    await makePick(qId, viewer.id, { side: 'yes', result: 'win', edge: computeEdge('yes', 0.6, true), yesPriceAtEntry: 0.6 });
+    await makePick(qId, duoPartner.id, { side: 'no', result: 'loss', edge: computeEdge('no', 0.6, false), yesPriceAtEntry: 0.6 });
+    await makePick(qId, nemesisOpponent.id, { side: 'no', result: 'loss', edge: computeEdge('no', 0.6, false), yesPriceAtEntry: 0.6 });
+
+    process.env.FLAG_NEMESIS = 'true';
+    const payload = await getPayloadFor(qId, viewer.id);
+
+    expect(payload.viewer!.duo_tandem).not.toBeNull();
+    expect(payload.viewer!.duo_tandem!.partner_handle).toBe('Duo Partner H.');
+    expect(payload.viewer!.nemesis_flip).not.toBeNull();
+    expect(payload.viewer!.nemesis_flip!.opponent_handle).toBe('Nemesis Opponent H.');
   });
 });
 
