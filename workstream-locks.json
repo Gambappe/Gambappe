@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T06:16:29.195Z",
+  "updated_at": "2026-07-20T06:26:19.548Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1830,6 +1830,19 @@
       "pr": "https://github.com/Gambappe/Gambappe/pull/92",
       "claimed_at": "2026-07-20T05:53:41.065Z",
       "updated_at": "2026-07-20T06:01:07.742Z"
+    },
+    "WS15-T6": {
+      "title": "Composer guardrail: default question_date to ET-today; reject past lock_at",
+      "phase": "P0",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "A daily composed for a stale date (curator's local TZ behind ET) creates a stillborn question: all lifecycle times past, invisible on the ET-keyed today lookup. Bit staging 2026-07-20 02:19 ET.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-20T06:26:19.534Z"
     }
   }
 }
