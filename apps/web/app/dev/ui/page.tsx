@@ -56,7 +56,11 @@ export default function UiGalleryPage() {
       <section data-testid="gallery-ballotcard" className="space-y-3">
         <h2 className="text-muted text-sm font-semibold uppercase">BallotCard</h2>
         <div className="bg-bg relative rounded-md p-6">
-          <div className="mx-auto max-w-[260px]">
+          <div className="relative mx-auto max-w-[260px]">
+            {/* Design-diff audit fix: `UnderCard` no longer carries a hardcoded `relative` (see
+                its own doc comment), so this wrapper — its actual positioning containing block —
+                needs one explicitly, or the `absolute` peek escapes to the outer full-width tile
+                instead of tracking this 260px card. */}
             <UnderCard
               label="TOMORROW · opens 12:00 AM PT"
               className="absolute inset-x-6 top-8 scale-95"
