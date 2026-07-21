@@ -143,4 +143,30 @@ describe('NemesisHeadToHeadBanner', () => {
     );
     expect(withoutDots).not.toContain('rounded-full border-2');
   });
+
+  it('renders the "Week of {date} / Verdict" eyebrow when weekStart is given, and omits it otherwise', () => {
+    const withWeekStart = renderToStaticMarkup(
+      <NemesisHeadToHeadBanner
+        viewerHandle="You"
+        opponentHandle="Them"
+        viewerScore={4}
+        opponentScore={1}
+        outcome="won"
+        weekStart="2026-07-13"
+      />,
+    );
+    expect(withWeekStart).toContain('Week of Jul 13');
+    expect(withWeekStart).toContain('Verdict');
+
+    const withoutWeekStart = renderToStaticMarkup(
+      <NemesisHeadToHeadBanner
+        viewerHandle="You"
+        opponentHandle="Them"
+        viewerScore={4}
+        opponentScore={1}
+        outcome="won"
+      />,
+    );
+    expect(withoutWeekStart).not.toContain('Week of');
+  });
 });

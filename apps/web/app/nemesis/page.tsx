@@ -109,10 +109,15 @@ export default async function NemesisHomePage() {
   // however many `daily` rows a given environment happens to have actually seeded. Real data,
   // not fabricated: it's just derived from `week_start` math instead of a data-dependent row
   // count, so it can never drift from the verdict exhibit's own count (`deriveWeekDayResults`
-  // below uses the same constant). `hasBonusQuestion` stays row-count-derived — whether a
-  // nemesis_bonus row exists this week is real per-pairing data, not a fixed calendar fact.
+  // below uses the same constant). `bonusQuestionCount` stays row-count-derived — the real number
+  // of nemesis_bonus rows this week (§8.8: 2-3, or 0 on the documented fallback) is per-pairing
+  // data, not a fixed calendar fact — and is a real COUNT, not a boolean: an earlier pass reduced
+  // it to `hasBonusQuestion` and then hard-coded the displayed number to "+1", which no real week
+  // can actually have.
   const sharedDayCount = NEMESIS_SHARED_WEEK_DAYS;
-  const hasBonusQuestion = pairing ? pairing.scoreboard.some((row) => row.kind === 'nemesis_bonus') : false;
+  const bonusQuestionCount = pairing
+    ? pairing.scoreboard.filter((row) => row.kind === 'nemesis_bonus').length
+    : 0;
 
   const promotedEntry = pageState.kind === 'verdict' ? pageState.entry : null;
 
@@ -155,7 +160,7 @@ export default async function NemesisHomePage() {
             isRematch={pairing.is_rematch}
             weekStart={pairing.week_start}
             sharedDayCount={sharedDayCount}
-            hasBonusQuestion={hasBonusQuestion}
+            bonusQuestionCount={bonusQuestionCount}
           />
         </div>
       ) : null}

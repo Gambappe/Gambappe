@@ -96,16 +96,16 @@ export function scoreMarginFromHistory(entry: Pick<NemesisHistoryEntry, 'my_scor
 }
 
 /**
- * The week-strip dots for `VerdictCard`, viewer-relative — re-pinned in fable review round 4
- * after round 3's head-to-head "who took the day" model was found to contradict the real scorer
+ * Per-row viewer-relative day result — re-pinned in fable review round 4 after round 3's
+ * head-to-head "who took the day" model was found to contradict the real scorer
  * (`scoreNemesisWeek`, `packages/engine/src/scoring.ts`, awards each side's point independently —
  * a both-win day gives BOTH players +1 — so the dots have to mirror the viewer's own accrual, not
  * a comparison between sides, or the strip would contradict the `my_score`/`their_score` printed
  * above it). `win`/`loss` iff the viewer picked that row and was graded that way; `pending` while
  * the row is unsettled (masked pre-lock, or graded `null`); `neutral` for a `void` row or a row
- * the viewer never picked — the scorer awards nothing in either case. Every scoreboard row is
- * included, nemesis-bonus rows too (`question_date: null`) — `nemesis:conclude` counts those
- * toward the score, so dropping them would desync the dots from `my_score`/`their_score`.
+ * the viewer never picked — the scorer awards nothing in either case. Shared by both
+ * `deriveDayResults` and `deriveWeekDayResults` below — the two differ only in which rows they
+ * feed it and how they're keyed/counted, not in the per-row result rule itself.
  */
 function dayResultForRow(row: Pick<PairingScoreboardRow, 'a' | 'b'>, viewerIsA: boolean): DayResult {
   const own = viewerIsA ? row.a : row.b;
@@ -117,6 +117,16 @@ function dayResultForRow(row: Pick<PairingScoreboardRow, 'a' | 'b'>, viewerIsA: 
   return 'pending';
 }
 
+/**
+ * Row-order-based day results, one per scoreboard row — INCLUDES the nemesis-bonus row
+ * (`question_date: null`), since `nemesis:conclude` counts it toward the score and dropping it
+ * would desync this list from `my_score`/`their_score`. No current production caller (design-diff
+ * audit: the day-by-day dot strip that used to render this moved to `NemesisHeadToHeadBanner`'s
+ * own strip, which needs exactly `NEMESIS_SHARED_WEEK_DAYS` calendar-keyed entries instead — see
+ * `deriveWeekDayResults` below — not this row-order shape); kept, and still exercised directly by
+ * `test/nemesis/verdict.test.ts`, as the score-accurate row-order variant for any future caller
+ * that needs per-row (not per-calendar-day) results.
+ */
 export function deriveDayResults(
   scoreboard: readonly PairingScoreboardRow[],
   viewerProfileId: string,

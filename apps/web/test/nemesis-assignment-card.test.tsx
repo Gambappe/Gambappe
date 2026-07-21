@@ -15,7 +15,7 @@ const OPPONENT: PairingSide = {
   rating: { glicko_rating: 1550.4, glicko_rd: 80, games_count: 40, accuracy_percentile: 72 },
 };
 
-const BASE = { opponent: OPPONENT, isRematch: false, weekStart: '2026-07-13', sharedDayCount: 5, hasBonusQuestion: false };
+const BASE = { opponent: OPPONENT, isRematch: false, weekStart: '2026-07-13', sharedDayCount: 5, bonusQuestionCount: 0 };
 
 describe('NemesisAssignmentCard', () => {
   it('shows the literal "VS" badge, never a score — assignment day is before any picks land', () => {
@@ -63,14 +63,20 @@ describe('NemesisAssignmentCard', () => {
     expect(html).not.toContain('rating');
   });
 
-  it('renders one empty dot per shared day, real (not fabricated) bonus flag included', () => {
-    const html = renderToStaticMarkup(<NemesisAssignmentCard {...BASE} sharedDayCount={5} hasBonusQuestion />);
+  it('renders one empty dot per shared day, and the real (not fabricated) bonus count', () => {
+    const html = renderToStaticMarkup(
+      <NemesisAssignmentCard {...BASE} sharedDayCount={5} bonusQuestionCount={3} />,
+    );
     expect(html.match(/rounded-full border-2/g)?.length).toBe(5);
-    expect(html.toLowerCase()).toContain('bonus');
+    // §8.8: real weeks carry 2-3 nemesis_bonus questions (or 0) — never a hard-coded count, so
+    // this asserts the actual number passed in is what renders, not a fixed "+1" or "+2".
+    expect(html).toContain('+3 bonus');
   });
 
-  it('renders no day strip, and no bonus flag, when sharedDayCount is zero', () => {
-    const html = renderToStaticMarkup(<NemesisAssignmentCard {...BASE} sharedDayCount={0} hasBonusQuestion />);
+  it('renders no day strip, and no bonus row, when sharedDayCount and bonusQuestionCount are zero', () => {
+    const html = renderToStaticMarkup(
+      <NemesisAssignmentCard {...BASE} sharedDayCount={0} bonusQuestionCount={0} />,
+    );
     expect(html).not.toContain('rounded-full border-2');
     expect(html.toLowerCase()).not.toContain('bonus');
   });

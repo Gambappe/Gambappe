@@ -5,12 +5,14 @@ import { DrawBadge } from './DrawBadge';
 
 export type VerdictOutcome = 'won' | 'lost' | 'drew';
 
-/** One scoreboard row's dot, viewer-relative (SW10-T2, `lib/nemesis/verdict.ts`'s
- * `deriveDayResults`): `win`/`loss` iff the viewer picked and was graded that way, `pending`
- * while the row is unsettled, and `neutral` (renamed from the original "split" — this is never a
- * head-to-head "who took the day" comparison, just the viewer's own row) for a void row or a row
- * the viewer didn't pick at all. Rendered by `NemesisHeadToHeadBanner`'s day-strip now, not this
- * card (design-diff audit — see that file's header for why the strip moved out from here). */
+/** One day's dot, viewer-relative (SW10-T2, `lib/nemesis/verdict.ts`'s shared
+ * `dayResultForRow`, fed by either `deriveDayResults` or the calendar-keyed
+ * `deriveWeekDayResults` production actually uses): `win`/`loss` iff the viewer picked and was
+ * graded that way, `pending` while the row is unsettled, and `neutral` (renamed from the original
+ * "split" — this is never a head-to-head "who took the day" comparison, just the viewer's own
+ * row) for a void row or a row the viewer didn't pick at all. Rendered by
+ * `NemesisHeadToHeadBanner`'s day-strip now, not this card (design-diff audit — see that file's
+ * header for why the strip moved out from here). */
 export type DayResult = 'win' | 'loss' | 'neutral' | 'pending';
 
 export interface VerdictCardProps {

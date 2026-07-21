@@ -15,9 +15,12 @@ export interface NemesisAssignmentCardProps {
    * from the real row count, which could under-count in a sparsely-seeded dev DB and drift from
    * the verdict exhibit's own dot count). Powers the "THE WEEK" empty-dot strip. */
   sharedDayCount: number;
-  /** Whether this week has a `nemesis_bonus` row — real, not the mockup's fabricated "+2 BONUS"
-   * count. */
-  hasBonusQuestion: boolean;
+  /** The real number of `nemesis_bonus` rows this week (§8.8: 2–3 per pairing, or 0 on the
+   * documented fallback — never fabricated like the mockup's own hardcoded "+2 BONUS"). Design-
+   * diff audit (round 8): an earlier pass collapsed this to a boolean and then hard-coded the
+   * displayed count to "+1", which is real-week-impossible (0/2/3 only) and exactly the kind of
+   * fabricated number this prop's own doc comment claims to avoid. */
+  bonusQuestionCount: number;
   className?: string;
 }
 
@@ -72,7 +75,7 @@ export interface NemesisAssignmentCardProps {
  *
  * Design-diff audit (round 3): the topbar's padding matches the mockup's own `.topbar
  * {padding:8px 14px 4px}` proportionally (not literally — see round 4 below). The "THE WEEK"
- * day-count strip (`sharedDayCount` empty dots, `hasBonusQuestion` real bonus flag) now renders
+ * day-count strip (`sharedDayCount` empty dots, `bonusQuestionCount` real bonus count) now renders
  * too — an earlier pass skipped it as needing data this app doesn't model, which turned out to
  * be wrong: the pairing's scoreboard already carries every shared question the moment it's
  * assigned.
@@ -114,7 +117,7 @@ export function NemesisAssignmentCard({
   isRematch,
   weekStart,
   sharedDayCount,
-  hasBonusQuestion,
+  bonusQuestionCount,
   className = '',
 }: NemesisAssignmentCardProps) {
   return (
@@ -156,7 +159,11 @@ export function NemesisAssignmentCard({
           {Array.from({ length: sharedDayCount }, (_, i) => (
             <span key={i} className="border-muted h-[15px] w-[15px] rounded-full border-2" />
           ))}
-          {hasBonusQuestion ? <span className="ml-auto">+1 bonus</span> : null}
+          {bonusQuestionCount > 0 ? (
+            <span className="ml-auto">
+              +{bonusQuestionCount} bonus
+            </span>
+          ) : null}
         </div>
       ) : null}
 
