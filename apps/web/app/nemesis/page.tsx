@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { NEMESIS_MIN_PICKS, now } from '@receipts/core';
 import { getProfileByUserId } from '@receipts/db';
@@ -47,11 +46,11 @@ import type { PairingSide } from '@/lib/nemesis/types';
  * The aggregate history list (every past pairing, not just the most recent) has its own private
  * `/nemesis/history` route now, same reasoning as the `/nemesis/matchup` split — this page is
  * about the CURRENT nemesis-week moment; a full lifetime list is a distinct, separate concern the
- * mockup doesn't even show on the same exhibit. A plain text link below the primary content is
- * the only thing threading the two together. `getNemesisHistoryPage` is still fetched here (not
- * just on the history route) because `selectNemesisPageState` needs the most recent entry to
- * decide whether to promote it into the `verdict` state above — that's a determination this page
- * still owns, only the LIST RENDERING moved out.
+ * mockup doesn't even show on the same exhibit. No on-page link to it (explicit design feedback
+ * on an earlier version of this page) — reached directly by URL for now. `getNemesisHistoryPage`
+ * is still fetched here (not just on the history route) because `selectNemesisPageState` needs
+ * the most recent entry to decide whether to promote it into the `verdict` state above — that's
+ * a determination this page still owns, only the LIST RENDERING moved out.
  *
  * WS5-T4: resolves the real viewer via `auth()` + `getProfileByUserId` (mirroring
  * `/claim/page.tsx`'s own direct `auth()` use — no `Request`-argument-free identity resolver
@@ -173,10 +172,6 @@ export default async function NemesisHomePage() {
           {NEMESIS_MIN_PICKS} graded picks.
         </p>
       ) : null}
-
-      <Link href="/nemesis/history" className="text-side-a text-sm font-medium underline underline-offset-2">
-        History
-      </Link>
     </main>
   );
 }

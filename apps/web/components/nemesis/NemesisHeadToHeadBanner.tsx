@@ -9,9 +9,8 @@ export interface NemesisHeadToHeadBannerProps {
   /** The settled pairing's `week_start` (`YYYY-MM-DD`) — when present, renders a "Week of
    * {date} / Verdict" eyebrow above the split, the same topbar treatment
    * `NemesisAssignmentCard` uses for its "Week of {date} / Assignment day" row (one eyebrow
-   * convention for both nemesis-week split moments). Optional so existing callers that don't
-   * have a promoted entry in hand (`NemesisHistoryList`'s per-row banners, which already print
-   * their own inline "week of ..." line beneath the row) keep rendering without it.  */
+   * convention for both nemesis-week split moments). Optional so this component's own render
+   * tests can exercise it without a real date. */
   weekStart?: string;
   /** Same authoritative outcome `VerdictCard` renders for this entry — used only to decide
    * which side dims (never re-derived from the raw scores here), because a tiebreak week can
@@ -91,8 +90,9 @@ function loserOpacity(outcome: VerdictOutcome): { viewer: string; opponent: stri
  * still owns the day-by-day dot strip and the winner/loser narrative line; this only adds the
  * handle-vs-handle scoreline the mockup's exhibit pairs with it.
  *
- * Pure/presentational — mounted directly above the row's `VerdictCard` in `NemesisHistoryList`,
- * for every entry that gets one (i.e. not `cancelled`, per that file's `verdictFor()` convention).
+ * Pure/presentational — mounted directly above `RematchPanel` for the promoted `verdict` state
+ * on `/nemesis` (`app/nemesis/page.tsx`), the only remaining caller now that the plain lifetime
+ * history list (`/nemesis/history`) dropped this banner for a compact read-only row instead.
  */
 export function NemesisHeadToHeadBanner({
   viewerHandle,

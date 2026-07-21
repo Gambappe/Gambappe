@@ -266,15 +266,15 @@ test.describe('/nemesis page-state redesign (real Postgres + HTTP)', () => {
     await expect(verdictState).toBeVisible();
     await expect(verdictState).toContainText(newerOpponent.handle as string);
 
-    // No aggregate list on this page anymore — just a link out to the dedicated history route.
-    const historyLink = page.getByRole('link', { name: 'History' });
-    await expect(historyLink).toBeVisible();
-    await expect(historyLink).toHaveAttribute('href', '/nemesis/history');
-
+    // No aggregate list, and no on-page link to it either (explicit design feedback) — the
+    // dedicated history route is reached directly.
     await page.goto('/nemesis/history');
     // Both weeks show up here, unfiltered — including the one promoted to primary content on
     // `/nemesis` itself, since there's no competing primary content on this page to dedupe against.
     await expect(page.getByRole('link', { name: newerOpponent.handle as string })).toBeVisible();
     await expect(page.getByRole('link', { name: olderOpponent.handle as string })).toBeVisible();
+    // Read-only rows: no rematch-request affordance here — that's a current-week action that
+    // belongs on the promoted verdict state on /nemesis, not the lifetime history list.
+    await expect(page.getByTestId('rematch-request-button')).toHaveCount(0);
   });
 });
