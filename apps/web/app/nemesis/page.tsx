@@ -100,7 +100,7 @@ export default async function NemesisHomePage() {
 
   const promotedEntry = pageState.kind === 'verdict' ? pageState.entry : null;
 
-  // SW10-T2: the verdict card's week-strip dots come from the promoted entry's own pairing
+  // SW10-T2: the head-to-head banner's day-strip dots come from the promoted entry's own pairing
   // scoreboard (`GET /pairings/:id`, `pairingPublicSchema.scoreboard`) — the history entry itself
   // (`nemesisHistoryEntrySchema`) carries no per-day data. Only fetched for the promoted entry
   // (not every history entry) now that the aggregate list itself lives at `/nemesis/history` —
@@ -122,7 +122,6 @@ export default async function NemesisHomePage() {
           youWins: promotedEntry.my_score,
           opponentWins: promotedEntry.their_score,
           scoreMargin: scoreMarginFromHistory(promotedEntry),
-          dayResults: promotedDayResults,
         };
       })()
     : null;
@@ -148,6 +147,7 @@ export default async function NemesisHomePage() {
             opponentScore={promotedEntry.their_score}
             outcome={promotedVerdict.outcome}
             weekStart={promotedEntry.week_start}
+            dayResults={promotedDayResults}
           />
           <RematchPanel
             viewerProfileId={viewerProfileId}

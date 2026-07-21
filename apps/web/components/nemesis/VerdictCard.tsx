@@ -1,6 +1,7 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, Ref } from 'react';
-import { sideAxisPair } from '@receipts/ui';
+import { sideAxisPair, Stamp } from '@receipts/ui';
 import { nemesisCopy } from '@/lib/copy';
+import { DrawBadge } from './DrawBadge';
 
 export type VerdictOutcome = 'won' | 'lost' | 'drew';
 
@@ -8,7 +9,8 @@ export type VerdictOutcome = 'won' | 'lost' | 'drew';
  * `deriveDayResults`): `win`/`loss` iff the viewer picked and was graded that way, `pending`
  * while the row is unsettled, and `neutral` (renamed from the original "split" — this is never a
  * head-to-head "who took the day" comparison, just the viewer's own row) for a void row or a row
- * the viewer didn't pick at all. */
+ * the viewer didn't pick at all. Rendered by `NemesisHeadToHeadBanner`'s day-strip now, not this
+ * card (design-diff audit — see that file's header for why the strip moved out from here). */
 export type DayResult = 'win' | 'loss' | 'neutral' | 'pending';
 
 export interface VerdictCardProps {
@@ -21,8 +23,6 @@ export interface VerdictCardProps {
    * nemesis history entry; this is plain score margin, which does). Powers the loser card's
    * richer line (P3). */
   scoreMargin: number;
-  /** Per-day results, viewer-relative, for the week strip. */
-  dayResults: ReadonlyArray<DayResult>;
   /** The week's closing swipe (rematch-by-swipe): right = run it back, left = new fate. Omit for
    * a static/spectator card. */
   onRunItBack?: () => void;
@@ -48,12 +48,31 @@ export interface VerdictCardProps {
   dragSurfaceArmed?: boolean;
 }
 
-const DOT: Record<string, string> = {
-  win: 'bg-win border-win',
-  loss: 'bg-loss border-loss',
-  neutral: 'bg-muted border-muted',
-  pending: 'border-muted',
-};
+/** `Stamp`'s variants are `win`/`loss`/`void`/`called_it`/`pending` (§10.4) — none spell "drew",
+ * so a `drew` outcome falls back to `DrawBadge`, the established sibling `NemesisHistoryList`'s
+ * own `OutcomeBadge` already uses for exactly this gap. */
+function OutcomeStamp({ outcome, className }: { outcome: VerdictOutcome; className?: string }) {
+  if (outcome === 'won') return <Stamp variant="win" className={className} />;
+  if (outcome === 'lost') return <Stamp variant="loss" className={className} />;
+  return <DrawBadge className={className} />;
+}
+
+/** Radial-dot "ticket perforation" strip (design-diff audit: `docs/mockups/swipe-ux.html`'s
+ * `.perf` — `background-image:radial-gradient(circle at center,var(--ink) 40%,transparent 46%);
+ * background-size:10px 10px`). Punches through to this app's own page background (`bg-bg`
+ * `#0B0B0D`, the same token the mockup's `--ink` stands in for) so the holes read as real cut-outs
+ * regardless of what's actually behind the card. Bleeds edge-to-edge via a negative margin that
+ * exactly cancels the card's own horizontal padding (`px-4` = 16px), inset from the card's own
+ * top/bottom edge by the same 8px proportion the mockup's `padding:16px ...` / `margin-top:-8px`
+ * pairing produces. */
+function Perforation({ edge }: { edge: 'top' | 'bottom' }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`-mx-4 h-[5px] shrink-0 bg-[radial-gradient(circle_at_center,#0B0B0D_40%,transparent_46%)] bg-center [background-size:10px_10px] ${edge === 'top' ? '-mt-2' : '-mb-2'}`}
+    />
+  );
+}
 
 /**
  * SW5-T2 · The Friday nemesis verdict card (swipe-ux-plan §2.9, P3). Both players get one; the
@@ -64,9 +83,31 @@ const DOT: Record<string, string> = {
  * buttons remain the keyboard/AT path either way). Styled as the mockup's own `.hint` row
  * (`docs/mockups/swipe-ux.html` line ~881: `← NEW FATE` / `RUN IT BACK →`) — plain arrow-prefixed
  * text indicating swipe direction, not a bordered button box — while staying real `<button>`
- * elements underneath for the keyboard/AT path (design-diff audit: an earlier version boxed
- * these in a rounded border, which the mockup never does here). Presentational: omit the
- * handlers for the public spectator card.
+ * elements underneath for the keyboard/AT path. Presentational: omit the handlers for the public
+ * spectator card.
+ *
+ * Design-diff audit (round 2, mockup fidelity pass): the paper face now matches the mockup's
+ * `.card` base treatment it was missing — a `.qcat`-style small-caps label row ("THE VERDICT" /
+ * the real score, `docs/mockups/swipe-ux.html` line 873's "LOSER'S CARD" / "W30" slot), the
+ * perforated top/bottom "ticket" edges (`.perf`), and the same faint horizontal paper-line
+ * background texture (`background-image:linear-gradient(rgba(20,20,20,.028) 1px,transparent
+ * 1px);background-size:100% 26px`). The outcome now ALSO gets its own small rotated stamp
+ * (`OutcomeStamp`, reusing `@receipts/ui`'s `Stamp`/this file's sibling `DrawBadge` — the exact
+ * `-7deg` rotated-label motif the mockup's own bottom-pinned `.stamp.loss` "TAKEN DOWN" uses,
+ * `docs/mockups/swipe-ux.html` line 876), below the heading and margin line. The score no longer
+ * repeats a second time next to the heading (the mockup shows it exactly once, in the `.vbolt`
+ * badge `NemesisHeadToHeadBanner` already renders) — it moved into the qcat row instead, so it's
+ * still real, still visible, just relocated to match where the mockup actually puts a meta line.
+ * The day-by-day dot strip moved OUT of this card entirely, to `NemesisHeadToHeadBanner`'s own
+ * strip below its score-tug bar — the mockup's `.dots` row sits between `.tug` and the loser's
+ * card, never inside it.
+ *
+ * Not reproduced: the mockup's own bespoke headline for this exhibit ("Dropped 3–2. Third
+ * straight week.") bakes in a losing-streak count this app doesn't track anywhere, and its body
+ * line ("...by 11 points of edge...") uses the exact "edge" framing this card's own copy is
+ * pinned against (`copy.ts`'s `verdictLoserLine`/`verdictWinnerLine` header) — both fabricated
+ * relative to `nemesisHistoryEntrySchema`'s real fields, so this keeps the existing
+ * margin-only heading/line instead of inventing either.
  */
 export function VerdictCard({
   outcome,
@@ -74,7 +115,6 @@ export function VerdictCard({
   youWins,
   opponentWins,
   scoreMargin,
-  dayResults,
   onRunItBack,
   onNewFate,
   className = '',
@@ -128,24 +168,24 @@ export function VerdictCard({
         ref={dragSurfaceRef}
         data-testid="verdict-card-face"
         data-armed={dragSurfaceArmed ? 'true' : 'false'}
-        className={`bg-paper text-ink relative flex flex-col gap-2 rounded-lg px-4 py-4 shadow-[0_14px_34px_rgba(0,0,0,0.5)] ${dragSurfaceHandlers ? 'touch-none select-none' : ''}`}
+        className={`bg-paper text-ink relative flex flex-col gap-2 overflow-hidden rounded-lg px-4 py-4 shadow-[0_14px_34px_rgba(0,0,0,0.5)] [background-image:linear-gradient(rgba(20,20,20,0.028)_1px,transparent_1px)] [background-size:100%_26px] ${dragSurfaceHandlers ? 'touch-none select-none' : ''}`}
         style={dragSurfaceStyle}
         {...dragSurfaceHandlers}
       >
-        <div className="flex items-baseline justify-between">
-          <h2 className="font-display text-2xl leading-none font-bold uppercase">{heading}</h2>
-          <span className="font-mono text-lg font-semibold">
-            {nemesisCopy.verdictScore(youWins, opponentWins)}
-          </span>
+        <Perforation edge="top" />
+
+        <div className="text-ink/50 flex items-center justify-between font-mono text-[8.5px] tracking-[0.2em] uppercase">
+          <span>The verdict</span>
+          <span>{nemesisCopy.verdictScore(youWins, opponentWins)}</span>
         </div>
 
-        <div dir="ltr" className="flex items-center gap-1.5" aria-hidden="true">
-          {dayResults.map((r, i) => (
-            <span key={i} className={`h-2.5 w-2.5 rounded-full border ${DOT[r] ?? DOT.pending}`} />
-          ))}
-        </div>
+        <h2 className="font-display text-2xl leading-none font-bold uppercase">{heading}</h2>
 
         <p className="text-ink/70 font-mono text-[11px] leading-relaxed">{line}</p>
+
+        <OutcomeStamp outcome={outcome} className="w-fit" />
+
+        <Perforation edge="bottom" />
       </div>
 
       {interactive ? (
