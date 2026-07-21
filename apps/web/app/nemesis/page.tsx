@@ -7,7 +7,12 @@ import { NemesisHeadToHeadBanner } from '@/components/nemesis/NemesisHeadToHeadB
 import { RematchPanel, type RematchVerdict } from '@/components/nemesis/RematchPanel';
 import type { DayResult } from '@/components/nemesis/VerdictCard';
 import { selectNemesisPageState } from '@/lib/nemesis/page-state';
-import { deriveDayResults, scoreMarginFromHistory, verdictOutcomeFromHistory } from '@/lib/nemesis/verdict';
+import {
+  deriveWeekDayResults,
+  NEMESIS_SHARED_WEEK_DAYS,
+  scoreMarginFromHistory,
+  verdictOutcomeFromHistory,
+} from '@/lib/nemesis/verdict';
 import {
   getCurrentPairingForProfile,
   getNemesisHistoryPage,
@@ -99,12 +104,14 @@ export default async function NemesisHomePage() {
   }
 
   // Design-diff audit: the assignment card's "THE WEEK" day-count strip (empty dots for the
-  // week ahead, no picks landed yet) — real data, not fabricated: `pairing.scoreboard` already
-  // carries every shared question for the whole week the moment the pairing exists (masking
-  // only nulls the RESULTS, not the rows themselves), so the daily-row count and whether a
-  // nemesis_bonus question exists this week are both known on assignment day, before anyone
-  // picks.
-  const sharedDayCount = pairing ? pairing.scoreboard.filter((row) => row.kind === 'daily').length : 0;
+  // week ahead, no picks landed yet) is ALWAYS `NEMESIS_SHARED_WEEK_DAYS` (7) — that's the whole
+  // definition of §8.8's shared set (`[week_start, week_start+6]`), not something to count off
+  // however many `daily` rows a given environment happens to have actually seeded. Real data,
+  // not fabricated: it's just derived from `week_start` math instead of a data-dependent row
+  // count, so it can never drift from the verdict exhibit's own count (`deriveWeekDayResults`
+  // below uses the same constant). `hasBonusQuestion` stays row-count-derived — whether a
+  // nemesis_bonus row exists this week is real per-pairing data, not a fixed calendar fact.
+  const sharedDayCount = NEMESIS_SHARED_WEEK_DAYS;
   const hasBonusQuestion = pairing ? pairing.scoreboard.some((row) => row.kind === 'nemesis_bonus') : false;
 
   const promotedEntry = pageState.kind === 'verdict' ? pageState.entry : null;
@@ -114,20 +121,14 @@ export default async function NemesisHomePage() {
   // (`nemesisHistoryEntrySchema`) carries no per-day data. Only fetched for the promoted entry
   // (not every history entry) now that the aggregate list itself lives at `/nemesis/history` —
   // that route derives its own day-results independently for whichever entries it renders.
-  // Filtered to `kind === 'daily'` before deriving: `deriveDayResults` itself deliberately
-  // INCLUDES the nemesis_bonus row (it counts toward the real score, so the scorer treats it as
-  // just another graded row) — but the mockup's "DAYS" strip is specifically a calendar-day
-  // count, and a per-week bonus question isn't a day. Filtering here, not in
-  // `deriveDayResults`, keeps that function's own score-aligned contract (and its existing
-  // tests) intact for whatever else reads it.
+  // `deriveWeekDayResults`, not `deriveDayResults`: the latter is row-order-based and
+  // deliberately INCLUDES the nemesis_bonus row (it counts toward the real score) — right for
+  // staying in sync with `my_score`/`their_score`, wrong for a calendar-day strip, which always
+  // wants exactly `NEMESIS_SHARED_WEEK_DAYS` dots regardless of how many real rows exist.
   const promotedPairing = promotedEntry ? await getPairingPublicById(db, promotedEntry.pairing_id, at) : null;
   const promotedDayResults: ReadonlyArray<DayResult> =
     promotedEntry && promotedPairing
-      ? deriveDayResults(
-          promotedPairing.scoreboard.filter((row) => row.kind === 'daily'),
-          viewerProfileId,
-          promotedPairing,
-        )
+      ? deriveWeekDayResults(promotedEntry.week_start, promotedPairing.scoreboard, viewerProfileId, promotedPairing)
       : [];
 
   const promotedVerdict: RematchVerdict | null = promotedEntry

@@ -9,11 +9,11 @@ export interface NemesisAssignmentCardProps {
   /** The pairing's `week_start` (`YYYY-MM-DD`) — powers the topbar eyebrow's real date, in place
    * of a fictional week number (see this file's header). */
   weekStart: string;
-  /** Real count of `kind === 'daily'` rows on this pairing's own scoreboard (`app/nemesis/
-   * page.tsx`) — the shared questions are already linked the moment the pairing exists (masking
-   * only nulls RESULTS, not rows), so this is known before anyone picks. Powers the "THE WEEK"
-   * empty-dot strip (design-diff audit — an earlier pass skipped this as needing data that
-   * turned out to already be available). */
+  /** `NEMESIS_SHARED_WEEK_DAYS` (7, `lib/nemesis/verdict.ts`) — the whole `[week_start,
+   * week_start+6]` shared-set definition, not a count of however many `daily` rows a given
+   * environment happens to have actually seeded (design-diff audit: an earlier pass derived it
+   * from the real row count, which could under-count in a sparsely-seeded dev DB and drift from
+   * the verdict exhibit's own dot count). Powers the "THE WEEK" empty-dot strip. */
   sharedDayCount: number;
   /** Whether this week has a `nemesis_bonus` row — real, not the mockup's fabricated "+2 BONUS"
    * count. */

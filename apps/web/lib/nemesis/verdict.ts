@@ -5,7 +5,17 @@
  * for a given viewer, never recomputes score/edge/tiebreak math, which is WS5-T3 scope).
  */
 import type { DayResult, VerdictOutcome } from '@/components/nemesis/VerdictCard';
+import { addDaysToDateString } from './clock';
 import type { NemesisHistoryEntry, PairingPublic, PairingScoreboardRow } from './types';
+
+/** §8.8's shared set is every `daily` question with `question_date` in `[week_start,
+ * week_start+6]` — 7 calendar days, always, by definition of that inclusive range. Both the
+ * "DAYS" strip on a settled week (`deriveWeekDayResults`) and the empty-dot count on assignment
+ * day (`app/nemesis/page.tsx`) key off this SAME constant, so the two exhibits always show the
+ * same number of dots regardless of how many of those 7 days actually have a real question row
+ * in a given environment (design-diff audit: they briefly didn't, in a sparsely-seeded dev DB
+ * where one calendar day's `daily` question had never been created). */
+export const NEMESIS_SHARED_WEEK_DAYS = 7;
 
 export type PairingOutcome = 'in_progress' | 'cancelled' | 'win' | 'loss' | 'draw' | 'unknown';
 
@@ -97,19 +107,50 @@ export function scoreMarginFromHistory(entry: Pick<NemesisHistoryEntry, 'my_scor
  * included, nemesis-bonus rows too (`question_date: null`) — `nemesis:conclude` counts those
  * toward the score, so dropping them would desync the dots from `my_score`/`their_score`.
  */
+function dayResultForRow(row: Pick<PairingScoreboardRow, 'a' | 'b'>, viewerIsA: boolean): DayResult {
+  const own = viewerIsA ? row.a : row.b;
+  if (!own) return 'neutral'; // no pick this row
+  if (own.result === 'void') return 'neutral';
+  if (own.result === 'win') return 'win';
+  if (own.result === 'loss') return 'loss';
+  // 'pending', or a null result — the row hasn't graded (or is still masked) yet.
+  return 'pending';
+}
+
 export function deriveDayResults(
   scoreboard: readonly PairingScoreboardRow[],
   viewerProfileId: string,
   pairing: Pick<PairingPublic, 'a' | 'b'>,
 ): DayResult[] {
   const viewerIsA = pairing.a.profile_id === viewerProfileId;
-  return scoreboard.map((row): DayResult => {
-    const own = viewerIsA ? row.a : row.b;
-    if (!own) return 'neutral'; // no pick this row
-    if (own.result === 'void') return 'neutral';
-    if (own.result === 'win') return 'win';
-    if (own.result === 'loss') return 'loss';
-    // 'pending', or a null result — the row hasn't graded (or is still masked) yet.
-    return 'pending';
+  return scoreboard.map((row) => dayResultForRow(row, viewerIsA));
+}
+
+/**
+ * The "DAYS" strip for `NemesisHeadToHeadBanner` (design-diff audit — moved out of `VerdictCard`
+ * in an earlier round; see that banner's own header) — ALWAYS `NEMESIS_SHARED_WEEK_DAYS` (7)
+ * entries, one per calendar day of the week, keyed by `question_date` rather than raw scoreboard
+ * row order. `deriveDayResults` above is deliberately row-order-based and INCLUDES the
+ * nemesis_bonus row (it counts toward the real score) — right for staying in sync with
+ * `my_score`/`their_score`, wrong for a calendar-day strip, which wants exactly one dot per real
+ * day and nothing else. A day with no matching `daily` row (sparse data, or a day the pairing's
+ * week hasn't reached yet) renders `neutral` — the same "nothing to report" bucket a void/no-pick
+ * row already uses — rather than being silently omitted and shrinking the strip.
+ */
+export function deriveWeekDayResults(
+  weekStart: string,
+  scoreboard: readonly PairingScoreboardRow[],
+  viewerProfileId: string,
+  pairing: Pick<PairingPublic, 'a' | 'b'>,
+): DayResult[] {
+  const viewerIsA = pairing.a.profile_id === viewerProfileId;
+  const byDate = new Map<string, PairingScoreboardRow>();
+  for (const row of scoreboard) {
+    if (row.kind === 'daily' && row.question_date) byDate.set(row.question_date, row);
+  }
+  return Array.from({ length: NEMESIS_SHARED_WEEK_DAYS }, (_, i) => {
+    const date = addDaysToDateString(weekStart, i);
+    const row = byDate.get(date);
+    return row ? dayResultForRow(row, viewerIsA) : 'neutral';
   });
 }

@@ -62,14 +62,15 @@ function OutcomeStamp({ outcome, className }: { outcome: VerdictOutcome; classNa
  * background-size:10px 10px`). Punches through to this app's own page background (`bg-bg`
  * `#0B0B0D`, the same token the mockup's `--ink` stands in for) so the holes read as real cut-outs
  * regardless of what's actually behind the card. Bleeds edge-to-edge via a negative margin that
- * exactly cancels the card's own horizontal padding (`px-4` = 16px), inset from the card's own
- * top/bottom edge by the same 8px proportion the mockup's `padding:16px ...` / `margin-top:-8px`
- * pairing produces. */
+ * exactly cancels the card's own 15px horizontal padding, inset from the card's own top/bottom
+ * edge by the exact mockup values too (`margin-top:-8px` against 16px top padding = 8px inset;
+ * `margin-bottom:-5px` against 13px bottom padding = 8px inset — same visual result, different
+ * numbers, because the mockup's own top/bottom padding aren't equal either). */
 function Perforation({ edge }: { edge: 'top' | 'bottom' }) {
   return (
     <div
       aria-hidden="true"
-      className={`-mx-4 h-[5px] shrink-0 bg-[radial-gradient(circle_at_center,#0B0B0D_40%,transparent_46%)] bg-center [background-size:10px_10px] ${edge === 'top' ? '-mt-2' : '-mb-2'}`}
+      className={`-mx-[15px] h-[5px] shrink-0 bg-[radial-gradient(circle_at_center,#0B0B0D_40%,transparent_46%)] bg-center [background-size:10px_10px] ${edge === 'top' ? '-mt-2' : '-mb-[5px]'}`}
     />
   );
 }
@@ -176,7 +177,7 @@ export function VerdictCard({
         ref={dragSurfaceRef}
         data-testid="verdict-card-face"
         data-armed={dragSurfaceArmed ? 'true' : 'false'}
-        className={`bg-paper text-ink relative mx-auto flex max-w-[80%] flex-col gap-2 overflow-hidden rounded-lg px-4 py-4 shadow-[0_14px_34px_rgba(0,0,0,0.5)] [background-image:linear-gradient(rgba(20,20,20,0.028)_1px,transparent_1px)] [background-size:100%_26px] ${dragSurfaceHandlers ? 'touch-none select-none' : ''}`}
+        className={`bg-paper text-ink relative mx-auto flex max-w-[80%] flex-col gap-2 overflow-hidden rounded-[10px] px-[15px] pt-4 pb-[13px] shadow-[0_14px_34px_rgba(0,0,0,0.5)] [background-image:linear-gradient(rgba(20,20,20,0.028)_1px,transparent_1px)] [background-size:100%_26px] ${dragSurfaceHandlers ? 'touch-none select-none' : ''}`}
         style={dragSurfaceStyle}
         {...dragSurfaceHandlers}
       >
