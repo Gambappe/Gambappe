@@ -27,14 +27,14 @@ import { SHELL_ROUTES, TabBar, resolveActiveTab } from '@/components/shell/TabBa
 const ROOMS = ['stack', 'sweat', 'rivals', 'crowd', 'you'] as const;
 
 describe('SHELL_ROUTES (seam 5)', () => {
-  it('points each room at its live destination (WS19-T2 flipped /sweat to its real room)', () => {
+  it('points each room at its live destination (/sweat, /crowd, /you all built)', () => {
     expect(SHELL_ROUTES).toEqual({
       '/': '/',
       // WS19-T2 · Sweat now points at its own route; the other unbuilt rooms still alias today's.
       '/sweat': '/sweat',
       '/rivals': '/nemesis',
-      '/crowd': '/q',
-      '/you': '/you', // WS22-T1 flipped this entry (seam 5) — the record room is built.
+      '/crowd': '/crowd', // WS22-T2 flip (seam 5)
+      '/you': '/you', // WS22-T1 flip (seam 5)
     });
   });
 });

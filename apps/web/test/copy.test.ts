@@ -4,6 +4,7 @@ import {
   CLAIM_NUDGE_COPY,
   CLAIM_PROMPT_CTA,
   CLAIM_PUBLICNESS_STATEMENT,
+  crowdCopy,
   obituaryCopy,
   shareCopy,
   stackCopy,
@@ -92,6 +93,14 @@ describe('stack-deck copy (WS18-T3)', () => {
       stackCopy.clearedBlurb,
       stackCopy.sweatLink,
     ].join(' ');
+    expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
+  });
+});
+
+/** WS22-T2 (§5 D-J7) `/crowd` boards copy — the same INV-8 money-word rule on this task's block. */
+describe('crowd boards copy (WS22-T2)', () => {
+  it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
+    const allCopy = Object.values(crowdCopy).join(' ');
     expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
   });
 });

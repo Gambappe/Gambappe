@@ -17,7 +17,7 @@ export const SHELL_ROUTES = {
   '/': '/',
   '/sweat': '/sweat', // WS19-T2 · flipped to the real open-positions room
   '/rivals': '/nemesis', // WS17-T2 flips → '/rivals'
-  '/crowd': '/q', // WS22-T2 flips → '/crowd'
+  '/crowd': '/crowd', // WS22-T2 (D-J7): the weekly leaderboards room now exists
   '/you': '/you', // WS22-T1 flipped → '/you' (record-first room, D-J7)
 } as const;
 
