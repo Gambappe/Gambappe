@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T09:48:55.482Z",
+  "updated_at": "2026-07-21T09:49:39.517Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1978,12 +1978,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS18-T2. Ghost-allowed via ghost cookie (mirror the pick route), rate-limited, optimistic toggle with rollback. Chips exported standalone; hosts (WS18-T3 end-state, WS22-T1 /you) import it.",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-opus-fohjki",
       "branch": "feat/ws18-t2-topic-follows",
       "pr": "https://github.com/Gambappe/Gambappe/pull/113",
       "claimed_at": "2026-07-21T09:31:46.339Z",
-      "updated_at": "2026-07-21T09:41:03.444Z"
+      "updated_at": "2026-07-21T09:49:39.516Z"
     },
     "WS18-T3": {
       "title": "The deck: single mixed stack on '/', up=skip, end-of-stack → sweat handoff",
