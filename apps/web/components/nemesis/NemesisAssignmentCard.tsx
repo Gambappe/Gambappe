@@ -78,14 +78,26 @@ export interface NemesisAssignmentCardProps {
  * assigned.
  *
  * Design-diff audit (round 4): every measurement here is the mockup's own px value scaled ×1.4,
- * not copied literally. The mockup's phone screen (`.ph .scr`) is 250px wide — a demo-frame
- * convenience, not this app's real target — while this card renders in a real mobile content
- * column (`max-w-xl` minus `px-6`, ≈340-350px on a typical phone). Copying the mockup's pixel
- * values 1:1 (an earlier pass's mistake) reproduces its LAYOUT at roughly 70% of its actual
- * physical size, since a real phone viewport is meaningfully wider than the demo frame. ×1.4
- * (350/250) restores the mockup's own proportions — every width, height, padding, margin, and
- * font-size below is `Math.round(mockupPx * 1.4)` — while `em`-based letter-spacing and
- * percentage widths (already scale-invariant) are untouched.
+ * not copied literally. The mockup's phone screen (`.ph .scr`) is 250px wide with NO padding of
+ * its own — a demo-frame convenience, not this app's real target — while this card renders in a
+ * real mobile viewport (≈340-390px). Copying the mockup's pixel values 1:1 (an earlier pass's
+ * mistake) reproduces its LAYOUT at roughly 70% of its actual physical size, since a real phone
+ * viewport is meaningfully wider than the demo frame. ×1.4 (350/250) restores the mockup's own
+ * proportions — every width, height, padding, margin, and font-size below is
+ * `Math.round(mockupPx * 1.4)` — while `em`-based letter-spacing and percentage widths (already
+ * scale-invariant) are untouched.
+ *
+ * Design-diff audit (round 6): this card (and `app/nemesis/page.tsx`'s wrapping div) now cancel
+ * `<main>`'s own `px-6` page-shell margin via `-mx-6`, rendering flush to the real viewport edge —
+ * the mockup's `.scr` has ZERO padding of its own, so its `.topbar`/`.vsplit` insets ARE the full
+ * margin from the physical screen edge; stacking this card's own scaled insets (topbar `px-5`,
+ * vsplit `mx-[17px]`) on TOP of `<main>`'s separate 24px page margin (an earlier pass's mistake)
+ * doubled the effective margin the mockup never has, reading as noticeably wider gutters than the
+ * mockup's own tight-to-the-glass layout. Also dropped this card's own outer `rounded-lg
+ * shadow-[...]` box (an earlier pass invented it) — the mockup's assignment exhibit has no
+ * enclosing card wrapping the topbar/vsplit/week-strip/wells; they're independent flat pieces
+ * directly on the screen background, exactly like `NemesisHeadToHeadBanner`'s own structure (see
+ * that file's header) — this card was the one inconsistent sibling with a phantom box around it.
  *
  * Not reproduced (design-diff audit, flagged rather than silently dropped): the mockup's
  * per-player style-tag subtitle ("longshot chaser · early locker") and the "THE ENGINE'S CASE
@@ -106,10 +118,7 @@ export function NemesisAssignmentCard({
   className = '',
 }: NemesisAssignmentCardProps) {
   return (
-    <div
-      data-testid="nemesis-assignment-card"
-      className={`bg-bg overflow-hidden rounded-lg shadow-[0_14px_34px_rgba(0,0,0,0.35)] ${className}`}
-    >
+    <div data-testid="nemesis-assignment-card" className={className}>
       <div className="flex items-center justify-between px-5 pt-[11px] pb-[6px] font-mono text-[13px] uppercase">
         <span className="text-paper font-semibold tracking-[0.16em]">{`Week of ${formatShortDate(weekStart)}`}</span>
         <span className="text-gold tracking-[0.06em]">

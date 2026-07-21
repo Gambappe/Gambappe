@@ -123,10 +123,15 @@ const DOT: Record<DayResult, string> = {
  *
  * Design-diff audit (round 4): every measurement here is the mockup's own px value scaled ×1.4,
  * not copied literally — see `NemesisAssignmentCard`'s own round-4 note for why (this app's real
- * mobile content column, ≈340-350px, is meaningfully wider than the mockup's 250px demo phone
- * screen; copying its pixel values 1:1 reproduces the LAYOUT at roughly 70% of its actual
- * physical size). `em`-based letter-spacing and percentage widths are already scale-invariant
- * and stay as-is.
+ * mobile viewport, ≈340-390px, is meaningfully wider than the mockup's 250px demo phone screen;
+ * copying its pixel values 1:1 reproduces the LAYOUT at roughly 70% of its actual physical size).
+ * `em`-based letter-spacing and percentage widths are already scale-invariant and stay as-is.
+ *
+ * Design-diff audit (round 6): `app/nemesis/page.tsx`'s wrapping div now cancels `<main>`'s own
+ * `px-6` page-shell margin via `-mx-6` — see `NemesisAssignmentCard`'s own round-6 note for why
+ * (the mockup's `.scr` has zero padding of its own, so stacking `<main>`'s separate 24px page
+ * margin on top of this banner's own scaled insets, `mx-[17px]`/`px-5`, doubled the effective
+ * margin the mockup never has).
  *
  * Design-diff audit (round 5): names WRAP to a second line instead of truncating with an
  * ellipsis — see `NemesisAssignmentCard`'s own round-5 note for why (no mockup precedent either
