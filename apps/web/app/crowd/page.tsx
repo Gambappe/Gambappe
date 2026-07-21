@@ -18,7 +18,15 @@ import { getCrowdBoards } from '@/lib/leaderboard-page';
 import { CrowdBoards } from '@/components/crowd/CrowdBoards';
 import { crowdCopy } from '@/lib/copy';
 
-export const revalidate = 60; // §5 AC: /crowd is ISR, 60s (viewer-free HTML, INV-10)
+// Rendered per-request (SSR), NOT ISR. §5's AC sketches ISR-60s, but the page reads the DB at
+// render and (a) `next build` would prerender it with no/þunmigrated DB in CI (verify has no
+// DATABASE_URL; the e2e job builds before it migrates), and (b) an ISR snapshot can't reflect
+// standings seeded after the build (the WS22-T2 e2e seeds a winner and expects it live). Both
+// dissolve under force-dynamic. INV-10 is UNCHANGED: this render reads no cookies and resolves no
+// viewer identity (`getCrowdBoards(getDb())` takes only a Db), so the HTML is byte-identical for
+// every viewer — the row highlight still hydrates client-side. A CDN can still edge-cache it since
+// it's viewer-free. (Revisit true ISR — build-empty + on-demand revalidate — under WS23-T2.)
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: `Crowd — ${PRODUCT_NAME}`,
