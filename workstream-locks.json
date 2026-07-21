@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T19:26:18.899Z",
+  "updated_at": "2026-07-21T19:45:36.906Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2025,12 +2025,12 @@
       ],
       "mock_start_ok": true,
       "note": "Spec: docs/journeys-plan.md §5 WS19-T2. Force-dynamic viewer-scoped (ghost + claimed); SweatRow exported for WS18-T3; settle-when labels (LIVE/<7d weekday/~MON YYYY) soonest-first; reveal choreography plays at first settled view; owns its copy.ts block; flips SHELL_ROUTES.sweat.",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-opus-fohjki-agentP",
       "branch": null,
       "pr": null,
       "claimed_at": "2026-07-21T11:03:20.415Z",
-      "updated_at": "2026-07-21T11:37:04.176Z"
+      "updated_at": "2026-07-21T19:45:36.906Z"
     },
     "WS20-T1": {
       "title": "Engine: same-side price-edge day scoring [contract-change]",
