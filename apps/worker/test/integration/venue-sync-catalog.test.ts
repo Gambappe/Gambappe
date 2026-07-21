@@ -5,10 +5,11 @@
  */
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import type pg from 'pg';
+import { setTestClock } from '@receipts/core';
 import { connect, markets, questions, type Db } from '@receipts/db';
 import { buildMarket, buildQuestion } from '@receipts/db/testing';
 import { MockVenueAdapter } from '@receipts/venues/mock';
@@ -40,7 +41,17 @@ afterAll(async () => {
 });
 
 describe('venue:sync-catalog (§7.5)', () => {
+  // `runVenueSyncCatalog`'s own `at` parameter only stamps `yesPriceUpdatedAt` on upsert — it
+  // never reaches `MockVenueAdapter.listCandidateMarkets`'s closes-within-window filter, which
+  // reads the ambient clock (`now()`, `@receipts/core`) instead. Without pinning that clock to
+  // the same fixed `NOW` these tests pass as `at`, the filter compares each market's `closeTime`
+  // (computed relative to `NOW`) against the REAL wall-clock time, so every candidate silently
+  // drops out of the window once real time moves far enough past `NOW` — exactly what happened
+  // here (this suite's `NOW` predates the point where `apps/worker`'s CI runs today).
+  afterEach(() => setTestClock(null));
+
   it('upserts a candidate market from the adapter feed', async () => {
+    setTestClock(NOW);
     const adapter = new MockVenueAdapter('kalshi');
     adapter.addMarket({
       venueMarketId: 'SYNC-KNOWN-1',
@@ -63,6 +74,7 @@ describe('venue:sync-catalog (§7.5)', () => {
   });
 
   it('re-syncing updates the same row in place (idempotent upsert, price refreshed)', async () => {
+    setTestClock(new Date(NOW.getTime() + 60_000));
     const adapter = new MockVenueAdapter('kalshi');
     adapter.addMarket({
       venueMarketId: 'SYNC-KNOWN-1',
@@ -82,6 +94,7 @@ describe('venue:sync-catalog (§7.5)', () => {
   });
 
   it('flags a question-referenced market missing from the feed as stale_in_feed, keeping it', async () => {
+    setTestClock(NOW);
     const staleMarket = buildMarket({ venue: 'kalshi', venueMarketId: 'SYNC-STALE-1' });
     await db.insert(markets).values(staleMarket);
     const question = buildQuestion(staleMarket.id as string, {});
@@ -102,6 +115,7 @@ describe('venue:sync-catalog (§7.5)', () => {
   });
 
   it('clears stale_in_feed once the market reappears in the feed', async () => {
+    setTestClock(NOW);
     const adapter = new MockVenueAdapter('kalshi');
     adapter.addMarket({
       venueMarketId: 'SYNC-STALE-1',
