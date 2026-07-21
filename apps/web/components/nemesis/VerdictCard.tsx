@@ -123,12 +123,21 @@ function Perforation({ edge }: { edge: 'top' | 'bottom' }) {
  * Design-diff audit (round 4): every absolute measurement here (padding, radius, perforation,
  * qcat/heading font-sizes) is the mockup's own px value scaled ×1.4, not copied literally — an
  * earlier pass matched the mockup's raw pixels 1:1, which reproduces its layout at roughly 70%
- * of its actual physical size on a real mobile content column (≈340-350px) versus the mockup's
- * own 250px demo phone screen. Percentage widths (`max-w-[80%]`) and `em`-based tracking are
- * already scale-invariant and stay as-is. The heading's font-size is the mockup's own
- * EXHIBIT-SPECIFIC override for this card (15.5px, not the 22.5px base `.qh` rule — the mockup
- * shrinks the headline for this specific loser's-card instance) scaled the same way (×1.4 ≈
- * 22px).
+ * of its actual physical size on a real mobile viewport (≈340-390px) versus the mockup's own
+ * 250px demo phone screen. Percentage widths (`max-w-[80%]`) and `em`-based tracking are already
+ * scale-invariant and stay as-is. The heading's font-size is the mockup's own EXHIBIT-SPECIFIC
+ * override for this card (15.5px, not the 22.5px base `.qh` rule — the mockup shrinks the
+ * headline for this specific loser's-card instance) scaled the same way (×1.4 ≈ 22px).
+ *
+ * Design-diff audit (round 7): the action row gets its own `px-[42px]` (the mockup's own
+ * `.hint{padding:0 30px}`, scaled ×1.4) now that this card's root renders full-bleed edge-to-edge
+ * (`app/nemesis/page.tsx`'s round-6 `-mx-6`) — the row has no `max-w-[80%]` centering of its own
+ * (unlike the card face above it, the mockup's `.hint` spans the FULL screen width with only its
+ * own padding for inset), so without this it rendered flush against the real screen edges. This
+ * card's root is also full `flex-1` height now (round 6), and `app/nemesis/page.tsx`'s
+ * verdict-state wrapper cancels `<main>`'s own bottom `py-10` via `-mb-10` — `flex-1` only fills
+ * `<main>`'s CONTENT box (padding excluded), so without that the action row's `mt-auto` push
+ * landed 40px short of the footer, not flush against it as this task's own AC asks for.
  *
  * Not reproduced: the mockup's own bespoke headline for this exhibit ("Dropped 3–2. Third
  * straight week.") bakes in a losing-streak count this app doesn't track anywhere, and its body
@@ -221,7 +230,7 @@ export function VerdictCard({
       </div>
 
       {interactive ? (
-        <div dir="ltr" className="mt-auto flex gap-3">
+        <div dir="ltr" className="mt-auto flex gap-3 px-[42px]">
           {leftAction}
           {rightAction}
         </div>

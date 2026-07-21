@@ -161,7 +161,7 @@ export default async function NemesisHomePage() {
       ) : null}
 
       {pageState.kind === 'verdict' && promotedEntry && promotedVerdict ? (
-        <div data-testid="nemesis-verdict-state" className="-mx-6 flex flex-1 flex-col space-y-3">
+        <div data-testid="nemesis-verdict-state" className="-mx-6 -mb-10 flex flex-1 flex-col space-y-3">
           <NemesisHeadToHeadBanner
             viewerHandle={profile.handle}
             opponentHandle={promotedEntry.opponent.handle}
