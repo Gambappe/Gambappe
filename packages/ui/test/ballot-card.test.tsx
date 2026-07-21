@@ -64,6 +64,30 @@ describe('BallotCard', () => {
       expect(html).toContain(s);
     }
   });
+
+  // Design-diff audit: an earlier pass shipped this card with its ORIGINAL, pre-mockup-audit
+  // sizing untouched (only the new DeckTopbar got scaled) — nothing in this suite caught it
+  // before manual user review did. These pin the mockup-derived values (`docs/mockups/
+  // swipe-ux.html`'s `.card`/`.qh`/`.perf`, scaled ×1.4 — see this file's own header) so a
+  // regression back to the unscaled originals (e.g. `text-2xl`/`h-1.5`/no aspect ratio) fails
+  // the suite instead of needing another round of manual screenshot comparison.
+  it('sizes the card via the mockup\'s own 196:300 ratio, not a content-shrunk box', () => {
+    const html = renderToStaticMarkup(<BallotCard {...base} />);
+    expect(html).toContain('aspect-[98/150]');
+  });
+
+  it('scales the headline and eyebrow text to the mockup\'s own proportions (×1.4), not their original pre-audit sizing', () => {
+    const html = renderToStaticMarkup(<BallotCard {...base} />);
+    expect(html).toContain('text-[32px]'); // .qh 22.5px × 1.4
+    expect(html).toContain('text-[12px]'); // .qcat 8.5px × 1.4
+    expect(html).not.toContain('text-2xl');
+  });
+
+  it('punches the perforation at the mockup\'s own size and softness, not a narrower/harder-edged guess', () => {
+    const html = renderToStaticMarkup(<BallotCard {...base} />);
+    expect(html).toMatch(/40%,\s*transparent 46%/); // .perf gradient falloff, not the old 42%
+    expect(html).toContain('14px 14px'); // .perf background-size 10px × 1.4
+  });
 });
 
 describe('UnderCard', () => {

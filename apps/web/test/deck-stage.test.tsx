@@ -54,6 +54,16 @@ describe('DeckStage', () => {
     expect(html).toContain('CUTS');
   });
 
+  // Design-diff audit: pins the rail/stage measurements the mockup's own `.rail-l`/`.rail-r`
+  // (9px font, 26px width, scaled ×1.4) and `.scr` (no outer page chrome to stretch into, hence
+  // `min-h-[70dvh]` as the /dev/ui gallery's floor) call for — a regression back to the
+  // component's original pre-audit sizing wouldn't be caught by anything else in this suite.
+  it('sizes the rails and stage to the mockup\'s own proportions (×1.4), not their original pre-audit sizing', () => {
+    const html = renderToStaticMarkup(<DeckStage question={base} viewerSlot={null} />);
+    expect(html).toContain('text-[13px]'); // .rail-l/.rail-r font-size 9px × 1.4
+    expect(html).toContain('min-h-[70dvh]');
+  });
+
   it('renders the persistent topbar and threads the streak slot into it, empty when omitted', () => {
     const withSlot = renderToStaticMarkup(
       <DeckStage
