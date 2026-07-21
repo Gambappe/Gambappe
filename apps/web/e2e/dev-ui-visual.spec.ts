@@ -171,6 +171,22 @@ test.describe('SW10-T5 /dev/ui visual regression', () => {
     await expect(page.getByTestId('gallery-ticketcard')).toHaveScreenshot('ticketcard.png');
   });
 
+  test('TicketFrame (WS16-T3, paper + board tones)', async ({ page }) => {
+    await expect(page.getByTestId('gallery-ticketframe')).toHaveScreenshot('ticketframe.png');
+  });
+
+  test('PunchWell (WS16-T3, unpunched + punched)', async ({ page }) => {
+    await expect(page.getByTestId('gallery-punchwell')).toHaveScreenshot('punchwell.png');
+  });
+
+  test('TapeLabel (WS16-T3)', async ({ page }) => {
+    await expect(page.getByTestId('gallery-tapelabel')).toHaveScreenshot('tapelabel.png');
+  });
+
+  test('SameSideRow (WS16-T3)', async ({ page }) => {
+    await expect(page.getByTestId('gallery-samesiderow')).toHaveScreenshot('samesiderow.png');
+  });
+
   test('Stamp (all five variants)', async ({ page }) => {
     await expect(page.getByTestId('gallery-stamp')).toHaveScreenshot('stamp.png');
   });
