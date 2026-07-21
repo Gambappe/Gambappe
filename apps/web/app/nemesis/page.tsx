@@ -185,10 +185,6 @@ export default async function NemesisHomePage() {
             }
             verdict={promotedVerdict}
           />
-          {/* Reserves the space `VerdictCard`'s own fixed-to-the-viewport-bottom action row
-              occupies, so it never covers this block's own tail content (or the layout's
-              footer) once scrolled to the bottom — see that component's header. */}
-          <div aria-hidden="true" className="h-20" />
         </div>
       ) : null}
 

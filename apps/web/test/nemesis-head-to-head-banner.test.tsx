@@ -85,7 +85,7 @@ describe('NemesisHeadToHeadBanner', () => {
     expect(html).not.toContain('opacity-[0.55]');
   });
 
-  it('keeps the score badge structurally outside both truncating handle spans, so a long handle can never clip the score away', () => {
+  it('keeps the score badge structurally outside both wrapping handle spans, so a long handle can never clip the score away', () => {
     const html = renderToStaticMarkup(
       <NemesisHeadToHeadBanner
         viewerHandle="A Genuinely Extremely Long Display Handle That Would Overflow"
@@ -95,13 +95,12 @@ describe('NemesisHeadToHeadBanner', () => {
         outcome="won"
       />,
     );
-    // The score lives in its own centered badge element (`aria-hidden`, no `truncate` class),
-    // never inside either handle's own `truncate` span — so a long handle clipping itself can
-    // never clip the score along with it.
+    // The score lives in its own centered, absolutely-positioned badge element (`aria-hidden`) —
+    // a long handle WRAPS to a second line (design-diff audit round 5, no ellipsis) rather than
+    // overflowing into the badge's own space, so the badge's own markup never contains it.
     const badge = html.match(/<div aria-hidden="true"[^>]*>4–1<\/div>/);
     expect(badge).not.toBeNull();
-    expect(badge?.[0]).not.toContain('truncate');
-    const handleSpan = html.match(/<span class="[^"]*truncate[^"]*">A Genuinely[^<]*<\/span>/);
+    const handleSpan = html.match(/<span class="[^"]*break-words[^"]*">A Genuinely[^<]*<\/span>/);
     expect(handleSpan).not.toBeNull();
     expect(handleSpan?.[0]).not.toContain('4');
   });

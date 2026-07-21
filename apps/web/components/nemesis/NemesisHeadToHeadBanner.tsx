@@ -128,6 +128,11 @@ const DOT: Record<DayResult, string> = {
  * physical size). `em`-based letter-spacing and percentage widths are already scale-invariant
  * and stay as-is.
  *
+ * Design-diff audit (round 5): names WRAP to a second line instead of truncating with an
+ * ellipsis — see `NemesisAssignmentCard`'s own round-5 note for why (no mockup precedent either
+ * way; wrapping reads better than a clipped "SHOWCA…" for a real handle this app can't bound the
+ * length of).
+ *
  * Pure/presentational — mounted directly above `RematchPanel` for the promoted `verdict` state
  * on `/nemesis` (`app/nemesis/page.tsx`), the only remaining caller now that the plain lifetime
  * history list (`/nemesis/history`) dropped this banner for a compact read-only row instead.
@@ -159,9 +164,9 @@ export function NemesisHeadToHeadBanner({
       ) : null}
       <div className="bg-bg relative mx-[17px] mt-[11px] flex h-[109px] overflow-hidden rounded-[14px]">
         <div
-          className={`flex min-w-0 flex-1 items-center px-5 pr-[45px] ${VIEWER_HALF.half} ${dim.viewer}`}
+          className={`flex min-w-0 flex-1 items-center py-2 pr-[45px] pl-5 ${VIEWER_HALF.half} ${dim.viewer}`}
         >
-          <span className="font-display min-w-0 truncate text-2xl leading-none font-bold uppercase">
+          <span className="font-display min-w-0 text-2xl leading-tight font-bold break-words uppercase">
             {viewerHandle}
           </span>
         </div>
@@ -173,9 +178,9 @@ export function NemesisHeadToHeadBanner({
           {viewerScore}–{opponentScore}
         </div>
         <div
-          className={`flex min-w-0 flex-1 items-center justify-end pr-5 pl-[45px] text-right ${OPPONENT_HALF.half} ${dim.opponent}`}
+          className={`flex min-w-0 flex-1 items-center justify-end py-2 pr-5 pl-[45px] text-right ${OPPONENT_HALF.half} ${dim.opponent}`}
         >
-          <span className="font-display min-w-0 truncate text-2xl leading-none font-bold uppercase">
+          <span className="font-display min-w-0 text-2xl leading-tight font-bold break-words uppercase">
             {opponentHandle}
           </span>
         </div>

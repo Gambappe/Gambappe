@@ -44,6 +44,13 @@ export interface NemesisAssignmentCardProps {
  * (`.vsplit{margin:8px 12px 0;border-radius:10px}`, scaled), not flush/square — a structural
  * detail an earlier pass dropped.
  *
+ * Design-diff audit (round 5): names WRAP to a second line instead of truncating with an
+ * ellipsis (an earlier pass's `truncate`) — the mockup's own examples ("Fox #4821", "Maria O.")
+ * are short enough to never need either treatment, so there's no mockup precedent to match; a
+ * clipped "NEMESIS RI…" reads worse than two shorter lines for a real handle this app can't
+ * control the length of. Each half keeps extra inner (badge-side) padding so a wrapped second
+ * line still clears the center "VS" badge rather than running underneath it.
+ *
  * No fictional "WEEK 30"-style number: this codebase tracks only `week_start` dates (no
  * week-number concept anywhere), so the topbar eyebrow reuses the exact "Week of {short date}"
  * convention `lib/reveal-payload.ts`'s nemesis-flip narration already established for this same
@@ -111,8 +118,8 @@ export function NemesisAssignmentCard({
       </div>
 
       <div className="relative mx-[17px] mt-[11px] flex h-[146px] overflow-hidden rounded-[14px]">
-        <div className="flex min-w-0 flex-1 items-center bg-side-a/15 px-5">
-          <span className="font-display text-side-a min-w-0 truncate text-2xl leading-none font-bold uppercase">
+        <div className="flex min-w-0 flex-1 items-center bg-side-a/15 py-2 pr-[38px] pl-5">
+          <span className="font-display text-side-a min-w-0 text-2xl leading-tight font-bold break-words uppercase">
             You
           </span>
         </div>
@@ -123,8 +130,8 @@ export function NemesisAssignmentCard({
         >
           VS
         </div>
-        <div className="flex min-w-0 flex-1 items-center justify-end bg-side-b/15 px-5 text-right">
-          <span className="font-display text-side-b min-w-0 truncate text-2xl leading-none font-bold uppercase">
+        <div className="flex min-w-0 flex-1 items-center justify-end bg-side-b/15 py-2 pr-5 pl-[38px] text-right">
+          <span className="font-display text-side-b min-w-0 text-2xl leading-tight font-bold break-words uppercase">
             {opponent.handle}
           </span>
         </div>

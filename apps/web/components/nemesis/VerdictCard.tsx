@@ -82,10 +82,12 @@ function Perforation({ edge }: { edge: 'top' | 'bottom' }) {
  * engine deal a new stranger. Those two are the accessible axis-ordered controls; a
  * `SwipeBallot variant="verdict"` wraps them as the gesture in the DB-equipped session (the
  * buttons remain the keyboard/AT path either way). Styled as the mockup's own `.hint` row
- * (`docs/mockups/swipe-ux.html` line ~881: `← NEW FATE` / `RUN IT BACK →`) — plain arrow-prefixed
- * text indicating swipe direction, not a bordered button box — while staying real `<button>`
- * elements underneath for the keyboard/AT path. Presentational: omit the handlers for the public
- * spectator card.
+ * (`docs/mockups/swipe-ux.html` line 190-191, 881: `← NEW FATE` / `RUN IT BACK →`) exactly —
+ * plain, NORMAL-weight (not bold) arrow-prefixed text, colored by the swipe axis itself
+ * (`.hint .nn{color:var(--no)}` orange for New fate, `.hint .yy{color:var(--yes)}` blue for Run
+ * it back — this app's own `side-b`/`side-a` tokens are the same hex values), never gray/gold and
+ * never a bordered button box — while staying real `<button>` elements underneath for the
+ * keyboard/AT path. Presentational: omit the handlers for the public spectator card.
  *
  * Design-diff audit (round 2, mockup fidelity pass): the paper face now matches the mockup's
  * `.card` base treatment it was missing — a `.qcat`-style small-caps label row ("THE VERDICT" /
@@ -106,10 +108,17 @@ function Perforation({ edge }: { edge: 'top' | 'bottom' }) {
  * Design-diff audit (round 3): the card face is `max-w-[80%] mx-auto` — the mockup's own loser's
  * card is 180px inside a 250px phone screen (≈80% of the vsplit's own inset width, a
  * scale-invariant ratio — see round 4 below), a deliberately narrower, more compact "ticket"
- * than the full-bleed panel an earlier pass had. The action row is a `fixed inset-x-0 bottom-0`
- * bar (matching the mockup's own `.hint{position:absolute;bottom:9px}` — anchored to the bottom
- * of the screen, not just trailing the card in normal flow) — `app/nemesis/page.tsx` reserves
- * matching bottom space so the fixed bar never covers real content.
+ * than the full-bleed panel an earlier pass had.
+ *
+ * Design-diff audit (round 5): the action row is back in normal document flow, not
+ * `fixed inset-x-0 bottom-0` (round 3's attempt at matching the mockup's own
+ * `.hint{position:absolute;bottom:9px}`) — a real viewport-fixed bar competes with this app's
+ * own INV-9 footer (always the last thing on every page): the footer needs to render BELOW the
+ * buttons, and a fixed bar sits permanently on top of it instead. The mockup's phone frame has
+ * no footer to collide with, so its literal `position:absolute` doesn't have an equivalent
+ * problem here. Colors and weight also got a real fix this round — an earlier pass used
+ * `text-muted`/`text-gold`, bold, and a bordered/backed bar treatment, none of which the mockup
+ * actually does for this row (see the header's own note above).
  *
  * Design-diff audit (round 4): every absolute measurement here (padding, radius, perforation,
  * qcat/heading font-sizes) is the mockup's own px value scaled ×1.4, not copied literally — an
@@ -163,7 +172,7 @@ export function VerdictCard({
         type="button"
         data-testid="verdict-new-fate"
         onClick={onNewFate}
-        className="text-muted flex min-h-11 flex-1 items-center font-mono text-[13px] font-semibold tracking-widest uppercase"
+        className="text-side-b flex min-h-11 flex-1 items-center font-mono text-[13px] font-normal tracking-widest uppercase"
       >
         ← {nemesisCopy.newFate}
       </button>
@@ -174,7 +183,7 @@ export function VerdictCard({
         type="button"
         data-testid="verdict-run-it-back"
         onClick={onRunItBack}
-        className="text-gold flex min-h-11 flex-1 items-center justify-end font-mono text-[13px] font-semibold tracking-widest uppercase"
+        className="text-side-a flex min-h-11 flex-1 items-center justify-end font-mono text-[13px] font-normal tracking-widest uppercase"
       >
         {nemesisCopy.runItBack} →
       </button>
@@ -208,11 +217,9 @@ export function VerdictCard({
       </div>
 
       {interactive ? (
-        <div className="border-surface bg-bg fixed inset-x-0 bottom-0 z-10 border-t">
-          <div dir="ltr" className="mx-auto flex max-w-xl gap-3 px-6 py-4">
-            {leftAction}
-            {rightAction}
-          </div>
+        <div dir="ltr" className="flex gap-3">
+          {leftAction}
+          {rightAction}
         </div>
       ) : null}
     </div>
