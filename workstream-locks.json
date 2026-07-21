@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T21:24:56.468Z",
+  "updated_at": "2026-07-21T21:24:58.028Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2185,12 +2185,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS23-T2. Env-var flag flips (duo_queue precedent, not code defaults); PRD §4.1 + design-doc §6.7/§10.1/§10.3/§10.6 amendments each citing docs/journeys-plan.md; no doc/app contradiction remains.",
-      "status": "available",
-      "owner": null,
+      "status": "claimed",
+      "owner": "claude-opus-fohjki-agentU",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-21T08:22:30.580Z"
+      "claimed_at": "2026-07-21T21:24:58.028Z",
+      "updated_at": "2026-07-21T21:24:58.028Z"
     },
     "WS24-T1": {
       "title": "STRETCH: Departures-board pilot on /sweat (FlapText + TicketFrame tone='board'), flagged",
