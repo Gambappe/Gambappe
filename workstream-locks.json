@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T08:56:25.660Z",
+  "updated_at": "2026-07-21T08:56:40.592Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1904,12 +1904,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS16-T2 (+§4). acceptCallout is transactional and creates the next-week nemesis pairing (canonical a<b). Regression test: questions_daily_date_uq must not constrain kind='topic'.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-opus-fohjki",
+      "branch": "feat/ws16-t2-topic-callout-db",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-21T08:22:30.580Z"
+      "claimed_at": "2026-07-21T08:56:40.592Z",
+      "updated_at": "2026-07-21T08:56:40.592Z"
     },
     "WS16-T3": {
       "title": "packages/ui: TicketFrame system (frame/punch/tape/same-side) — the consistency fix",
