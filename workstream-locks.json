@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T10:01:27.361Z",
+  "updated_at": "2026-07-21T10:02:29.818Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2072,12 +2072,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS20-T3 (D-J5). Token stored hashed, 24h expiry, flag callouts; accept transactional+idempotent; weekly assignment must skip players with an accepted call-out for that week (one WHERE clause + test); ghost accept ⇒ 401 {reason:'save_required'}.",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-opus-fohjki-agentG",
       "branch": "feat/ws20-t3-callouts-api",
       "pr": "https://github.com/Gambappe/Gambappe/pull/115",
       "claimed_at": "2026-07-21T09:31:47.970Z",
-      "updated_at": "2026-07-21T09:58:52.329Z"
+      "updated_at": "2026-07-21T10:02:29.818Z"
     },
     "WS20-T4": {
       "title": "Call-outs UI + grudge book: issue/receive challenges, lifetime rival records, grudge-seeded matchmaking",
