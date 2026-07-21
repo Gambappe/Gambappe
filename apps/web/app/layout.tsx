@@ -34,7 +34,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={fontVariables}>
-      <body className="bg-bg text-paper font-ui min-h-screen">
+      <body className="bg-bg text-paper font-ui flex min-h-screen flex-col">
         {children}
         {/* INV-9: every page footer carries an 18+ notice — that invariant is about PRESENCE,
             not a specific size, so this stays on every page but shrinks on narrow viewports

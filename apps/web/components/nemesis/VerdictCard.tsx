@@ -191,7 +191,11 @@ export function VerdictCard({
   );
 
   return (
-    <div data-testid="verdict-card" data-outcome={outcome} className={`space-y-3 ${className}`}>
+    <div
+      data-testid="verdict-card"
+      data-outcome={outcome}
+      className={`flex flex-1 flex-col gap-3 ${className}`}
+    >
       <div
         ref={dragSurfaceRef}
         data-testid="verdict-card-face"
@@ -217,7 +221,7 @@ export function VerdictCard({
       </div>
 
       {interactive ? (
-        <div dir="ltr" className="flex gap-3">
+        <div dir="ltr" className="mt-auto flex gap-3">
           {leftAction}
           {rightAction}
         </div>

@@ -147,7 +147,7 @@ export default async function NemesisHomePage() {
     : null;
 
   return (
-    <main className="mx-auto max-w-xl space-y-8 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col space-y-8 px-6 py-10">
       {pageState.kind === 'assignment' && pairing && opponentSide ? (
         <div data-testid="nemesis-assignment-state">
           <NemesisAssignmentCard
@@ -161,7 +161,7 @@ export default async function NemesisHomePage() {
       ) : null}
 
       {pageState.kind === 'verdict' && promotedEntry && promotedVerdict ? (
-        <div data-testid="nemesis-verdict-state" className="space-y-3">
+        <div data-testid="nemesis-verdict-state" className="flex flex-1 flex-col space-y-3">
           <NemesisHeadToHeadBanner
             viewerHandle={profile.handle}
             opponentHandle={promotedEntry.opponent.handle}
@@ -184,6 +184,7 @@ export default async function NemesisHomePage() {
                 : null
             }
             verdict={promotedVerdict}
+            className="flex flex-1 flex-col"
           />
         </div>
       ) : null}

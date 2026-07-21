@@ -193,6 +193,7 @@ export function RematchPanel({ viewerProfileId, opponent, rematchRequest, verdic
           onRunItBack={() => void handleRequest()}
           onNewFate={() => {}}
           disabled={busy}
+          className="flex flex-1 flex-col"
         />
         {error ? (
           <p className="text-loss mt-1 text-xs" data-testid="rematch-error">
