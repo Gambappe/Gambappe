@@ -88,6 +88,14 @@ function readCount(key: string): number {
  * no animation ever delays that POST. `SwipeBallot` mounts into the deck shell's reserved
  * overlay slot (SW2-T1) over the viewer-free static `BallotCard` (INV-10). Guardrails fade with
  * experience (D-SW7); `prefers-reduced-motion` drops every transform (§2.3.8).
+ *
+ * Design-diff audit: the wells (`.well{font-size:12.5px;border-radius:9px}`) and the hint row
+ * (`.hint{font-size:9px}`) are the mockup's own values (`docs/mockups/swipe-ux.html`) scaled
+ * ×1.4, matching `BallotCard`'s own scaling pass — see that component's header for why. `wells`
+ * itself has no `flex-1`/stretch classes here (an earlier pass threaded a flex-grow chain
+ * through this component so `BallotCard` would stretch to fill its ancestors' available height —
+ * reverted: `BallotCard` now sizes itself directly via a fixed aspect ratio, so nothing downstream
+ * of it needs to participate in a cross-file flex-grow chain at all).
  */
 export function SwipeBallot({
   question,
@@ -312,7 +320,7 @@ export function SwipeBallot({
       disabled={disabled}
       onClick={() => submit('no', 'well')}
       onKeyDown={onWellKey}
-      className="border-side-b text-side-b min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase disabled:opacity-50"
+      className="border-side-b text-side-b min-h-12 flex-1 rounded-[13px] border-2 font-display text-[18px] font-bold tracking-wide uppercase disabled:opacity-50"
     >
       {ballotCopy.wellAgainstGlyph} {noLabel}
     </button>,
@@ -323,15 +331,15 @@ export function SwipeBallot({
       disabled={disabled}
       onClick={() => submit('yes', 'well')}
       onKeyDown={onWellKey}
-      className="border-side-a text-side-a min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase disabled:opacity-50"
+      className="border-side-a text-side-a min-h-12 flex-1 rounded-[13px] border-2 font-display text-[18px] font-bold tracking-wide uppercase disabled:opacity-50"
     >
       {yesLabel} {ballotCopy.wellForGlyph}
     </button>,
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-3" data-testid="swipe-ballot">
-      <div className="relative flex flex-1 flex-col">
+    <div className="space-y-3" data-testid="swipe-ballot">
+      <div className="relative">
         {/* World-tint wash (gesture-driven — lives in the interactive component, §2.5). */}
         {activeSide ? (
           <div
@@ -366,7 +374,7 @@ export function SwipeBallot({
           onPointerMove={drag.onPointerMove}
           onPointerUp={drag.onPointerUp}
           onPointerCancel={drag.onPointerCancel}
-          className={`relative flex flex-1 flex-col touch-none select-none ${nudge ? 'motion-safe:[animation:ballot-nudge_2.6s_ease-in-out_2]' : ''}`}
+          className={`relative touch-none select-none ${nudge ? 'motion-safe:[animation:ballot-nudge_2.6s_ease-in-out_2]' : ''}`}
           style={{
             transform: flingTransform,
             transition: flingSide
@@ -377,19 +385,7 @@ export function SwipeBallot({
             cursor: dragging ? 'grabbing' : 'grab',
           }}
         >
-          {/* Design-diff audit: `className="flex-1"` (native flex-grow), not `h-full`
-              (percentage height) — the card's own ancestor chain only has a REAL, definite
-              height when mounted under `DeckStage` (whose own `flex-1` chain ultimately traces
-              to `<body>`'s `min-h-screen`); in the `/dev/ui` gallery, the same tree sits in a
-              plain content-sized section with nothing to stretch into. A percentage height
-              against an indeterminate/content-sized ancestor is exactly the kind of circular
-              case Chromium doesn't reliably fall back to `auto` for (confirmed empirically — an
-              earlier `h-full` pass here visibly SHRANK the gallery's card below its own natural
-              content height instead of leaving it alone). `flex-1` sidesteps the whole question:
-              flex-grow only pulls from space that's actually eligible (real stretch), and the
-              flex item's own `min-height:auto` content floor keeps it at natural size otherwise. */}
           <BallotCard
-            className="flex-1"
             eyebrow={question.kind.toUpperCase()}
             serial={`№ ${question.question_date ?? question.slug.slice(0, 10)}`}
             headline={question.headline}
@@ -450,7 +446,7 @@ export function SwipeBallot({
           <div
             aria-hidden="true"
             data-testid="ballot-hints"
-            className="text-muted mt-2 flex justify-between font-mono text-[11px] tracking-widest"
+            className="text-muted mt-2 flex justify-between font-mono text-[13px] tracking-widest"
             style={{ opacity: arm ? 1 : railsOpacity(pickCount) }}
           >
             <span className="text-side-b">
@@ -464,7 +460,7 @@ export function SwipeBallot({
       </div>
 
       {/* Tap wells — always present, never faded (a11y is permanent, D-SW7). */}
-      <div dir="ltr" className="flex gap-2">
+      <div dir="ltr" className="flex gap-[11px]">
         {wells[0]}
         {wells[1]}
       </div>

@@ -35,12 +35,14 @@ export interface DeckStageProps {
  * Rails obey the side-axis rule (§2.2, D-SW9): the against side is the left rail, the for side the
  * right, built with `sideAxisPair` and pinned `dir="ltr"`.
  *
- * Design-diff audit: `flex-1` (not a fixed `min-h-[70dvh]`) and no `rounded-xl` — the mockup's
- * own rounded corner (`.scr{border-radius:33px}`) is faking the PHYSICAL phone bezel for the
- * design doc's demo frame, not something a real deployment (where the browser viewport IS the
- * screen) should reproduce in CSS. `flex-1` fills whatever height `<main>`'s own `flex-1` chain
- * (`app/page.tsx`/`app/q/[slug]/page.tsx`, same posture) gives it, growing to the real viewport
- * when content is shorter rather than guessing a fixed vh fraction.
+ * Design-diff audit: `flex-1 min-h-[70dvh]` (not just a fixed height) and no `rounded-xl` — the
+ * mockup's own rounded corner (`.scr{border-radius:33px}`) is faking the PHYSICAL phone bezel
+ * for the design doc's demo frame, not something a real deployment (where the browser viewport
+ * IS the screen) should reproduce in CSS. `flex-1` fills whatever height `<main>`'s own `flex-1`
+ * chain (`app/page.tsx`/`app/q/[slug]/page.tsx`, same posture) gives it on the real routes;
+ * `min-h-[70dvh]` is the floor for contexts with no such ancestor (`/dev/ui`'s gallery demo,
+ * which mounts this same component in a plain content-sized section) so the stage doesn't
+ * collapse to its own bare content height there.
  */
 export function DeckStage({ question, viewerSlot, underLabel, streakSlot }: DeckStageProps) {
   const [leftRail, rightRail] = sideAxisPair(
@@ -64,7 +66,7 @@ export function DeckStage({ question, viewerSlot, underLabel, streakSlot }: Deck
     <div
       data-testid="deck-stage"
       dir="ltr"
-      className="bg-bg relative flex flex-1 flex-col overflow-hidden"
+      className="bg-bg relative flex min-h-[70dvh] flex-1 flex-col overflow-hidden"
     >
       <DeckTopbar streakSlot={streakSlot} />
 
@@ -73,7 +75,7 @@ export function DeckStage({ question, viewerSlot, underLabel, streakSlot }: Deck
       <div
         aria-hidden="true"
         data-testid="rail-against"
-        className="pointer-events-none absolute inset-y-0 left-0 flex w-7 font-mono text-[9px] tracking-[0.28em] uppercase opacity-70"
+        className="pointer-events-none absolute inset-y-0 left-0 flex w-9 font-mono text-[13px] tracking-[0.28em] uppercase opacity-70"
         style={{ background: 'linear-gradient(90deg, rgba(249,115,22,0.14), transparent)' }}
       >
         {leftRail}
@@ -81,24 +83,20 @@ export function DeckStage({ question, viewerSlot, underLabel, streakSlot }: Deck
       <div
         aria-hidden="true"
         data-testid="rail-for"
-        className="pointer-events-none absolute inset-y-0 right-0 flex w-7 justify-end font-mono text-[9px] tracking-[0.28em] uppercase opacity-70"
+        className="pointer-events-none absolute inset-y-0 right-0 flex w-9 justify-end font-mono text-[13px] tracking-[0.28em] uppercase opacity-70"
         style={{ background: 'linear-gradient(-90deg, rgba(59,130,246,0.14), transparent)' }}
       >
         {rightRail}
       </div>
 
       {/* The card column. The under-card peeks from behind so finishing today reveals tomorrow.
-          Design-diff audit: `flex flex-1 flex-col justify-center` (not a plain shrink-wrapped
-          `relative`) lets `viewerSlot`'s interactive card (`SwipeBallot`'s own `flex-1` root)
-          actually stretch to fill the available height — matching the mockup's tall "poster"
-          card proportions (`.deck{height:300px}` inside a 250px-wide screen, `NemesisAssignmentCard`'s
-          header has the full "interpret proportions, not literal pixels" rationale) instead of
-          shrinking to fit its own content. `justify-center` is a no-op for that stretching child
-          (flex-grow:1 claims all available space, leaving nothing to center) but keeps every OTHER
-          `viewerSlot` shape this wraps — the brief pre-hydration loading skeleton, the printed
-          receipt once a pick lands — vertically centered exactly as before this change. */}
+          `justify-center` on this flex-1 column centers the (shrink-wrapped) card+wells+hints
+          block within whatever height the stage actually has — `BallotCard` sizes itself via a
+          fixed aspect ratio now (design-diff audit — see that component's header), not by
+          stretching to consume all available space, so there's deliberately real dark space left
+          around it on a stage taller than the card needs, matching the mockup's own restraint. */}
       <div className="relative z-10 mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-9 py-8">
-        <div className="relative flex flex-1 flex-col justify-center">
+        <div className="relative">
           <UnderCard
             label={underLabel}
             className="absolute inset-x-3 -top-3 -z-10 scale-95 opacity-80"

@@ -3,11 +3,18 @@ import type { ReactNode } from 'react';
 import { impliedCents, type MarketSide } from '../format.js';
 import { sideAxisPair } from '../side-axis.js';
 
-const PUNCH_SIZE = 12;
+/** Design-diff audit: the mockup's own `.perf{background-image:radial-gradient(circle at
+ * center,var(--ink) 40%,transparent 46%);background-size:10px 10px}` (`docs/mockups/
+ * swipe-ux.html`) — an earlier pass here used a narrower `40%,transparent 42%` falloff and a
+ * 12px size, both close-but-not-exact guesses rather than the mockup's real values, which read
+ * as smaller/harder-edged dashes instead of the mockup's larger, softer punched circles. Scaled
+ * ×1.4 for the same real-viewport-vs-250px-demo-frame reason every other measurement here is
+ * (see this file's header). */
+const PUNCH_SIZE = 14;
 /** Same perforated edge as `TicketCard` (§10.4) — the ballot is a ticket you throw. Punched
  * against the dark stage `bg`, so the holes read as cut-through paper. */
 const perforationStyle = {
-  backgroundImage: 'radial-gradient(circle at center, #0B0B0D 40%, transparent 42%)',
+  backgroundImage: 'radial-gradient(circle at center, #0B0B0D 40%, transparent 46%)',
   backgroundSize: `${PUNCH_SIZE}px ${PUNCH_SIZE}px`,
   backgroundRepeat: 'repeat-x',
   backgroundPosition: 'center',
@@ -32,13 +39,13 @@ function SidePrice({ side, label, yesProbability }: SidePriceProps) {
   return (
     <div
       data-side={side}
-      className={`${accent} text-ink flex flex-1 flex-col rounded-md border-2 px-2.5 py-1.5`}
+      className={`${accent} text-ink flex flex-1 flex-col rounded-[8px] border-2 px-[10px] pt-[7px] pb-[6px]`}
     >
-      <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-wider uppercase">
-        <span aria-hidden="true" className={`${dot} h-1.5 w-1.5 rounded-full`} />
+      <span className="flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-wider uppercase">
+        <span aria-hidden="true" className={`${dot} h-2 w-2 rounded-full`} />
         {label}
       </span>
-      <span className="font-mono text-lg font-semibold" aria-label={`${label}: ${cents}% implied`}>
+      <span className="font-mono text-[21px] font-semibold" aria-label={`${label}: ${cents}% implied`}>
         @ {cents}¢
       </span>
     </div>
@@ -77,6 +84,20 @@ export interface BallotCardProps {
  * The price row obeys the side-axis rule (§2.2, D-SW9): NO/against chip left, YES/for chip
  * right, built via `sideAxisPair` and wrapped in `dir="ltr"` so an RTL locale can't mirror the
  * gesture semantics.
+ *
+ * Design-diff audit: every measurement here is the mockup's own px value (`docs/mockups/
+ * swipe-ux.html`'s `.card`/`.qcat`/`.qh`/`.pt`/`.qfoot`/`.perf`) scaled ×1.4 — an earlier pass
+ * left this file's ORIGINAL, pre-mockup-audit sizing untouched (unlike `DeckTopbar`'s, which was
+ * scaled from the start), so headline/eyebrow/price/footer text all read noticeably smaller than
+ * the mockup's own proportions. `aspect-[98/150]` (the mockup's own `.deck{width:196px;
+ * height:300px}` ratio, halved) replaces an earlier flex-grow-to-fill-available-space attempt —
+ * that stretched the card to consume 100% of whatever height its ancestor chain happened to
+ * have, which overshot the mockup's actual restraint (the mockup's card is a SPECIFIC size
+ * within the stage, with real dark space left around it, not a card stretched to fill the whole
+ * stage) and made margins/gaps read as disproportionate against it. A fixed aspect ratio against
+ * the card's own (already correctly-proportioned) width gives `margin-top:auto` on the price row
+ * real, bounded space to push into, matching the mockup's own generous headline-to-price gap
+ * without over-inflating the card past what the mockup itself shows.
  */
 export function BallotCard({
   eyebrow,
@@ -97,32 +118,32 @@ export function BallotCard({
 
   return (
     <div
-      className={`bg-paper text-ink relative flex flex-col rounded-lg px-4 pt-3 pb-3 shadow-[0_14px_34px_rgba(0,0,0,0.5)] ${className}`}
+      className={`bg-paper text-ink relative flex aspect-[98/150] flex-col rounded-[14px] px-[21px] pt-[22px] pb-[18px] shadow-[0_14px_34px_rgba(0,0,0,0.5)] ${className}`}
     >
-      <div aria-hidden="true" className="h-1.5 -translate-y-1" style={perforationStyle} />
+      <div aria-hidden="true" className="-mx-[21px] -mt-[11px] mb-2 h-[7px]" style={perforationStyle} />
 
       {/* Muted labels on paper use ink-at-70% (not `text-muted`, which is tuned for the dark bg
           and fails AA on paper — caught by the SW8-T1 axe pass). */}
-      <div className="text-ink/70 flex items-center justify-between font-mono text-[9px] font-semibold tracking-widest uppercase">
+      <div className="text-ink/70 flex items-center justify-between font-mono text-[12px] font-semibold tracking-widest uppercase">
         <span>{eyebrow}</span>
         <span>{serial}</span>
       </div>
 
-      <h2 className="font-display mt-2.5 text-2xl leading-[1.02] font-bold uppercase">
+      <h2 className="font-display mt-[14px] text-[32px] leading-[1.02] font-bold uppercase">
         {headline}
       </h2>
 
-      <div dir="ltr" className="mt-auto flex gap-2 pt-4">
+      <div dir="ltr" className="mt-auto flex gap-[10px] pt-4">
         {leftChip}
         {rightChip}
       </div>
 
-      <div className="text-ink/70 mt-2 flex items-center justify-between font-mono text-[9px] tracking-wide uppercase">
+      <div className="text-ink/70 mt-[13px] flex items-center justify-between font-mono text-[11px] tracking-wide uppercase">
         <span>{venue}</span>
         <span>{lockLabel}</span>
       </div>
 
-      <div aria-hidden="true" className="h-1.5 translate-y-1" style={perforationStyle} />
+      <div aria-hidden="true" className="-mx-[21px] mt-2 -mb-[7px] h-[7px]" style={perforationStyle} />
 
       {overlay}
     </div>
@@ -154,15 +175,15 @@ export function UnderCard({ label, className = '' }: UnderCardProps) {
   return (
     <div
       aria-hidden="true"
-      className={`bg-paper text-ink/70 flex flex-col rounded-lg px-4 pt-3 pb-3 ${className}`}
+      className={`bg-paper text-ink/70 flex flex-col rounded-[14px] px-[21px] pt-[22px] pb-[18px] ${className}`}
     >
-      <div className="h-1.5 -translate-y-1" style={perforationStyle} />
+      <div className="-mx-[21px] -mt-[11px] mb-2 h-[7px]" style={perforationStyle} />
       {label ? (
-        <span className="font-mono text-[9px] font-semibold tracking-widest uppercase">
+        <span className="font-mono text-[12px] font-semibold tracking-widest uppercase">
           {label}
         </span>
       ) : null}
-      <div className="mt-auto h-1.5 translate-y-1" style={perforationStyle} />
+      <div className="-mx-[21px] mt-auto -mb-[7px] h-[7px]" style={perforationStyle} />
     </div>
   );
 }
