@@ -1,10 +1,10 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { NEMESIS_MIN_PICKS, now } from '@receipts/core';
 import { getProfileByUserId } from '@receipts/db';
 import { auth } from '../../auth';
 import { NemesisAssignmentCard } from '@/components/nemesis/NemesisAssignmentCard';
 import { NemesisHeadToHeadBanner } from '@/components/nemesis/NemesisHeadToHeadBanner';
-import { NemesisHistoryList } from '@/components/nemesis/NemesisHistoryList';
 import { RematchPanel, type RematchVerdict } from '@/components/nemesis/RematchPanel';
 import type { DayResult } from '@/components/nemesis/VerdictCard';
 import { selectNemesisPageState } from '@/lib/nemesis/page-state';
@@ -41,9 +41,17 @@ import type { PairingSide } from '@/lib/nemesis/types';
  *     itself can't carry this, INV-10).
  *   - `verdict`: the most recent settled week's `NemesisHeadToHeadBanner` + swipeable
  *     `RematchPanel`/`VerdictCard` close, promoted OUT of the history list into primary content
- *     (mirrors the mockup's Friday verdict exhibit). That entry is skipped in the history list
- *     below so it never renders twice on one page.
+ *     (mirrors the mockup's Friday verdict exhibit).
  *   - `empty`: neither of the above — same placeholder copy as before.
+ *
+ * The aggregate history list (every past pairing, not just the most recent) has its own private
+ * `/nemesis/history` route now, same reasoning as the `/nemesis/matchup` split — this page is
+ * about the CURRENT nemesis-week moment; a full lifetime list is a distinct, separate concern the
+ * mockup doesn't even show on the same exhibit. A plain text link below the primary content is
+ * the only thing threading the two together. `getNemesisHistoryPage` is still fetched here (not
+ * just on the history route) because `selectNemesisPageState` needs the most recent entry to
+ * decide whether to promote it into the `verdict` state above — that's a determination this page
+ * still owns, only the LIST RENDERING moved out.
  *
  * WS5-T4: resolves the real viewer via `auth()` + `getProfileByUserId` (mirroring
  * `/claim/page.tsx`'s own direct `auth()` use — no `Request`-argument-free identity resolver
@@ -91,30 +99,19 @@ export default async function NemesisHomePage() {
     };
   }
 
-  // SW10-T2: the verdict card's week-strip dots come from each history entry's own pairing
-  // scoreboard (`GET /pairings/:id`, `pairingPublicSchema.scoreboard`) — the history entry itself
-  // (`nemesisHistoryEntrySchema`) carries no per-day data. Skipped for `cancelled` entries: no
-  // verdict card ever renders for those, so the fetch would be wasted. Kept computing for EVERY
-  // eligible entry (not just the one promoted to the verdict state below) — the history list
-  // below still renders its own `VerdictCard` per non-promoted row exactly as before, so this
-  // stays unchanged rather than narrowed, keeping the diff smaller.
-  const verdictEligible = historyPage.data.filter((entry) => entry.outcome !== 'cancelled');
-  const verdictPairings = await Promise.all(
-    verdictEligible.map((entry) => getPairingPublicById(db, entry.pairing_id, at)),
-  );
-  const dayResultsByPairingId: Record<string, ReadonlyArray<DayResult>> = {};
-  verdictEligible.forEach((entry, i) => {
-    const verdictPairing = verdictPairings[i];
-    if (verdictPairing) {
-      dayResultsByPairingId[entry.pairing_id] = deriveDayResults(
-        verdictPairing.scoreboard,
-        viewerProfileId,
-        verdictPairing,
-      );
-    }
-  });
-
   const promotedEntry = pageState.kind === 'verdict' ? pageState.entry : null;
+
+  // SW10-T2: the verdict card's week-strip dots come from the promoted entry's own pairing
+  // scoreboard (`GET /pairings/:id`, `pairingPublicSchema.scoreboard`) — the history entry itself
+  // (`nemesisHistoryEntrySchema`) carries no per-day data. Only fetched for the promoted entry
+  // (not every history entry) now that the aggregate list itself lives at `/nemesis/history` —
+  // that route derives its own day-results independently for whichever entries it renders.
+  const promotedPairing = promotedEntry ? await getPairingPublicById(db, promotedEntry.pairing_id, at) : null;
+  const promotedDayResults: ReadonlyArray<DayResult> =
+    promotedEntry && promotedPairing
+      ? deriveDayResults(promotedPairing.scoreboard, viewerProfileId, promotedPairing)
+      : [];
+
   const promotedVerdict: RematchVerdict | null = promotedEntry
     ? (() => {
         const outcome = verdictOutcomeFromHistory(promotedEntry.outcome);
@@ -126,20 +123,13 @@ export default async function NemesisHomePage() {
           youWins: promotedEntry.my_score,
           opponentWins: promotedEntry.their_score,
           scoreMargin: scoreMarginFromHistory(promotedEntry),
-          dayResults: dayResultsByPairingId[promotedEntry.pairing_id] ?? [],
+          dayResults: promotedDayResults,
         };
       })()
     : null;
 
-  // The promoted entry gets its own primary-content card above — never render it a second time
-  // as a row inside the aggregate history list below.
-  const historyEntries = promotedEntry
-    ? historyPage.data.filter((entry) => entry.pairing_id !== promotedEntry.pairing_id)
-    : historyPage.data;
-
   return (
     <main className="mx-auto max-w-xl space-y-8 px-6 py-10">
-
       {pageState.kind === 'assignment' && pairing && opponentSide ? (
         <div data-testid="nemesis-assignment-state">
           <NemesisAssignmentCard
@@ -184,15 +174,9 @@ export default async function NemesisHomePage() {
         </p>
       ) : null}
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">History</h2>
-        <NemesisHistoryList
-          viewerProfileId={viewerProfileId}
-          viewerHandle={profile.handle}
-          entries={historyEntries}
-          dayResultsByPairingId={dayResultsByPairingId}
-        />
-      </section>
+      <Link href="/nemesis/history" className="text-side-a text-sm font-medium underline underline-offset-2">
+        History
+      </Link>
     </main>
   );
 }
