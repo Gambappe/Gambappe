@@ -54,8 +54,12 @@ export default function ClaimPromptEngine({ enabledProviders, ...input }: ClaimP
   return (
     <>
       {showBanner && trigger && (
+        // Sits ABOVE the shell's fixed bottom tab bar (WS17-T1, `z-50`, ~4rem tall): the bar
+        // reserves `pb-[calc(4rem+safe-area)]` on the content column, and if this banner stayed at
+        // `bottom-0` the bar would overlay it and swallow the CTA/dismiss clicks (the buttons became
+        // untappable — Playwright's clicks hit `nav[data-testid=tab-bar]`). Offset by the bar height.
         <div
-          className="bg-surface text-paper fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 p-4 shadow-xl sm:inset-x-auto sm:right-4 sm:bottom-4 sm:max-w-sm sm:rounded-lg"
+          className="bg-surface text-paper fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex items-center justify-between gap-3 p-4 shadow-xl sm:inset-x-auto sm:right-4 sm:bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:max-w-sm sm:rounded-lg"
           data-testid="claim-prompt-engine"
           data-trigger={trigger}
         >
