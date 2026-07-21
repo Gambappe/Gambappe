@@ -1,27 +1,23 @@
 import type { ReactNode } from 'react';
 
-import { colors } from '../tokens.js';
-
-const PUNCH_SIZE = 12;
-const perforationStyle = {
-  backgroundImage: `radial-gradient(circle at center, ${colors.bg} 40%, transparent 42%)`,
-  backgroundSize: `${PUNCH_SIZE}px ${PUNCH_SIZE}px`,
-  backgroundRepeat: 'repeat-x',
-  backgroundPosition: 'center',
-} as const;
+import { TicketFrame } from './TicketFrame.js';
 
 export interface TicketCardProps {
   children: ReactNode;
   className?: string;
 }
 
-/** The paper-on-dark receipt motif (§10.4): perforated top/bottom edge, printed-paper surface. */
+/**
+ * The paper-on-dark receipt motif (§10.4): perforated top/bottom edge, printed-paper surface.
+ *
+ * WS16-T3: now a thin composition of `TicketFrame` (journeys-plan §2 migration rule — the only
+ * perforation CSS in the package lives in `TicketFrame`). Same perforated-both-edges paper card;
+ * the roomier `px-6 py-5` body padding is preserved via `bodyClassName`.
+ */
 export function TicketCard({ children, className = '' }: TicketCardProps) {
   return (
-    <div className={`bg-paper text-ink relative rounded-md shadow-lg ${className}`}>
-      <div aria-hidden="true" className="h-1.5 -translate-y-1" style={perforationStyle} />
-      <div className="px-6 py-5">{children}</div>
-      <div aria-hidden="true" className="h-1.5 translate-y-1" style={perforationStyle} />
-    </div>
+    <TicketFrame perf="both" bodyClassName="px-6 py-5" className={`shadow-lg ${className}`}>
+      {children}
+    </TicketFrame>
   );
 }

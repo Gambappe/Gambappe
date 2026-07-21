@@ -2,16 +2,7 @@ import type { ReactNode } from 'react';
 
 import { impliedCents, type MarketSide } from '../format.js';
 import { sideAxisPair } from '../side-axis.js';
-
-const PUNCH_SIZE = 12;
-/** Same perforated edge as `TicketCard` (§10.4) — the ballot is a ticket you throw. Punched
- * against the dark stage `bg`, so the holes read as cut-through paper. */
-const perforationStyle = {
-  backgroundImage: 'radial-gradient(circle at center, #0B0B0D 40%, transparent 42%)',
-  backgroundSize: `${PUNCH_SIZE}px ${PUNCH_SIZE}px`,
-  backgroundRepeat: 'repeat-x',
-  backgroundPosition: 'center',
-} as const;
+import { TicketFrame } from './TicketFrame.js';
 
 interface SidePriceProps {
   side: MarketSide;
@@ -74,6 +65,12 @@ export interface BallotCardProps {
  * the deck's static server shell (SW2-T1), and satori card templates (SW4-T2) all render the
  * same layout. No gesture, state, or client code lives here.
  *
+ * WS16-T3: composes `TicketFrame` (journeys-plan §2, D-J1) — the eyebrow/serial kicker is now
+ * the frame's ADMIT-ONE header and the perforated top/bottom edges come from the frame, so no
+ * perforation/admit CSS lives in this file anymore. The overlay is forwarded to the frame's
+ * overlay slot, which anchors to the frame's outer (positioned) container exactly as the old
+ * root did.
+ *
  * The price row obeys the side-axis rule (§2.2, D-SW9): NO/against chip left, YES/for chip
  * right, built via `sideAxisPair` and wrapped in `dir="ltr"` so an RTL locale can't mirror the
  * gesture semantics.
@@ -96,36 +93,26 @@ export function BallotCard({
   );
 
   return (
-    <div
-      className={`bg-paper text-ink relative flex flex-col rounded-lg px-4 pt-3 pb-3 shadow-[0_14px_34px_rgba(0,0,0,0.5)] ${className}`}
+    <TicketFrame
+      perf="both"
+      header={{ left: eyebrow, right: serial }}
+      overlay={overlay}
+      className={`shadow-[0_14px_34px_rgba(0,0,0,0.5)] ${className}`}
     >
-      <div aria-hidden="true" className="h-1.5 -translate-y-1" style={perforationStyle} />
-
-      {/* Muted labels on paper use ink-at-70% (not `text-muted`, which is tuned for the dark bg
-          and fails AA on paper — caught by the SW8-T1 axe pass). */}
-      <div className="text-ink/70 flex items-center justify-between font-mono text-[9px] font-semibold tracking-widest uppercase">
-        <span>{eyebrow}</span>
-        <span>{serial}</span>
-      </div>
-
-      <h2 className="font-display mt-2.5 text-2xl leading-[1.02] font-bold uppercase">
-        {headline}
-      </h2>
+      <h2 className="font-display text-2xl leading-[1.02] font-bold uppercase">{headline}</h2>
 
       <div dir="ltr" className="mt-auto flex gap-2 pt-4">
         {leftChip}
         {rightChip}
       </div>
 
+      {/* Muted labels on paper use ink-at-70% (not `text-muted`, which is tuned for the dark bg
+          and fails AA on paper — caught by the SW8-T1 axe pass). */}
       <div className="text-ink/70 mt-2 flex items-center justify-between font-mono text-[9px] tracking-wide uppercase">
         <span>{venue}</span>
         <span>{lockLabel}</span>
       </div>
-
-      <div aria-hidden="true" className="h-1.5 translate-y-1" style={perforationStyle} />
-
-      {overlay}
-    </div>
+    </TicketFrame>
   );
 }
 
@@ -140,29 +127,20 @@ export interface UnderCardProps {
  * or a blank slip. Never interactive; dimmed and scaled by the deck shell (SW2-T1), so this is
  * just the paper + optional kicker.
  *
- * Design-diff audit fix: the base classes deliberately carry NO `position` utility. Every real
- * caller (`DeckStage`, `SwipeBallot`, `/dev/ui`'s `gallery-ballotcard` tile) passes `absolute
- * ...` via `className` to peek from behind another card — but Tailwind's generated stylesheet
- * happens to emit `.relative` after `.absolute` (same specificity, source-order tiebreak), so a
- * hardcoded base `relative` here would silently outrank every caller's `absolute` override,
- * leaving the card in normal flow instead of layered behind its sibling (confirmed via the
- * compiled CSS, not just visually: `.absolute{position:absolute}` then `.relative{position:
- * relative}` later in the same stylesheet). Letting the caller own `position` entirely avoids
- * that trap.
+ * WS16-T3: composes `TicketFrame` (perforated both edges) so the perforation CSS lives only in
+ * the frame. `TicketFrame` deliberately omits `position` when it has no notches/overlay (see its
+ * own comment), so this card's documented "no base position" requirement is preserved — every
+ * real caller (`DeckStage`, `SwipeBallot`, `/dev/ui`'s `gallery-ballotcard` tile) still owns
+ * `position` via `className` (`absolute inset-x-3 -top-3 scale-95`) and it wins.
  */
 export function UnderCard({ label, className = '' }: UnderCardProps) {
   return (
-    <div
-      aria-hidden="true"
-      className={`bg-paper text-ink/70 flex flex-col rounded-lg px-4 pt-3 pb-3 ${className}`}
-    >
-      <div className="h-1.5 -translate-y-1" style={perforationStyle} />
+    <TicketFrame perf="both" ariaHidden className={className}>
       {label ? (
-        <span className="font-mono text-[9px] font-semibold tracking-widest uppercase">
+        <span className="text-ink/70 font-mono text-[9px] font-semibold tracking-widest uppercase">
           {label}
         </span>
       ) : null}
-      <div className="mt-auto h-1.5 translate-y-1" style={perforationStyle} />
-    </div>
+    </TicketFrame>
   );
 }

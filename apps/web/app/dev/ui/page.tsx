@@ -4,9 +4,13 @@ import {
   CountdownTicker,
   CrowdBar,
   PriceTag,
+  PunchWell,
+  SameSideRow,
   Stamp,
   StreakFlame,
+  TapeLabel,
   TicketCard,
+  TicketFrame,
   UnderCard,
   sideAxisPair,
 } from '@receipts/ui';
@@ -167,6 +171,73 @@ export default function UiGalleryPage() {
           <p className="font-mono text-sm">Will France win the final?</p>
           <PriceTag side="yes" label="France" yesProbability={0.63} />
         </TicketCard>
+      </section>
+
+      {/* WS16-T3 · The frame system (journeys-plan §2, D-J1): the one card shell + its wells,
+          tape labels, and same-side row. Shown on the dark stage the paper cards float on. */}
+      <section data-testid="gallery-ticketframe" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">TicketFrame (WS16-T3)</h2>
+        <div className="bg-bg space-y-6 rounded-md p-6">
+          {/* Fully-loaded paper frame: ADMIT header, side notches, both perf edges, tear stub. */}
+          <div className="mx-auto max-w-[300px]">
+            <TicketFrame
+              header={{ left: 'GAMBAPPE', right: 'ADMIT ONE' }}
+              notches
+              perf="both"
+              stub={{ serial: '№ 2026-07-19', barcode: true }}
+            >
+              <p className="font-display text-2xl font-bold uppercase leading-none">
+                Will France win the final?
+              </p>
+              <p className="text-ink/70 mt-2 font-mono text-[11px] uppercase">
+                KALSHI · LIVE · LOCKS 12:00 ET
+              </p>
+            </TicketFrame>
+          </div>
+          {/* Dark Departures variant (tone="board") — styling only; first consumed by WS24-T1. */}
+          <div className="mx-auto max-w-[300px]">
+            <TicketFrame
+              tone="board"
+              header={{ left: 'DEPARTURES', right: 'GATE 7' }}
+              perf="bottom"
+              stub={{ serial: '№ 2026-07-19', barcode: true }}
+            >
+              <p className="font-display text-2xl font-bold uppercase leading-none">
+                Fed cuts in September
+              </p>
+              <p className="text-paper/70 mt-2 font-mono text-[11px] uppercase">SETTLES 21:00 ET</p>
+            </TicketFrame>
+          </div>
+        </div>
+      </section>
+
+      <section data-testid="gallery-punchwell" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">PunchWell (WS16-T3)</h2>
+        {/* On paper (§10.4 ink motif), axis-ordered NO left / YES right (D-SW9). Right well shown
+            punched — the pick action's visual. */}
+        <div dir="ltr" className="bg-paper flex gap-2 rounded-md px-4 py-3">
+          {sideAxisPair(
+            <PunchWell key="no" side="no" label="HOLDS" yesProbability={0.71} />,
+            <PunchWell key="yes" side="yes" label="CUTS" yesProbability={0.71} punched />,
+          )}
+        </div>
+      </section>
+
+      <section data-testid="gallery-tapelabel" className="flex flex-wrap items-center gap-4">
+        <h2 className="text-muted w-full text-sm font-semibold uppercase">TapeLabel (WS16-T3)</h2>
+        <TapeLabel>SAME SIDE</TapeLabel>
+        <TapeLabel>YOU&apos;VE BEEN CALLED OUT</TapeLabel>
+        <TapeLabel tilt={false}>SAME SIDE · EDGE DECIDES</TapeLabel>
+      </section>
+
+      <section data-testid="gallery-samesiderow" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">SameSideRow (WS16-T3)</h2>
+        <div className="bg-paper rounded-md px-4 py-4">
+          <SameSideRow
+            left={{ owner: 'YOU', caption: '@ 71¢', stamp: <Stamp variant="win" /> }}
+            right={{ owner: 'MARIA O.', caption: '@ 74¢', stamp: <Stamp variant="loss" /> }}
+          />
+        </div>
       </section>
 
       <section data-testid="gallery-stamp" className="flex flex-wrap gap-4">
