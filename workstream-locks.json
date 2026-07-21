@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T10:35:54.932Z",
+  "updated_at": "2026-07-21T10:35:56.548Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2103,12 +2103,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS21-T1 (D-J8). CTA label is the single word 'Save'; pinned nudge strings replaced per spec (update the pinned-verbatim header comment, run money-word lint); /claim URL unchanged, identifiers unchanged; grep gate: no user-facing 'claim' string left; owns its copy.ts block.",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-opus-fohjki-agentJ",
       "branch": "feat/ws21-t1-save-copy",
       "pr": "https://github.com/Gambappe/Gambappe/pull/118",
       "claimed_at": "2026-07-21T10:04:03.427Z",
-      "updated_at": "2026-07-21T10:23:43.732Z"
+      "updated_at": "2026-07-21T10:35:56.548Z"
     },
     "WS21-T2": {
       "title": "Save chip + value-triggered save card (streak/5th-pick/rival-surface/incoming call-out)",
