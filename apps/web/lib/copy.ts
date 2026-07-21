@@ -690,3 +690,29 @@ export const youCopy = {
   /** Link to account settings. */
   settingsLink: 'Settings',
 } as const;
+
+/**
+ * WS22-T2 · `/crowd` (the boards, D-J7) copy — this task's OWNED block. Weekly leaderboards read
+ * as receipts culture: "calls right" and "price beaten at entry", never money words (no
+ * bet/stake/wager/$, INV-8). No gold anywhere (gold is for wins, D-J8) — the boards are an ambient
+ * standings surface, not a win moment. Column headers stay short + mono for the table.
+ */
+export const crowdCopy = {
+  heading: 'The boards',
+  subheading: 'Weekly standings. Resets Monday.',
+  liveBadge: 'LIVE',
+  /** Chip label for the no-category, all-topics board. */
+  overallChip: 'Overall',
+  colRank: '#',
+  colWho: 'Player',
+  colAcc: 'ACC',
+  colEdge: 'EDGE',
+  /** Footer legend (§5 verbatim intent). */
+  legendAcc: 'ACC = calls right',
+  legendEdge: 'EDGE = price beaten at entry',
+  /** Empty-week / empty-board state — nobody has qualified on this board yet. */
+  emptyBoard: 'No one has qualified on this board yet. Make some calls.',
+  emptyWeek: 'No qualifying calls yet this week. The board fills as questions settle.',
+  /** a11y label for the viewer's own highlighted row (hydrated client-side, INV-10). */
+  youRowLabel: 'Your row',
+} as const;

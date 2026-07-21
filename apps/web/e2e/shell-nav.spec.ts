@@ -4,9 +4,10 @@
  * the active tab tracks the pathname, and the bar sinks while the open-question deck is on stage.
  *
  * Tabs point through `SHELL_ROUTES`, which today maps the not-yet-built rooms onto existing routes
- * (`/sweat`,`/crowd`→`/q`, `/rivals`→`/nemesis`, `/you`→`/settings`); those flip one line each in
- * WS19-T2/WS22-T1/T2/WS17-T2. `/nemesis` is behind the `nemesis` flag, which `playwright.config.ts`
- * defaults on, so the Rivals destination resolves in this lane.
+ * (`/sweat`→`/q`, `/rivals`→`/nemesis`, `/you`→`/settings`); those flip one line each in
+ * WS19-T2/WS22-T1/WS17-T2. `/crowd` already flipped to its real route (WS22-T2, D-J7). `/nemesis`
+ * is behind the `nemesis` flag, which `playwright.config.ts` defaults on, so the Rivals
+ * destination resolves in this lane.
  *
  * The deck-on-stage test needs `swipe_ballot` ON (default off, §4.6) — the deck only goes
  * full-screen on `/`'s open state under that flag. Mirroring `curation-topic.spec.ts`, it's gated
@@ -41,7 +42,7 @@ const ROOMS = [
   { key: 'stack', href: '/' },
   { key: 'sweat', href: '/sweat' },
   { key: 'rivals', href: '/nemesis' },
-  { key: 'crowd', href: '/q' },
+  { key: 'crowd', href: '/crowd' },
   { key: 'you', href: '/you' },
 ] as const;
 
