@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T10:35:56.548Z",
+  "updated_at": "2026-07-21T10:36:49.687Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1994,12 +1994,12 @@
       ],
       "mock_start_ok": true,
       "note": "Spec: docs/journeys-plan.md §5 WS18-T3 (D-J2). Extend SwipeBallot (onSkip/footerSlot), never fork it; skip = up-swipe or ArrowUp/S (a11y parity); headliner-only streak footer + rival chip; sets deckOnStage. Flag off ⇒ '/' byte-identical to today (regression e2e).",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-opus-fohjki-agentM",
+      "branch": "feat/ws18-t3-deck",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-21T08:22:30.580Z"
+      "claimed_at": "2026-07-21T10:36:49.687Z",
+      "updated_at": "2026-07-21T10:36:49.687Z"
     },
     "WS19-T1": {
       "title": "Settlement pipeline: settle-on-resolution in worker, per-settle push, evening digest",
