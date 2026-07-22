@@ -7,9 +7,12 @@ import { renderMagicLinkEmail } from '@/lib/auth-email-template';
 
 describe('renderMagicLinkEmail', () => {
   it('includes the sign-in url in both html (entity-escaped) and text (verbatim)', () => {
-    const url = 'https://receipts.example/api/auth/callback/email?token=abc.def&callbackUrl=%2Fclaim';
+    const url =
+      'https://receipts.example/api/auth/callback/email?token=abc.def&callbackUrl=%2Fclaim';
     const rendered = renderMagicLinkEmail(url, 15);
-    expect(rendered.html).toContain('https://receipts.example/api/auth/callback/email?token=abc.def&amp;callbackUrl=%2Fclaim');
+    expect(rendered.html).toContain(
+      'https://receipts.example/api/auth/callback/email?token=abc.def&amp;callbackUrl=%2Fclaim',
+    );
     expect(rendered.text).toContain(url);
     expect(rendered.subject).toBe(`Sign in to ${PRODUCT_NAME}`);
   });
