@@ -305,41 +305,52 @@ export async function revalidate(baseURL: string, path: string): Promise<void> {
   if (res.status !== 200) throw new Error(`revalidate ${path} → ${res.status}`);
 }
 
-/** Drain the mixed stack on `/`: throw whatever open card is on stage (a well tap = a real,
- * price-stamped pick), skip anything that isn't throwable, bounded so a stuck state fails instead
- * of hanging. Mirrors `stack-deck.spec.ts`'s own drain loop. Returns the number of throws made. */
-export async function drainDeck(page: Page, maxSteps = 24): Promise<number> {
+/**
+ * Drain the mixed stack on `/` to the `deck-cleared` state by throwing every open card on stage.
+ *
+ * Each iteration commits EXACTLY ONE card, deterministically:
+ *   1. tap the `yes` well — on a brand-new visitor's FIRST pick this only arms the 18+ age gate
+ *      (`profiles.age_attested_at` is null, so `serialize-profile` reports `age_attested: false`
+ *      and the well arms `pendingAge` instead of committing); on any later card it commits directly;
+ *   2. if the gate armed, confirm it so the pick actually POSTs (which also stamps the ghost's
+ *      `age_attested_at`, so subsequent cards commit in one tap);
+ *   3. count the throw ONLY once the deck genuinely advances (`deck-progress` changes) or clears —
+ *      a well tap that merely armed the gate is not a throw.
+ *
+ * This replaces the earlier loop, which confirmed the gate at the TOP of the iteration (a beat late),
+ * counted a throw on every well tap (over-counting the gate-arming tap), and fell back to a blind
+ * `ArrowUp` skip whenever the well was momentarily hidden — a skip re-enqueues the card, so under the
+ * age gate that loop could burn its step budget re-circulating cards without ever emptying the deck.
+ * Bounded by `maxSteps` (the deck is capped at 8 topic cards, `STACK_TOPIC_LIMIT`) so a genuinely
+ * stuck card fails loudly instead of hanging. Returns the number of cards actually thrown.
+ */
+export async function drainDeck(page: Page, maxSteps = 30): Promise<number> {
   let throws = 0;
   for (let i = 0; i < maxSteps; i += 1) {
     if (await page.getByTestId('deck-cleared').isVisible().catch(() => false)) break;
-    // A pending age gate would block the first throw — confirm it if present.
-    const ageConfirm = page.getByTestId('age-gate-confirm');
-    if (await ageConfirm.isVisible().catch(() => false)) {
-      await ageConfirm.click().catch(() => {});
+
+    const yesWell = page.getByTestId('pick-yes').first();
+    if (!(await yesWell.isVisible().catch(() => false))) {
+      // No throwable card on stage this instant (a transient re-render between cards) — let the
+      // deck settle and retry rather than blindly skipping, which would re-enqueue a card.
+      await page.waitForTimeout(150);
+      continue;
     }
     const progressBefore = await page
       .getByTestId('deck-progress')
       .innerText()
       .catch(() => '');
-    const yesWell = page.getByTestId('pick-yes').first();
-    if (await yesWell.isVisible().catch(() => false)) {
-      await yesWell.click().catch(() => {});
-      throws += 1;
-    } else {
-      await page
-        .getByTestId('pick-yes')
-        .first()
-        .focus()
-        .catch(() => {});
-      await page.keyboard.press('ArrowUp').catch(() => {});
-    }
-    // Wait for the deck to actually advance (or clear) rather than a fixed sleep — the pick POST +
-    // re-render can lag, and a fixed 400ms sometimes fired the next throw before the card changed.
+
+    // Tap the well (bounded, so a stuck-disabled well can't hang the whole test).
+    await yesWell.click({ timeout: 5_000 }).catch(() => {});
+
+    // Wait for EITHER the age gate to arm OR the deck to advance/clear — so there's no dead fixed
+    // timeout on the common (already-attested) path where the tap commits straight away.
     await page
       .waitForFunction(
         ({ before }) => {
-          const cleared = document.querySelector('[data-testid="deck-cleared"]');
-          if (cleared) return true;
+          if (document.querySelector('[data-testid="deck-cleared"]')) return true;
+          if (document.querySelector('[data-testid="age-gate-confirm"]')) return true;
           const prog = document.querySelector('[data-testid="deck-progress"]');
           return !!prog && prog.textContent !== before;
         },
@@ -347,6 +358,27 @@ export async function drainDeck(page: Page, maxSteps = 24): Promise<number> {
         { timeout: 5_000 },
       )
       .catch(() => {});
+
+    // The FIRST pick arms the 18+ gate instead of committing — confirm it so the pick POSTs.
+    const ageConfirm = page.getByTestId('age-gate-confirm');
+    if (await ageConfirm.isVisible().catch(() => false)) {
+      await ageConfirm.click({ timeout: 5_000 }).catch(() => {});
+    }
+
+    // A throw is real only once the deck actually advances (progress changes) or clears.
+    const advanced = await page
+      .waitForFunction(
+        ({ before }) => {
+          if (document.querySelector('[data-testid="deck-cleared"]')) return true;
+          const prog = document.querySelector('[data-testid="deck-progress"]');
+          return !!prog && prog.textContent !== before;
+        },
+        { before: progressBefore },
+        { timeout: 5_000 },
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (advanced) throws += 1;
   }
   return throws;
 }
