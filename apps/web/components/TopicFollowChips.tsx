@@ -48,10 +48,11 @@ export function TopicFollowChips({
   async function toggle(category: MarketCategory) {
     if (disabled || pending.has(category)) return;
     const wasFollowed = followed.has(category);
-    const nextFollowed = mutate(followed, category, !wasFollowed);
 
-    // Optimistic flip + rollback on failure.
-    setFollowed(nextFollowed);
+    // Optimistic flip + rollback on failure. Functional updates (not a value computed from the
+    // captured `followed`) so rapid A-then-B toggles across categories compose instead of the last
+    // stale write clobbering the earlier one.
+    setFollowed((prev) => mutate(prev, category, !wasFollowed));
     setPending((prev) => mutate(prev, category, true));
     try {
       const res = await fetch(`/api/v1/topics/${category}/follow`, {

@@ -199,9 +199,11 @@ export function TicketFrame({
   const hasMask = perfTop || perfBottom || notches;
   // The mask lives on the inner paper SURFACE (below); the outer wrapper stays unmasked so it can
   // carry the caller's drop shadow and the `overlay` (age gate / stamp) without them being clipped
-  // by the perforation. Only claim a positioning context when the overlay needs one — a hardcoded
-  // `relative` would outrank a caller's `absolute` on source order (the UnderCard position trap).
-  const positioned = Boolean(overlay);
+  // by the perforation. Claim a positioning context when an overlay OR notches are present, so a
+  // notched frame stays an offset parent for any absolutely-positioned descendant (matching the
+  // pre-mask behavior). A hardcoded `relative` would outrank a caller's `absolute` on source order
+  // (the UnderCard position trap), so plain `perf`-only frames (UnderCard) deliberately stay static.
+  const positioned = notches || Boolean(overlay);
 
   return (
     <div

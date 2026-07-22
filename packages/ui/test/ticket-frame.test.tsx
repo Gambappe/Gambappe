@@ -70,13 +70,13 @@ describe('TicketFrame', () => {
     expect(board).toContain('text-paper');
   });
 
-  it('only claims `relative` when it has an overlay (the UnderCard position trap)', () => {
-    // Notches are now mask cut-outs on the surface (no absolutely-positioned spans), so only an
-    // overlay needs the positioning context.
+  it('claims `relative` for notches or an overlay, but not for a plain perf frame (UnderCard trap)', () => {
+    // A plain perf-only frame (UnderCard) stays static so a caller's `absolute` wins on source
+    // order; notches + overlays keep an offset parent for their positioned descendants.
     const bare = renderToStaticMarkup(<TicketFrame perf="both">b</TicketFrame>);
     expect(bare).not.toMatch(/class="relative/);
     const withNotches = renderToStaticMarkup(<TicketFrame notches>b</TicketFrame>);
-    expect(withNotches).not.toMatch(/class="relative/);
+    expect(withNotches).toContain('relative');
     const withOverlay = renderToStaticMarkup(
       <TicketFrame overlay={<span data-testid="ov" />}>b</TicketFrame>,
     );

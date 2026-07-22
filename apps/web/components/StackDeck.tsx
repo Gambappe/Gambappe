@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { stackFeedSchema, type StackFeed } from '@receipts/core';
 import { DeckQueue } from './DeckQueue';
 
@@ -27,11 +27,11 @@ export interface StackDeckProps {
  */
 export function StackDeck({ feed: initialFeed, serverOffsetMs, arm, duoQueue, rivalHandle }: StackDeckProps) {
   const [feed, setFeed] = useState<StackFeed>(initialFeed);
-  const refetched = useRef(false);
 
   useEffect(() => {
-    if (refetched.current) return;
-    refetched.current = true;
+    // Empty deps → runs once per mount (twice under React StrictMode in dev, which is harmless: the
+    // GET is idempotent and only the live effect's `cancelled` guard gates `setFeed`). A ref-based
+    // "run once ever" guard would defeat StrictMode's cleanup and drop the swap in dev.
     let cancelled = false;
     void (async () => {
       try {
