@@ -1,21 +1,26 @@
-# WS15-T10: hands-off staging deploys (owner request). Every 15 minutes: if main has moved
-# since the last successful auto-deploy, apply migrations, refresh the Fly worker, and deploy
-# web to Vercel production. Feature flags are project env on Vercel / secrets on Fly — this
-# workflow never touches them, so whatever is enabled stays enabled.
+# WS15-T10/T12: hands-off deploys of the live environment (owner request). On every push to
+# main (i.e. every PR merge — CI is green before merge by repo convention): apply migrations,
+# refresh the Fly worker, and deploy web to Vercel production. Feature flags are project env
+# on Vercel / secrets on Fly — this workflow never touches them, so whatever is enabled stays
+# enabled. Push-triggered rather than cron (WS15-T12): GitHub throttles `schedule` events
+# (observed 2 firings in 2.5h on a */15 cron), while push events fire immediately.
 #
-# ACTIVATION — the deploy legs each no-op with a notice until their repo secret exists:
+# Secrets live in the repo's `production` GitHub Environment (owner's choice) — the job's
+# `environment: production` line is what makes them resolvable; without it every leg
+# silently skips. The legs each no-op with a notice until their secret exists:
 #   VERCEL_TOKEN           -> web deploy (Vercel production)
 #   FLY_API_TOKEN          -> worker image build + machine update
-#   STAGING_DATABASE_URL   -> drizzle migrations (Neon DIRECT host, not the pooler)
-name: auto-deploy staging
+#   STAGING_DATABASE_URL   -> drizzle migrations (Neon DIRECT host, not the pooler;
+#                             name kept as configured even though the env is production)
+name: auto-deploy
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'
+  push:
+    branches: [main]
   workflow_dispatch: {}
 
 concurrency:
-  group: auto-deploy-staging
+  group: auto-deploy
   cancel-in-progress: false
 
 permissions:
@@ -31,12 +36,14 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
-      # Skip the whole run when HEAD was already deployed by a previous tick. The marker is
-      # best-effort (cache eviction just causes one redundant deploy — harmless, idempotent).
+      # Skip the whole run when HEAD was already deployed by a previous run (mainly guards
+      # manual workflow_dispatch re-runs now that pushes always carry a new SHA). The marker
+      # is best-effort (cache eviction just causes one redundant deploy — harmless, idempotent).
       - name: Restore last-deployed marker
         id: marker
         uses: actions/cache/restore@v4
