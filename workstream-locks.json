@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T01:47:58.165Z",
+  "updated_at": "2026-07-22T01:57:11.957Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2280,6 +2280,19 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-22T01:47:58.163Z"
+    },
+    "WS15-T10": {
+      "title": "Auto-deploy workflow: 15-min cron redeploys staging when main moves",
+      "phase": "P0",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "Owner request: hands-off staging deploys (all flags stay on via project env). Skips cleanly when deploy secrets are absent; activates when VERCEL_TOKEN/FLY_API_TOKEN (+optional STAGING_DATABASE_URL) are added as repo secrets.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-22T01:57:11.940Z"
     }
   }
 }
