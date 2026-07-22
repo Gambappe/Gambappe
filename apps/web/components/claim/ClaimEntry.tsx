@@ -20,11 +20,13 @@
  * to `/claim` regardless of where `ClaimEntry` was opened from.
  *
  * `authError` (design-diff follow-up to WS25): `/claim`'s `?error=...` query param, present when
- * Auth.js's `pages.error` (`auth.ts`) redirects back here after a sign-in failure — an expired
- * or already-used magic-link token, a WS25-T4-wrapped rate limit/transport failure, an OAuth
- * callback error. When present, the ghost-confirmation ceremony is skipped (the visitor already
- * went through it once to get this far) and the sign-in phase shows a clear retry message
- * instead of silently re-showing the same pre-auth flow indistinguishably from a fresh visit.
+ * Auth.js's `pages.error`/`pages.signIn` (`auth.ts` sets BOTH to `/claim` — see that file's own
+ * comment for why one alone isn't enough) redirect back here after a sign-in failure — an
+ * expired or already-used magic-link token, a WS25-T4-wrapped rate limit/transport failure, an
+ * OAuth callback error. When present, the ghost-confirmation ceremony is skipped (the visitor
+ * already went through it once to get this far) and the sign-in phase shows a clear retry
+ * message instead of silently re-showing the same pre-auth flow indistinguishably from a fresh
+ * visit.
  */
 import { useEffect, useState } from 'react';
 import type { z } from 'zod';
