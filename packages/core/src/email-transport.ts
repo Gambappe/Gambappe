@@ -72,11 +72,12 @@ export interface StubTransportLogger {
 const noopLogger: StubTransportLogger = { info: () => {} };
 
 /**
- * Non-production / no-`RESEND_API_KEY` stub (mirrors `apps/web/lib/magic-link-mailbox.ts`):
- * logs that a send happened WITHOUT the recipient's email (§16.2 forbids logging emails
- * unconditionally, not just in production), and keeps an in-memory last-email-per-recipient
- * mailbox for local dev / integration tests to read back — same "never used in production"
- * posture as the magic-link mailbox.
+ * Non-production / no-`RESEND_API_KEY` stub: logs that a send happened WITHOUT the recipient's
+ * email (§16.2 forbids logging emails unconditionally, not just in production), and keeps an
+ * in-memory last-email-per-recipient mailbox for local dev / integration tests to read back —
+ * never used in production. WS25-T3: this is now also `apps/web/auth.ts`'s magic-link stub,
+ * replacing the bespoke `apps/web/lib/magic-link-mailbox.ts` it used to fall back to (retired —
+ * this class covers the identical need for both of this transport's callers).
  *
  * The logger is optional (default: no-op) rather than a required constructor argument — callers
  * that only care about the read-back mailbox (e.g. tests injecting this transport directly)
