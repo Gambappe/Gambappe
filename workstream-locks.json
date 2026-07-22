@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T01:58:35.202Z",
+  "updated_at": "2026-07-22T02:03:04.132Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2257,23 +2257,6 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T4. Defense in depth: even with real Resend wired, a send failure (bad key, Resend outage, missing EMAIL_FROM) must not crash into the raw error page. Empirically confirm (new test) the error shape Auth.js needs to redirect gracefully instead of re-trusting the existing unverified code comment about the rate-limit throw's behavior.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
-      "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-22T01:47:58.163Z"
-    },
-    "WS25-T5": {
-      "title": "Regression coverage for the full sign-in path (provider gating + transport selection + send success/failure)",
-      "phase": "A0",
-      "depends_on": [
-        "WS25-T1",
-        "WS25-T3",
-        "WS25-T4"
-      ],
-      "mock_start_ok": false,
-      "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T5. First test in the repo to actually exercise the production email sign-in branch at all (today only the dev-mode stub path is tested, per golden-loop.spec.ts's own header comment on why it bypasses real sign-in). Also confirms apps/web/e2e/auth-provider-config.spec.ts stays green through T3/T4's edits.",
       "status": "available",
       "owner": null,
       "branch": null,
