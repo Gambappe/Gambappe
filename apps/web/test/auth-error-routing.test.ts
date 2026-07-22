@@ -64,14 +64,16 @@ async function postEmailSignIn(config: AuthConfig): Promise<Response> {
 }
 
 /**
- * A `sendVerificationRequest` mock that rejects. `@auth/core`'s own `sendToken()` creates this
- * promise, then reaches `Promise.all([sendRequest, createToken])` one microtask tick later (an
- * intervening `await provider.generateVerificationToken?.()` on `undefined`) — Node's
- * unhandled-rejection sweep can run in that gap and flag the promise, even though `Promise.all`
- * *does* attach its own handler moments later (confirmed: every assertion below passes; this is
- * a benign timing artifact of testing the real library, not a bug in it or in this test).
- * Pre-attaching a no-op `.catch()` here marks the promise handled immediately, synchronously,
- * without affecting `Promise.all`'s own independent subscription to the same promise.
+ * A `sendVerificationRequest` mock that rejects. A plain `async () => { throw error }` mock
+ * reproduces a real Node "unhandled rejection" (confirmed: reverting to that shape locally
+ * brings back `PromiseRejectionHandledWarning`s and a nonzero exit code) even though
+ * `@auth/core`'s own `sendToken()` DOES eventually await this same promise via
+ * `Promise.all([sendRequest, createToken])` a few synchronous lines later — an async function's
+ * throw doesn't synchronously reject its returned promise (it settles via a microtask), so
+ * there's a real window where Node's unhandled-rejection sweep can run before that later
+ * `Promise.all` call attaches its handler. Pre-attaching a no-op `.catch()` here marks the
+ * promise handled immediately, synchronously, without affecting `Promise.all`'s own independent
+ * subscription to the same promise object.
  */
 function rejectingSend(error: Error): () => Promise<void> {
   return () => {
