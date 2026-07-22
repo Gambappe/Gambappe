@@ -28,9 +28,11 @@ export interface DeckStageProps {
  * instruction line and receipt all live in `SwipeBallot` (which `ViewerStrip` hydrates into the
  * slot); the stage supplies the frame.
  *
- * The old side rails (a persistent per-edge "← No"/"Yes →" tutorial) were removed — the swipe
- * direction is taught once by SwipeBallot's single instruction line, so the rails were redundant
- * screen clutter. `question` is retained on the props for API stability (callers still pass it).
+ * The old side rails (a persistent per-edge "← No"/"Yes →" tutorial TEXT) were removed as redundant
+ * clutter — the swipe direction is taught once by SwipeBallot's single instruction line. The faint
+ * orange-left / blue-right ambient EDGE GLOW is kept (text-free): it's the D-SW9 axis colour cue
+ * that gives the dark stage some life without re-adding signage. `question` is retained on the
+ * props for API stability (callers still pass it).
  */
 export function DeckStage({ viewerSlot, underLabel }: DeckStageProps) {
   return (
@@ -39,6 +41,21 @@ export function DeckStage({ viewerSlot, underLabel }: DeckStageProps) {
       dir="ltr"
       className="bg-bg relative flex min-h-[70dvh] flex-col overflow-hidden rounded-xl"
     >
+      {/* Ambient axis glow (§2.5) — text-free, decorative, non-interactive. Against = orange on the
+          left, for = blue on the right (D-SW9), matching the wells' swipe tint. */}
+      <div
+        aria-hidden="true"
+        data-testid="stage-glow-against"
+        className="pointer-events-none absolute inset-y-0 left-0 w-12"
+        style={{ background: 'linear-gradient(90deg, rgba(249,115,22,0.12), transparent)' }}
+      />
+      <div
+        aria-hidden="true"
+        data-testid="stage-glow-for"
+        className="pointer-events-none absolute inset-y-0 right-0 w-12"
+        style={{ background: 'linear-gradient(-90deg, rgba(59,130,246,0.12), transparent)' }}
+      />
+
       {/* The card column. The under-card peeks from behind so finishing today reveals tomorrow. */}
       <div className="relative z-10 mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-9 py-8">
         <div className="relative">

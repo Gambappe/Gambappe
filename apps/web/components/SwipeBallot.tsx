@@ -372,7 +372,7 @@ export function SwipeBallot({
       disabled={disabled}
       onClick={() => submit('no', 'well')}
       onKeyDown={onWellKey}
-      className="border-side-b text-side-b min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase disabled:opacity-50"
+      className="bg-side-b/[0.08] border-side-b text-side-b min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase transition-colors hover:bg-side-b/[0.16] disabled:opacity-50"
     >
       {ballotCopy.wellAgainstGlyph} {noLabel}
     </button>,
@@ -383,7 +383,7 @@ export function SwipeBallot({
       disabled={disabled}
       onClick={() => submit('yes', 'well')}
       onKeyDown={onWellKey}
-      className="border-side-a text-side-a min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase disabled:opacity-50"
+      className="bg-side-a/[0.08] border-side-a text-side-a min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase transition-colors hover:bg-side-a/[0.16] disabled:opacity-50"
     >
       {yesLabel} {ballotCopy.wellForGlyph}
     </button>,
@@ -402,8 +402,8 @@ export function SwipeBallot({
             style={{
               background:
                 activeSide === 'yes'
-                  ? 'radial-gradient(120% 90% at 85% 50%, rgba(59,130,246,0.42), transparent 62%)'
-                  : 'radial-gradient(120% 90% at 15% 50%, rgba(249,115,22,0.42), transparent 62%)',
+                  ? 'radial-gradient(120% 90% at 85% 50%, rgba(59,130,246,0.5), transparent 62%)'
+                  : 'radial-gradient(120% 90% at 15% 50%, rgba(249,115,22,0.5), transparent 62%)',
               opacity: flingSide ? 0.85 : tintOpacity(progress),
               transition: dragging ? 'none' : 'opacity 180ms',
             }}

@@ -10,12 +10,6 @@ export interface TopicFollowChipsProps {
   counts?: Partial<Record<MarketCategory, number>>;
   /** Read-only render (no toggling) — e.g. a spectator preview. */
   disabled?: boolean;
-  /**
-   * Fired after a follow toggle successfully persists, with the new followed set. The home stack
-   * (`StackDeck`) uses it to refetch the deck so a topic change re-deals the cards live. Optional,
-   * so the `/you` call site is unchanged.
-   */
-  onChanged?: (followed: readonly MarketCategory[]) => void;
   className?: string;
 }
 
@@ -39,7 +33,6 @@ export function TopicFollowChips({
   initialFollowed,
   counts,
   disabled = false,
-  onChanged,
   className = '',
 }: TopicFollowChipsProps) {
   const [followed, setFollowed] = useState<Set<MarketCategory>>(() => new Set(initialFollowed));
@@ -65,8 +58,6 @@ export function TopicFollowChips({
         method: wasFollowed ? 'DELETE' : 'POST',
       });
       if (!res.ok) throw new Error(`follow toggle failed: ${res.status}`);
-      // Persisted — let a host (the home stack) re-deal against the new follow set.
-      onChanged?.([...nextFollowed]);
     } catch {
       setFollowed((prev) => mutate(prev, category, wasFollowed));
     } finally {

@@ -12,22 +12,27 @@ interface SidePriceProps {
 
 /**
  * One side's printed price — a DISPLAY chip, not a control (the tap wells below the card are the
- * only pick buttons). Deliberately flat: no border box, so it never reads as a second, tappable
- * set of yes/no buttons alongside the wells. Side identity is carried by the colored dot (a UI
- * element, AA at 3:1); the label + cents stay in `ink` on paper (AA at 4.5:1) because the side
- * hues #3B82F6 / #F97316 fail AA as text on paper. `data-side` anchors the axis-order tests.
+ * only pick buttons). A soft side-tinted panel with a colored LEFT accent (fill, not a full 2px
+ * outline) — so the card keeps its orange/blue energy while reading distinctly from the outlined
+ * `✕ NO` / `YES ✓` wells (fill = info, outline = action). Side identity is carried by the tint +
+ * accent + dot (UI elements, AA at 3:1); the label + cents stay in `ink` on paper (AA at 4.5:1)
+ * because the side hues #3B82F6 / #F97316 fail AA as text on paper. `data-side` anchors the tests.
  */
 function SidePrice({ side, label, yesProbability }: SidePriceProps) {
   const cents = impliedCents(side, yesProbability);
   const dot = side === 'yes' ? 'bg-side-a' : 'bg-side-b';
+  const panel = side === 'yes' ? 'bg-side-a/10 border-side-a' : 'bg-side-b/10 border-side-b';
   return (
-    <div data-side={side} className="text-ink flex flex-1 flex-col gap-0.5">
+    <div
+      data-side={side}
+      className={`${panel} text-ink flex flex-1 flex-col gap-0.5 rounded-md border-l-4 py-1.5 pr-2 pl-2.5`}
+    >
       <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-wider uppercase">
         <span aria-hidden="true" className={`${dot} h-1.5 w-1.5 rounded-full`} />
         {label}
       </span>
       <span
-        className="text-ink/90 font-mono text-base font-semibold"
+        className="text-ink font-mono text-base font-semibold"
         aria-label={`${label}: ${cents}% implied`}
       >
         @ {cents}¢
