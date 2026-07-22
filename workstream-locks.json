@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T03:20:20.999Z",
+  "updated_at": "2026-07-22T03:38:29.147Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2258,9 +2258,9 @@
       "status": "in_review",
       "owner": "claude-code-session-1784689936",
       "branch": "feat/ws25-t3-wire-real-email-send",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/141",
       "claimed_at": "2026-07-22T03:12:16.649Z",
-      "updated_at": "2026-07-22T03:20:20.999Z"
+      "updated_at": "2026-07-22T03:38:29.147Z"
     },
     "WS25-T4": {
       "title": "Make a Resend send failure degrade gracefully instead of hitting Auth.js's generic Configuration error page",
