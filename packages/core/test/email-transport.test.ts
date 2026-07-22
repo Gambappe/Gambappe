@@ -120,4 +120,14 @@ describe('defaultEmailTransport', () => {
     process.env.RESEND_API_KEY = 'key';
     expect(() => defaultEmailTransport()).toThrow(/EMAIL_FROM/);
   });
+
+  it('threads a passed-in logger through to the stub transport it returns', async () => {
+    const info = vi.fn();
+    const transport = defaultEmailTransport({ info });
+    expect(transport).toBeInstanceOf(LoggingEmailTransport);
+
+    await transport.send({ to: 'a@example.com', subject: 'first', html: 'h', text: 't' });
+
+    expect(info).toHaveBeenCalledTimes(1);
+  });
 });

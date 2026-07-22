@@ -53,6 +53,7 @@ export class ResendEmailTransport implements EmailTransport {
       }),
     });
     if (!res.ok) {
+      // §16.2: never log the recipient email — log the outcome + a truncated provider body only.
       const body = await res.text().catch(() => '');
       throw new Error(`Resend send failed: ${res.status} ${body.slice(0, 500)}`);
     }
@@ -90,7 +91,7 @@ export class LoggingEmailTransport implements EmailTransport {
     this.mailbox.set(email.to, email);
     this.logger.info(
       { subject: email.subject },
-      'notify:dispatch email (stub transport — RESEND_API_KEY not set)',
+      'email send (stub transport — RESEND_API_KEY not set)',
     );
     await Promise.resolve();
   }
