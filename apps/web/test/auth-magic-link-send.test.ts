@@ -61,7 +61,7 @@ describe('sendMagicLinkEmail — the real auth.ts handler body (WS25-T5)', () =>
   it('production path: RESEND_API_KEY set — a successful Resend send resolves cleanly', async () => {
     process.env.RESEND_API_KEY = 'test-key';
     process.env.EMAIL_FROM = 'Gambappe <noreply@gambappe.example>';
-    const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }));
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response('{}', { status: 200 }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     await expect(sendMagicLinkEmail('user@example.com', url, headers)).resolves.toBeUndefined();
@@ -69,7 +69,7 @@ describe('sendMagicLinkEmail — the real auth.ts handler body (WS25-T5)', () =>
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [reqUrl, init] = fetchMock.mock.calls[0]!;
     expect(reqUrl).toBe('https://api.resend.com/emails');
-    const body = JSON.parse((init as RequestInit).body as string) as {
+    const body = JSON.parse(init!.body as string) as {
       to: string[];
       from: string;
       subject: string;
