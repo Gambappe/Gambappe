@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Receipts × XTrace — Provenance for the Self-Model</title>
+<style>
+/* ────────────────────────────────────────────────────────────────────────
+   Receipts × XTrace — integration mockups.
+   Honors the repo ticket system (packages/ui/src/tokens.ts): dark stage,
+   cream receipt paper, side-A/B, win/loss, scarce gold. Adds ONE new
+   signature — "machine-memory" violet — reserved for belief chrome,
+   provenance edges, and ciphertext. Deliberately single-world dark, like
+   the sibling docs/mockups/swipe-ux.html and the product's "dark default".
+   ──────────────────────────────────────────────────────────────────────── */
+:root{
+  --bg:#0B0B0D; --surface:#141417; --surface2:#1B1B20;
+  --paper:#F4F1E8; --paper2:#E9E4D5; --ink:#111111;
+  --muted:#8B8B93; --muted2:#5E5E66; --line:#2A2A31;
+  --sideA:#3B82F6; --sideB:#F97316; --win:#2DD4A7; --loss:#F43F5E;
+  --gold:#FFC53D;
+  /* XTrace signature — machine memory / belief / provenance / ciphertext */
+  --belief:#A78BFA; --belief-dim:#6D5FA6; --belief-wash:rgba(167,139,250,0.10);
+  --cipher:#7C74A8;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --disp:"Barlow Condensed","Oswald","Arial Narrow",system-ui,sans-serif;
+  --body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --maxtext:62ch;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:
+    radial-gradient(1200px 700px at 50% -10%, #16161c 0%, transparent 60%),
+    var(--bg);
+  color:#E7E7EA; font-family:var(--body); font-size:17px; line-height:1.6;
+  letter-spacing:.002em; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:0 24px 8rem}
+p{max-width:var(--maxtext)}
+a{color:var(--belief); text-decoration:none; border-bottom:1px solid rgba(167,139,250,.35)}
+a:hover{border-bottom-color:var(--belief)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--gold); outline-offset:3px; border-radius:3px}
+strong{color:#fff; font-weight:600}
+em{color:var(--belief); font-style:normal}
+hr{border:0; border-top:1px solid var(--line); margin:4rem 0}
+::selection{background:rgba(167,139,250,.30); color:#fff}
+.mono{font-family:var(--mono)}
+.num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+
+/* ── Masthead ─────────────────────────────────────────────────────────── */
+.mast{padding:5.5rem 0 2.5rem; border-bottom:1px solid var(--line)}
+.kicker{
+  font-family:var(--mono); font-size:.72rem; letter-spacing:.34em;
+  text-transform:uppercase; color:var(--belief); margin:0 0 1.4rem;
+  display:flex; align-items:center; gap:.9rem;
+}
+.kicker::before{content:""; width:34px; height:1px; background:var(--belief)}
+.mast h1{
+  font-family:var(--disp); font-weight:700; font-size:clamp(2.9rem,7vw,5.4rem);
+  line-height:.94; margin:0; letter-spacing:.006em; text-wrap:balance; color:#fff;
+}
+.mast h1 .x{color:var(--belief)}
+.mast .sub{
+  font-size:1.24rem; line-height:1.45; color:#C7C7CE; margin:1.7rem 0 0;
+  max-width:44ch; text-wrap:balance;
+}
+.mast .meta{
+  display:flex; flex-wrap:wrap; gap:.5rem .7rem; margin-top:2.3rem;
+  font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+}
+.chip{
+  border:1px solid var(--line); border-radius:999px; padding:.32rem .74rem;
+  color:var(--muted); background:var(--surface);
+}
+.chip.b{border-color:var(--belief-dim); color:var(--belief)}
+
+/* ── Thesis band ──────────────────────────────────────────────────────── */
+.thesis{padding:3.2rem 0 1rem}
+.eyebrow{
+  font-family:var(--mono); font-size:.72rem; letter-spacing:.28em;
+  text-transform:uppercase; color:var(--muted); margin:0 0 1rem;
+}
+.thesis h2{
+  font-family:var(--disp); font-weight:600; font-size:clamp(1.9rem,3.6vw,2.7rem);
+  line-height:1.02; margin:0 0 1.3rem; color:#fff; letter-spacing:.01em; text-wrap:balance;
+}
+.lead{font-size:1.12rem; color:#D2D2D8}
+.rhyme{
+  display:grid; grid-template-columns:1fr auto 1fr; gap:1.1rem; align-items:center;
+  margin:2.4rem 0 1rem; max-width:820px;
+}
+.rhyme .col{
+  border:1px solid var(--line); border-radius:12px; padding:1.1rem 1.2rem;
+  background:linear-gradient(180deg,var(--surface),#101014);
+}
+.rhyme .col h4{
+  margin:0 0 .5rem; font-family:var(--mono); font-size:.68rem; letter-spacing:.18em;
+  text-transform:uppercase;
+}
+.rhyme .r-recpt h4{color:var(--gold)} .rhyme .r-xt h4{color:var(--belief)}
+.rhyme .col p{font-size:.92rem; margin:0; color:#BDBDC4; max-width:none}
+.rhyme .eq{
+  font-family:var(--disp); font-size:2.4rem; color:var(--belief); text-align:center; line-height:1;
+}
+@media(max-width:680px){.rhyme{grid-template-columns:1fr; gap:.7rem}.rhyme .eq{transform:rotate(90deg)}}
+
+/* ── Section / concept scaffolding ────────────────────────────────────── */
+.tierhead{
+  margin:5.5rem 0 2rem; padding-top:2rem; border-top:1px solid var(--line);
+  display:flex; align-items:baseline; gap:1rem; flex-wrap:wrap;
+}
+.tierhead .tno{
+  font-family:var(--mono); font-size:.8rem; letter-spacing:.2em; color:var(--belief);
+}
+.tierhead h2{
+  font-family:var(--disp); font-weight:700; font-size:clamp(1.7rem,3.2vw,2.3rem);
+  margin:0; color:#fff; letter-spacing:.01em;
+}
+.tierhead .note{font-size:.86rem; color:var(--muted); font-family:var(--mono)}
+
+.concept{margin:3.4rem 0}
+.concept > .head{display:flex; align-items:baseline; gap:.9rem; flex-wrap:wrap; margin-bottom:.5rem}
+.concept .idx{
+  font-family:var(--mono); font-size:2.1rem; font-weight:600; color:var(--belief-dim);
+  line-height:1; letter-spacing:.02em;
+}
+.concept h3{
+  font-family:var(--disp); font-weight:700; font-size:clamp(1.7rem,3.4vw,2.5rem);
+  margin:0; color:#fff; line-height:1; letter-spacing:.012em;
+}
+.concept .pitch{font-size:1.12rem; color:#D6D6DC; margin:.7rem 0 0; max-width:58ch}
+.tags{display:flex; flex-wrap:wrap; gap:.4rem; margin:1.1rem 0 0}
+.tag{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.08em; padding:.26rem .6rem;
+  border-radius:6px; border:1px solid var(--line); color:var(--muted); background:var(--surface);
+}
+.tag.p{color:var(--gold); border-color:rgba(255,197,61,.28)}
+.tag.eng{color:var(--belief); border-color:var(--belief-dim)}
+
+.grid{display:grid; grid-template-columns:1.05fr .95fr; gap:1.8rem; align-items:start; margin-top:1.6rem}
+@media(max-width:820px){.grid{grid-template-columns:1fr; gap:1.4rem}}
+.applause{
+  border-left:2px solid var(--belief); padding:.2rem 0 .2rem 1.2rem; margin:0;
+}
+.applause .lbl{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--belief); display:block; margin-bottom:.5rem;
+}
+.applause p{margin:0 0 .8rem; font-size:.98rem; color:#CFCFD5}
+.applause p:last-child{margin-bottom:0}
+
+/* ── Stage: where mockups float on the dark ───────────────────────────── */
+.stage{
+  background:
+    radial-gradient(120% 90% at 50% 0%, #17171d 0%, #0d0d11 70%);
+  border:1px solid var(--line); border-radius:16px;
+  padding:2rem 1.6rem; display:flex; flex-direction:column; gap:1rem;
+  align-items:center; position:relative; overflow:hidden;
+}
+.stage::after{
+  content:attr(data-cap); position:absolute; bottom:.7rem; right:1rem;
+  font-family:var(--mono); font-size:.6rem; letter-spacing:.16em; color:var(--muted2);
+  text-transform:uppercase;
+}
+
+/* ── Ticket / receipt frame (mirrors packages/ui TicketFrame) ─────────── */
+.ticket{
+  background:var(--paper); color:var(--ink); width:min(360px,100%);
+  border-radius:8px; position:relative; box-shadow:0 14px 34px rgba(0,0,0,.5);
+  font-family:var(--body);
+}
+.ticket .admit{
+  display:flex; justify-content:space-between; align-items:center;
+  font-family:var(--mono); font-size:.62rem; letter-spacing:.22em; text-transform:uppercase;
+  padding:.6rem .9rem; border-bottom:2px solid var(--ink); color:#333;
+}
+.ticket .perf{
+  height:0; border-top:2px dotted rgba(17,17,17,.32); margin:0 .5rem;
+}
+.ticket .body{padding:1rem 1.1rem 1.1rem}
+.ticket .stub{
+  border-top:1px dashed rgba(17,17,17,.4); margin:0 .5rem; padding:.6rem .6rem .8rem;
+  display:flex; justify-content:space-between; align-items:center;
+  font-family:var(--mono); font-size:.62rem; letter-spacing:.08em; color:#444;
+}
+.ticket .barcode{
+  height:22px; width:88px;
+  background:repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 4px,#111 4px 5px,transparent 5px 8px);
+}
+.q{font-family:var(--disp); font-weight:700; font-size:1.32rem; line-height:1.02; margin:0 0 .7rem; color:#111; letter-spacing:.008em}
+.sidepill{
+  display:inline-flex; align-items:center; gap:.4rem; font-family:var(--mono);
+  font-size:.72rem; font-weight:600; padding:.28rem .6rem; border-radius:5px; color:#fff;
+}
+.sidepill.a{background:var(--sideA)} .sidepill.b{background:var(--sideB)}
+.rowline{display:flex; justify-content:space-between; align-items:baseline; font-family:var(--mono); font-size:.82rem; padding:.28rem 0; border-bottom:1px solid rgba(17,17,17,.08)}
+.rowline .k{color:#666; letter-spacing:.04em; font-size:.68rem; text-transform:uppercase}
+.rowline .v{font-weight:600; color:#111; font-variant-numeric:tabular-nums}
+.stamp{
+  font-family:var(--disp); font-weight:700; font-size:1rem; letter-spacing:.14em;
+  border:2px solid; padding:.14rem .5rem; border-radius:4px; transform:rotate(-4deg);
+  display:inline-block; text-transform:uppercase;
+}
+.stamp.win{color:var(--win); border-color:var(--win)}
+.stamp.loss{color:var(--loss); border-color:var(--loss)}
+.stamp.gold{color:#B8860B; border-color:#B8860B}
+
+/* ── Belief card (XTrace on the dark stage) ───────────────────────────── */
+.belief{
+  width:min(400px,100%); background:linear-gradient(180deg,#191622,#121016);
+  border:1px solid var(--belief-dim); border-radius:10px; overflow:hidden;
+  box-shadow:0 10px 30px rgba(0,0,0,.5), inset 0 0 0 1px rgba(167,139,250,.06);
+}
+.belief .bhead{
+  display:flex; justify-content:space-between; align-items:center; gap:.6rem;
+  padding:.7rem .9rem; border-bottom:1px solid rgba(167,139,250,.18);
+  font-family:var(--mono); font-size:.64rem; letter-spacing:.14em; text-transform:uppercase; color:var(--belief);
+}
+.belief .bid{color:var(--muted); letter-spacing:.06em}
+.belief .bbody{padding:.9rem 1rem 1rem}
+.belief .claim{font-family:var(--disp); font-weight:600; font-size:1.28rem; line-height:1.04; color:#F2EEFF; margin:0 0 .2rem; letter-spacing:.01em}
+.belief .conf{font-family:var(--mono); font-size:.72rem; color:var(--belief); margin:0 0 .8rem}
+.meter{height:6px; border-radius:3px; background:#241f33; overflow:hidden; margin:.4rem 0 .9rem}
+.meter > i{display:block; height:100%; background:linear-gradient(90deg,var(--belief-dim),var(--belief))}
+/* provenance edges */
+.edges{display:flex; flex-direction:column; gap:.42rem; margin-top:.6rem}
+.edge{
+  display:flex; align-items:center; gap:.5rem; font-family:var(--mono); font-size:.7rem; color:#B9B2D4;
+}
+.edge .etype{
+  color:var(--belief); border:1px solid var(--belief-dim); border-radius:4px;
+  padding:.06rem .34rem; font-size:.6rem; letter-spacing:.08em; white-space:nowrap;
+}
+.edge .arrow{color:var(--belief-dim)}
+.edge .to{color:#8f89a6; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+/* ── Ciphertext block ─────────────────────────────────────────────────── */
+.cipher{
+  font-family:var(--mono); font-size:.62rem; line-height:1.35; letter-spacing:.02em;
+  color:var(--cipher); background:#0f0d16; border:1px solid var(--belief-dim);
+  border-radius:8px; padding:.7rem .8rem; width:min(300px,100%); word-break:break-all;
+  position:relative; overflow:hidden;
+}
+.cipher::before{
+  content:"◆ AES-256 · sealed"; position:absolute; top:.4rem; right:.5rem;
+  font-size:.52rem; letter-spacing:.12em; color:var(--belief); background:#0f0d16; padding-left:.4rem;
+}
+.cipher .txt{opacity:.72; display:block; margin-top:1rem}
+.faceoff{display:flex; align-items:center; gap:.7rem; flex-wrap:wrap; justify-content:center}
+.faceoff .vs{font-family:var(--disp); font-weight:700; color:var(--belief); font-size:1.3rem}
+.arrowdown{color:var(--belief); font-family:var(--mono); font-size:1.1rem; text-align:center}
+
+/* ── Briefing board (departures-board tone) ───────────────────────────── */
+.board{
+  width:min(420px,100%); background:#0c0c10; border:1px solid var(--line);
+  border-radius:10px; overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,.55);
+}
+.board .bh{
+  display:flex; justify-content:space-between; padding:.7rem .95rem;
+  border-bottom:1px solid var(--line); font-family:var(--mono); font-size:.64rem;
+  letter-spacing:.18em; text-transform:uppercase; color:var(--belief);
+}
+.board .brow{
+  display:grid; grid-template-columns:auto 1fr auto; gap:.7rem; align-items:center;
+  padding:.6rem .95rem; border-bottom:1px solid #171720; font-family:var(--mono); font-size:.78rem;
+}
+.board .brow:last-child{border-bottom:0}
+.board .flip{color:#DADAE0; letter-spacing:.04em}
+.board .brow .t{font-size:.6rem; color:var(--muted); letter-spacing:.14em; text-transform:uppercase}
+.board .st{font-family:var(--mono); font-size:.64rem; padding:.14rem .44rem; border-radius:4px; letter-spacing:.06em}
+.st.open{color:var(--sideB); border:1px solid rgba(249,115,22,.4)}
+.st.rev{color:var(--belief); border:1px solid var(--belief-dim)}
+.st.sweat{color:var(--gold); border:1px solid rgba(255,197,61,.35)}
+
+/* small building blocks */
+.callout{
+  border:1px solid var(--belief-dim); background:var(--belief-wash); border-radius:10px;
+  padding:1rem 1.2rem; margin:2.6rem 0; max-width:820px;
+}
+.callout .lbl{font-family:var(--mono); font-size:.64rem; letter-spacing:.2em; text-transform:uppercase; color:var(--belief); display:block; margin-bottom:.5rem}
+.callout p{margin:0; color:#D6D3E4; font-size:.98rem}
+
+/* ── Tables ───────────────────────────────────────────────────────────── */
+.tablewrap{overflow-x:auto; margin:1.4rem 0; border:1px solid var(--line); border-radius:12px}
+table{border-collapse:collapse; width:100%; min-width:640px; font-size:.9rem}
+th,td{text-align:left; padding:.7rem .9rem; border-bottom:1px solid var(--line); vertical-align:top}
+thead th{
+  font-family:var(--mono); font-size:.64rem; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--belief); background:var(--surface); position:sticky; top:0;
+}
+tbody tr:last-child td{border-bottom:0}
+td .num{color:#fff}
+.dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:.3rem; vertical-align:middle}
+.d-ship{background:var(--win)} .d-strong{background:var(--gold)} .d-wild{background:var(--belief)}
+td.hits{font-family:var(--mono); font-size:.78rem; color:var(--gold)}
+.scorecard td.y{color:var(--win); font-family:var(--mono); font-weight:600}
+.scorecard td.n{color:var(--muted); font-family:var(--mono)}
+.scorecard td.q{color:var(--gold); font-family:var(--mono)}
+
+/* ── Footer / build notes ─────────────────────────────────────────────── */
+.buildlist{list-style:none; padding:0; margin:1.2rem 0; max-width:var(--maxtext)}
+.buildlist li{padding:.55rem 0; border-bottom:1px solid var(--line); display:flex; gap:.8rem; align-items:baseline}
+.buildlist code{font-family:var(--mono); font-size:.8rem; color:var(--belief); background:var(--surface); padding:.12rem .4rem; border-radius:4px; white-space:nowrap}
+.foot{margin-top:6rem; padding-top:2rem; border-top:1px solid var(--line); color:var(--muted); font-size:.82rem; font-family:var(--mono)}
+.foot a{color:var(--muted)}
+
+@media (prefers-reduced-motion:no-preference){
+  .pulse{animation:pulse 2.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ══ MASTHEAD ══════════════════════════════════════════════════════ -->
+  <header class="mast">
+    <p class="kicker">Design exploration · not implemented UI · Jul 2026</p>
+    <h1>Receipts <span class="x">×</span> XTrace</h1>
+    <p class="sub">The app already stamps every pick with proof. XTrace lets us stamp the <em>reason</em> — and revise it in public when reality proves us wrong.</p>
+    <div class="meta">
+      <span class="chip b">10 concepts</span>
+      <span class="chip">Tier 1 flagship → Tier 3 wild</span>
+      <span class="chip">honors the ticket system</span>
+      <span class="chip">P1–P12 checked</span>
+      <span class="chip">zero credentials collected</span>
+    </div>
+  </header>
+
+  <!-- ══ THESIS ════════════════════════════════════════════════════════ -->
+  <section class="thesis">
+    <p class="eyebrow">00 · Why this pairing is uncanny</p>
+    <h2>The fingerprint was always a belief system. We just never let anyone read it.</h2>
+    <p class="lead">Receipts already rebuilds a per-user <strong>fingerprint</strong> nightly — chalk affinity, contrarianism, category profile — a private vector that decides your nemesis, your house, your rating. It's a black box that quietly changes its mind about you every night and never says why.</p>
+    <p class="lead">XTrace is a <strong>belief-revision engine</strong>: it stores structured beliefs, each with provenance — <em>where it came from, when, and why</em> — and when reality shifts it <span class="mono" style="color:var(--belief)">adds</span>, <span class="mono" style="color:var(--belief)">supersedes</span>, or <span class="mono" style="color:var(--belief)">retracts</span> a belief while preserving the whole history. That is not an adjacent product. That is the fingerprint engine with the lights turned on.</p>
+
+    <div class="rhyme">
+      <div class="col r-recpt">
+        <h4>Receipts already has</h4>
+        <p>Timestamped, price-stamped picks. A nightly fingerprint. Public records. "The loser is the protagonist." Receipts over claims.</p>
+      </div>
+      <div class="eq">≅</div>
+      <div class="col r-xt">
+        <h4>XTrace already is</h4>
+        <p>Beliefs with provenance edges. Add / supersede / retract with preserved history. Encrypted so even the host can't read it. Session briefings that kill cold-start.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="lbl">The one-sentence pitch</span>
+      <p>Today a receipt proves <strong>what</strong> you picked and <strong>when</strong>. Put the engine on XTrace and the receipt also carries <strong>why</strong> — a belief with provenance you can audit, that dies on the record when it betrays you, that you own and can carry anywhere, and that the app itself can't read the private half of.</p>
+    </div>
+
+    <p style="color:var(--muted); font-size:.9rem; font-family:var(--mono); margin-top:2rem">Concepts are ranked strongest → wildest. Each is scored against the repo's own lateral-development checklist (P1–P12 + hard lines) at the end. Every mockup below is a proposal; nothing here ships as drawn.</p>
+  </section>
+
+  <!-- ══ TIER 1 ════════════════════════════════════════════════════════ -->
+  <div class="tierhead">
+    <span class="tno">TIER 1</span>
+    <h2>Flagship — the arguments that win the room</h2>
+    <span class="note">on-thesis, engine-native, demo-able this weekend</span>
+  </div>
+
+  <!-- 01 · The Glass Engine -->
+  <article class="concept">
+    <div class="head">
+      <span class="idx">01</span>
+      <h3>The Glass Engine</h3>
+    </div>
+    <p class="pitch">Rebuild the fingerprint <em>as</em> an XTrace belief-log. Every trait becomes a belief with provenance — the black box turns to glass, and the self-model becomes as auditable as a pick.</p>
+    <div class="tags">
+      <span class="tag p">P4 receipts over claims</span>
+      <span class="tag p">P6 one engine</span>
+      <span class="tag p">P7 outlives the moment</span>
+      <span class="tag eng">writes: fingerprint · ratings</span>
+    </div>
+
+    <div class="grid">
+      <div class="stage" data-cap="belief card · /you">
+        <div class="belief">
+          <div class="bhead"><span>Belief · active</span><span class="bid">№ B-2214</span></div>
+          <div class="bbody">
+            <p class="claim">You're a longshot-chaser.</p>
+            <p class="conf">confidence 0.81 · revised 2 nights ago</p>
+            <div class="meter"><i style="width:81%"></i></div>
+            <div class="edges">
+              <div class="edge"><span class="etype">Derived_From</span><span class="arrow">▸</span><span class="to">14 picks · avg entry 17%</span></div>
+              <div class="edge"><span class="etype">Supersedes</span><span class="arrow">▸</span><span class="to">B-1980 "chalk-rider" · retired Jun 3</span></div>
+              <div class="edge"><span class="etype">Depends_On</span><span class="arrow">▸</span><span class="to">rating band · Glicko 1540±120</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="applause">
+          <span class="lbl">Why a judge applauds</span>
+          <p>Every prediction startup demos a black-box "profile." We demo one you can <strong>audit</strong>: tap any trait and see the exact picks that formed it, the belief it replaced, and the night it flipped. That's Principle 4 — receipts over claims — applied to the app's own opinion of you.</p>
+          <p>It's not a bolt-on. The nightly fingerprint job already computes these vectors; XTrace just stores each axis as a belief with <code class="mono" style="color:var(--belief)">Derived_From</code> / <code class="mono" style="color:var(--belief)">Supersedes</code> edges instead of overwriting a row. The rating, nemesis matching, and house sort all read the same log — one engine, now legible.</p>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 02 · The Why-Stamp -->
+  <article class="concept">
+    <div class="head">
+      <span class="idx">02</span>
+      <h3>The Why-Stamp</h3>
+    </div>
+    <p class="pitch">At pick time, seal the belief that drove the pick into encrypted memory. On settle, the receipt narrates the belief that won — or names the one that got you killed — and the engine revises it on the spot.</p>
+    <div class="tags">
+      <span class="tag p">P3 loser is protagonist</span>
+      <span class="tag p">P4 receipts over claims</span>
+      <span class="tag eng">reads/writes: fingerprint</span>
+    </div>
+
+    <div class="grid">
+      <div class="stage" data-cap="settled receipt · obituary">
+        <div class="ticket">
+          <div class="admit"><span>GAMBAPPE · ECON</span><span>№ 2026-07-22</span></div>
+          <div class="perf"></div>
+          <div class="body">
+            <p class="q">Will CPI come in under 3.0%?</p>
+            <span class="sidepill b">◆ NO · entry 22¢</span>
+            <div style="margin:.8rem 0 .5rem"><span class="stamp loss">Busted</span></div>
+            <div class="rowline"><span class="k">cause of death</span><span class="v" style="color:var(--belief-dim)">belief B-2214</span></div>
+            <div class="rowline"><span class="k">"longshot pays"</span><span class="v">→ superseded</span></div>
+            <div class="rowline"><span class="k">confidence</span><span class="v">0.81 → 0.63</span></div>
+          </div>
+          <div class="stub"><span>WHY-STAMP · sealed 11:58 ET</span><span class="barcode"></span></div>
+        </div>
+      </div>
+      <div>
+        <div class="applause">
+          <span class="lbl">Why a judge applauds</span>
+          <p>The brand is <strong>losing publicly with style</strong>. Right now the busted card says you were wrong. With the why-stamp it says <em>what belief betrayed you</em> — and shows the engine downgrading that belief in real time. Loss content that also teaches the model: the obituary becomes a training signal, live on the share card.</p>
+          <p>Because the "why" is sealed at pick time, it can't be edited after the fact to look smart. It's a receipt on your reasoning, not just your position — the honesty the whole product is built on, extended one layer deeper.</p>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 03 · Sealed by Cipher -->
+  <article class="concept">
+    <div class="head">
+      <span class="idx">03</span>
+      <h3>Sealed by Cipher</h3>
+    </div>
+    <p class="pitch">Nemesis and duo picks are made "sealed" today on the app's honor. Seal them with XTrace's client-side encryption instead: "sealed" stops meaning <em>trust us</em> and starts meaning <em>math</em>. The reveal is a decryption event.</p>
+    <div class="tags">
+      <span class="tag p">P4 receipts over claims</span>
+      <span class="tag p">P8 synchronize to concentrate</span>
+      <span class="tag eng">reads: ratings · nemesis week</span>
+    </div>
+
+    <div class="grid">
+      <div class="stage" data-cap="sealed pick faceoff · /rivals">
+        <div class="faceoff">
+          <div class="cipher"><span style="color:var(--belief)">you</span><span class="txt">u2FsdGVkX1+7Qm9p8xK3vN0aZ pLc4Rf1Hn6Ty8Wd2Se5Kg9Uu Bx0Mv3Lq7Ir4Ea6Tz1Yn8Wc</span></div>
+          <span class="vs">vs</span>
+          <div class="cipher"><span style="color:var(--belief)">Maria</span><span class="txt">u2FsdGVkX1+9Rk2lm4Xp0Qn7 aWd6Bf3Hc8Ty1Ve5Sn2Kg0Uu Lx9Mv7Lq3Ir1Ea4Tz8Yn6Wc</span></div>
+        </div>
+        <div class="arrowdown">↓ &nbsp;12:00 ET lock → decrypt&nbsp; ↓</div>
+        <div style="display:flex; gap:.7rem; flex-wrap:wrap; justify-content:center">
+          <span class="sidepill a">◆ YES · you</span>
+          <span class="sidepill b">◆ NO · Maria</span>
+        </div>
+      </div>
+      <div>
+        <div class="applause">
+          <span class="lbl">Why a judge applauds</span>
+          <p>A prediction game lives or dies on "did they really lock that before the market moved?" Today the answer is <em>we promise</em>. XTrace's AES-256 client-side seal (plus homomorphic vector search on the ciphertext) turns the sealed pick into something a skeptical stranger can verify without trusting us — the literal test of Principle 4.</p>
+          <p>It also makes the reveal a genuine cryptographic <em>moment</em>: two ciphertext blocks stare each other down until the lock, then decrypt in sync. That's Principle 8 — a real appointment — with a mechanism, not just a countdown.</p>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 04 · Portable Receipts -->
+  <article class="concept">
+    <div class="head">
+      <span class="idx">04</span>
+      <h3>Portable Receipts</h3>
+    </div>
+    <p class="pitch">Your record lives in <em>your</em> encrypted XTrace memory, not our database. The creator's portable track record becomes literally portable — and even Receipts can't read its private half.</p>
+    <div class="tags">
+      <span class="tag p">P9 artifacts are doors</span>
+      <span class="tag p">hard line · no lock-in</span>
+      <span class="tag eng">reads: profile · fingerprint</span>
+    </div>
+
+    <div class="grid">
+      <div class="stage" data-cap="portable record · /you">
+        <div class="ticket">
+          <div class="admit"><span>PORTABLE RECORD</span><span>fox #4821</span></div>
+          <div class="perf"></div>
+          <div class="body">
+            <div class="rowline"><span class="k">lifetime accuracy</span><span class="v">57.4%</span></div>
+            <div class="rowline"><span class="k">edge vs entry</span><span class="v">+6.1%</span></div>
+            <div class="rowline"><span class="k">called-it longshots</span><span class="v">9</span></div>
+            <div class="rowline"><span class="k">stored in</span><span class="v" style="color:var(--belief-dim)">your XTrace</span></div>
+            <div style="margin-top:.7rem; font-family:var(--mono); font-size:.62rem; color:#555; line-height:1.4">
+              public half: signed, verifiable, unfurls anywhere ·<br>private half: encrypted, ours to display, never to read
+            </div>
+          </div>
+          <div class="stub"><span>PORTABLE · you hold the key</span><span class="barcode"></span></div>
+        </div>
+      </div>
+      <div>
+        <div class="applause">
+          <span class="lbl">Why a judge applauds</span>
+          <p>The creator wedge in the PRD is "a link that proves your record." XTrace makes it a link that proves your record <strong>and that you own it</strong> — the belief-log travels across Claude, ChatGPT, Cursor, or the next app, because it was never trapped in ours. Anti-lock-in is XTrace's whole thesis; here it becomes a user-facing promise.</p>
+          <p>And it sharpens the privacy story the PRD already tells: public means public, but the sensitive half (the raw "why," draft beliefs mid-revision) is encrypted such that the host can't read it. Best-of-both, provable.</p>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- ══ TIER 2 ════════════════════════════════════════════════════════ -->
+  <div class="tierhead">
+    <span class="tno">TIER 2</span>
+    <h2>Strong &amp; creative — the surfaces this unlocks</h2>
+    <span class="note">clearly on-thesis, more product than proof</span>
+  </div>
+
+  <!-- 05 · The Morning Briefing -->
+  <article class="concept">
+    <div class="head">
+      <span class="idx">05</span>
+      <h3>The Morning Briefing</h3>
+    </div>
+    <p class="pitch">XTrace's session briefing — active beliefs, current artifacts, open threads — becomes the daily drop's cold open. "Here's where you left off, and here's what the engine changed its mind about overnight."</p>
+    <div class="tags">
+      <span class="tag p">P8 synchronize</span>
+      <span class="tag p">P5 works alone</span>
+      <span class="tag eng">reads: sweat · rivals · beliefs</span>
+    </div>
+
+    <div class="grid">
+      <div class="stage" data-cap="9:00 knock · the briefing">
+        <div class="board">
+          <div class="bh"><span>MORNING BRIEFING</span><span>Tue · 09:00</span></div>
+          <div class="brow"><span class="t">Sweat</span><span class="flip">CPI &lt; 3.0% · you're NO @ 22¢</span><span class="st sweat">OPEN</span></div>
+          <div class="brow"><span class="t">Rival</span><span class="flip">Maria leads the week 2–1</span><span class="st rev">1 left</span></div>
+          <div class="brow"><span class="t">Belief</span><span class="flip">engine now doubts you're chalk</span><span class="st rev">flipped</span></div>
+          <div class="brow"><span class="t">Drop</span><span class="flip">Today: will BTC close &gt; $90k?</span><span class="st open">NEW</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="applause">
+          <span class="lbl">Why a judge applauds</span>
+          <p>Cold-start is the enemy of a daily-appointment app. XTrace's briefing pattern was built to eliminate exactly that — you return and the agent opens with where you left off. Re-skinned as a departures-board, it makes the 9:00 knock feel like the app <em>remembered your open stakes</em>, not just fired a generic push.</p>
+          <p>Crucially it works for a user with zero friends (P5): your sweats, your rival, your own shifting self-model are the content. The overnight belief-revision line — "the engine changed its mind about you" — is a hook nothing else in the category has.</p>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 06 · Shadow Nemesis -->
+  <article class="concept">
+    <div class="head">
+      <span class="idx">06</span>
+      <h3>Shadow Nemesis</h3>
+    </div>
+    <p class="pitch">Build an XTrace persona agent from your nemesis's <em>public</em> belief-log. Spar against "how they'd call it" before the real week — a fair-fight warm-up that reads their style without touching their account.</p>
+    <div class="tags">
+      <span class="tag p">P12 fair fights</span>
+      <span class="tag p">P1 app supplies energy</span>
+      <span class="tag eng">reads: fingerprint · style axes</span>
+    </div>
+
+    <div class="grid">
+      <div class="stage" data-cap="shadow spar · pre-week">
+        <div class="belief">
+          <div class="bhead"><span>Shadow · Maria</span><span class="bid pulse">persona · read-only</span></div>
+          <div class="bbody">
+            <p class="claim">Sparring 4 of 6</p>
+            <div style="display:flex; gap:.5rem; margin:.6rem 0 .9rem; font-family:var(--mono); font-size:.8rem">
+              <span style="color:var(--win)">you 3</span><span style="color:var(--muted)">·</span><span style="color:var(--belief)">shadow 1</span>
+            </div>
+            <div class="edges">
+              <div class="edge"><span class="etype">Derived_From</span><span class="arrow">▸</span><span class="to">Maria's public picks (312)</span></div>
+              <div class="edge"><span class="etype">Referenced</span><span class="arrow">▸</span><span class="to">contrarian · politics-heavy</span></div>
+            </div>
+            <p style="font-family:var(--mono); font-size:.62rem; color:var(--muted); margin:.8rem 0 0">practice only · does not touch rating</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="applause">
+          <span class="lbl">Why a judge applauds</span>
+          <p>Principle 12 says matchmaking maximizes <em>style</em> contrast, never skill gap — every match must feel winnable. A shadow lets a nervous user rehearse against their rival's actual style before Monday, defusing the blowout fear that kills competitive modes. The app supplies the sparring partner; you don't need a friend (P1, P5).</p>
+          <p>It only ever reads the public log — no persona of a private self, no account access. The persona is a mirror the engine builds, and it feeds realized results back as a matchmaking signal.</p>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 07 · The Belief Obituary -->
+  <article class="concept">
+    <div class="head">
+      <span class="idx">07</span>
+      <h3>The Belief Obituary</h3>
+    </div>
+    <p class="pitch">When the engine <em>retracts</em> a belief about you, mint it as an artifact. "The engine retired a belief today: you're no longer a chalk-rider." The picks that killed it are the eulogy.</p>
+    <div class="tags">
+      <span class="tag p">P3 loser is protagonist</span>
+      <span class="tag p">P7 outlives the moment</span>
+      <span class="tag eng">reads: belief retraction events</span>
+    </div>
+
+    <div class="grid">
+      <div class="stage" data-cap="belief obituary · share card">
+        <div class="ticket">
+          <div class="admit"><span>IN MEMORIAM</span><span>belief № B-1980</span></div>
+          <div class="perf"></div>
+          <div class="body">
+            <p class="q" style="text-decoration:line-through; text-decoration-color:rgba(17,17,17,.4)">"You're a chalk-rider."</p>
+            <div style="margin:.4rem 0 .7rem"><span class="stamp gold">Retired</span></div>
+            <div class="rowline"><span class="k">held for</span><span class="v">41 days</span></div>
+            <div class="rowline"><span class="k">killed by</span><span class="v">3 longshots @ ≤14%</span></div>
+            <div class="rowline"><span class="k">succeeded by</span><span class="v" style="color:var(--belief-dim)">B-2214</span></div>
+          </div>
+          <div class="stub"><span>RETRACTED · history preserved</span><span class="barcode"></span></div>
+        </div>
+      </div>
+      <div>
+        <div class="applause">
+          <span class="lbl">Why a judge applauds</span>
+          <p>The loser is the protagonist — and here the thing that dies is <em>a belief the app held about you</em>. That's a fresh, shareable moment no competitor has: "the algorithm just changed its mind about who I am," with a receipt showing exactly which picks did it.</p>
+          <p>XTrace retract-with-preserved-history is the perfect substrate: the belief is gone from your active profile but its full life stays on the record — a season archive of every self you've shed. Moments recruit; the archive retains (P7).</p>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- ══ TIER 3 ════════════════════════════════════════════════════════ -->
+  <div class="tierhead">
+    <span class="tno">TIER 3</span>
+    <h2>Out there — swings worth prototyping behind a flag</h2>
+    <span class="note">high-concept; ship only if the data earns it</span>
+  </div>
+
+  <!-- 08 · Secret-Ballot Houses -->
+  <article class="concept">
+    <div class="head">
+      <span class="idx">08</span>
+      <h3>Secret-Ballot Houses</h3>
+    </div>
+    <p class="pitch">Houses vote on the big-event call while encrypted. Paillier is additively homomorphic — so the tally is computed <em>on the ciphertext</em>. The house call is minted without anyone, the app included, seeing a single individual vote.</p>
+    <div class="tags">
+      <span class="tag p">P4 receipts over claims</span>
+      <span class="tag eng">reads/writes: house consensus</span>
+      <span class="tag" style="color:var(--belief)">stretch · needs Houses first</span>
+    </div>
+
+    <div class="grid">
+      <div class="stage" data-cap="homomorphic tally · big event">
+        <div style="display:flex; flex-direction:column; gap:.7rem; align-items:center">
+          <div class="cipher" style="width:min(320px,100%)"><span style="color:var(--belief)">Longshot House · 214 sealed ballots</span><span class="txt">Σ enc(vote) = u2FsdGVkX1+K9m…Qn7 · computed without decrypting any voter</span></div>
+          <div class="arrowdown">↓ homomorphic sum ↓</div>
+          <div class="ticket" style="width:min(300px,100%)">
+            <div class="admit"><span>HOUSE CALL</span><span>sealed</span></div>
+            <div class="perf"></div>
+            <div class="body">
+              <span class="sidepill a">◆ YES · 61% of the house</span>
+              <div class="rowline" style="margin-top:.6rem"><span class="k">individual votes seen</span><span class="v">0</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="applause">
+          <span class="lbl">Why a judge applauds</span>
+          <p>"The internal argument is content" — but a public individual vote chills honest calls. A secret ballot that <em>still</em> produces a verifiable house tally is a genuinely novel governance primitive, and Paillier's additive homomorphism makes it real, not hand-wavy: the sum of encrypted votes decrypts to the total without ever exposing a voter.</p>
+          <p>It's Tier 3 because Houses is itself a stretch feature — but as a demo of "provably fair crowd consensus with private ballots," it's the kind of thing that makes a judge sit up.</p>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 09 · Fade the Engine's Mind -->
+  <article class="concept">
+    <div class="head">
+      <span class="idx">09</span>
+      <h3>Fade the Engine's Mind</h3>
+    </div>
+    <p class="pitch">A meta-market on your own self-model drift. "Will the engine still believe you're a contrarian next Monday?" You take a side on your own belief revision — the most engine-native bet possible.</p>
+    <div class="tags">
+      <span class="tag p">P6 one engine</span>
+      <span class="tag p">P10 pressure ego not wallet</span>
+      <span class="tag eng">reads/writes: belief confidence</span>
+    </div>
+
+    <div class="grid">
+      <div class="stage" data-cap="belief future · self-market">
+        <div class="ticket">
+          <div class="admit"><span>SELF-MARKET</span><span>settles Mon 00:00</span></div>
+          <div class="perf"></div>
+          <div class="body">
+            <p class="q">Will B-2214 "longshot-chaser" survive the week?</p>
+            <div style="display:flex; gap:.5rem; margin:.7rem 0">
+              <span class="sidepill a">◆ HOLDS 0.72</span>
+              <span class="sidepill b">◆ RETIRED 0.28</span>
+            </div>
+            <div class="rowline"><span class="k">graded by</span><span class="v" style="color:var(--belief-dim)">Sunday's revision job</span></div>
+            <div class="rowline"><span class="k">stake</span><span class="v">points · never money</span></div>
+          </div>
+          <div class="stub"><span>NO ODDS INVENTED · engine is ground truth</span><span class="barcode"></span></div>
+        </div>
+      </div>
+      <div>
+        <div class="applause">
+          <span class="lbl">Why a judge applauds</span>
+          <p>Principle 6 wants every feature to read from and write to the engine. This one bets <em>on</em> the engine — the fingerprint's nightly revision is the settlement source, so it's ground truth we don't invent (P4). It also stays clean on the hard lines: the stake is points and pride, never a dollar (P10).</p>
+          <p>It's reflexive and a little vertiginous — you can try to <em>defend</em> a belief by picking in-character all week — which is exactly why it belongs behind a flag until we see whether it deepens the loop or bends it.</p>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 10 · The Persona Duo -->
+  <article class="concept">
+    <div class="head">
+      <span class="idx">10</span>
+      <h3>The Persona Duo</h3>
+    </div>
+    <p class="pitch">When your duo partner is offline, their XTrace persona stands in so the deck never goes cold — clearly labeled, points held out of the ladder. A stopgap that keeps chemistry alive between sessions.</p>
+    <div class="tags">
+      <span class="tag p">P5 works alone</span>
+      <span class="tag" style="color:var(--loss); border-color:rgba(244,63,94,.35)">tension: P10 · authenticity</span>
+      <span class="tag eng">reads: partner belief-log</span>
+    </div>
+
+    <div class="grid">
+      <div class="stage" data-cap="duo deck · stand-in slot">
+        <div class="belief">
+          <div class="bhead"><span>Duo deck · today</span><span class="bid">6 markets</span></div>
+          <div class="bbody">
+            <div class="rowline" style="border-color:rgba(167,139,250,.14)"><span class="k" style="color:var(--muted)">you</span><span class="v" style="color:#fff">picked 4 / 6</span></div>
+            <div class="rowline" style="border-color:rgba(167,139,250,.14)"><span class="k" style="color:var(--muted)">Sam</span><span class="v" style="color:var(--belief)">persona stand-in · pulls Sam's style</span></div>
+            <p style="font-family:var(--mono); font-size:.62rem; color:var(--muted); margin:.9rem 0 0; line-height:1.4">
+              stand-in picks are shown, never scored for the ladder ·<br>real Sam overrides on return
+            </p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="applause">
+          <span class="lbl">Why a judge applauds (and where it's risky)</span>
+          <p>Duo queue's whole point is turning strangers into friends through repeated real play — so a bot partner cuts against authenticity, and we flag that honestly. The saving grace: it never scores toward the ladder, it's labeled as a persona, and the real partner's picks always override. It keeps a lonely deck warm without faking a rating.</p>
+          <p>Included as the deliberate edge case: it shows where the persona idea <em>stops</em> being on-thesis, which is as useful to a review as the wins.</p>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <hr>
+
+  <!-- ══ COMPLIANCE / SCORECARD ════════════════════════════════════════ -->
+  <section>
+    <p class="eyebrow">A · Does it clear the hard lines?</p>
+    <h2 style="font-family:var(--disp); font-weight:700; font-size:clamp(1.6rem,3vw,2.1rem); margin:0 0 1rem; color:#fff">The lateral-development checklist, scored</h2>
+    <p>The principles doc says a feature clearing all ten is on-thesis; failing three is "a different company." Every concept was run through it. The load-bearing point: <strong>XTrace never touches the hard lines</strong> — it stores beliefs and encrypted vectors, never venue credentials, never money, never odds. It's read-only proof infrastructure, which is exactly the ceiling the principles allow.</p>
+
+    <div class="tablewrap">
+      <table class="scorecard">
+        <thead>
+          <tr>
+            <th>Concept</th>
+            <th>Solo (P5)</th>
+            <th>Engine (P6)</th>
+            <th>Loser artifact (P3)</th>
+            <th>Ego not wallet (P10)</th>
+            <th>Clear of $ / creds</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>01 Glass Engine</td><td class="y">yes</td><td class="y">core</td><td class="y">yes</td><td class="y">yes</td><td class="y">yes</td></tr>
+          <tr><td>02 Why-Stamp</td><td class="y">yes</td><td class="y">yes</td><td class="y">core</td><td class="y">yes</td><td class="y">yes</td></tr>
+          <tr><td>03 Sealed by Cipher</td><td class="y">yes</td><td class="y">yes</td><td class="q">n/a</td><td class="y">yes</td><td class="y">yes</td></tr>
+          <tr><td>04 Portable Receipts</td><td class="y">yes</td><td class="y">yes</td><td class="q">n/a</td><td class="y">yes</td><td class="y">yes</td></tr>
+          <tr><td>05 Morning Briefing</td><td class="y">yes</td><td class="y">yes</td><td class="q">n/a</td><td class="y">yes</td><td class="y">yes</td></tr>
+          <tr><td>06 Shadow Nemesis</td><td class="y">yes</td><td class="y">yes</td><td class="q">n/a</td><td class="y">yes</td><td class="y">yes</td></tr>
+          <tr><td>07 Belief Obituary</td><td class="y">yes</td><td class="y">yes</td><td class="y">core</td><td class="y">yes</td><td class="y">yes</td></tr>
+          <tr><td>08 Secret-Ballot Houses</td><td class="y">yes</td><td class="y">yes</td><td class="q">n/a</td><td class="y">yes</td><td class="y">yes</td></tr>
+          <tr><td>09 Fade the Engine</td><td class="y">yes</td><td class="y">core</td><td class="q">n/a</td><td class="y">yes</td><td class="y">yes</td></tr>
+          <tr><td>10 Persona Duo</td><td class="y">yes</td><td class="y">yes</td><td class="q">n/a</td><td class="n">tension</td><td class="y">yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:.82rem; color:var(--muted); font-family:var(--mono)">core = the concept's central mechanism · n/a = mechanic mints no loss artifact · tension = flagged trade-off, see 10</p>
+  </section>
+
+  <!-- ══ BUILD NOTES ═══════════════════════════════════════════════════ -->
+  <section style="margin-top:4rem">
+    <p class="eyebrow">B · What actually gets built</p>
+    <h2 style="font-family:var(--disp); font-weight:700; font-size:clamp(1.6rem,3vw,2.1rem); margin:0 0 1rem; color:#fff">SDK map &amp; repo delta</h2>
+    <p>XTrace ships two modules. The mapping onto Receipts is almost one-to-one:</p>
+    <ul class="buildlist">
+      <li><code>x-mem</code><span>Encrypted agent memory → the belief store. Each fingerprint axis is a belief; the nightly job emits <span class="mono" style="color:var(--belief)">add / supersede / retract</span> operations instead of overwriting a vector row. Powers 01, 02, 05, 07, 09.</span></li>
+      <li><code>x-vec</code><span>Encrypted vector search (AES-256 client-side + Paillier) → sealed picks and the homomorphic tally. Powers 03, 08. Style-distance nemesis matching can query encrypted embeddings directly.</span></li>
+      <li><code>provenance edges</code><span>The six typed edges (<span class="mono" style="color:var(--belief)">Derived_From, Supersedes, Depends_On, Referenced, Contains, Created_From</span>) render as the belief-card connectors and the "cause of death" stub.</span></li>
+      <li><code>session briefing</code><span>The built-in briefing object → the Morning Briefing board (05). Maps active beliefs → your sweat, open threads → your rivals, revisions → "the engine changed its mind."</span></li>
+    </ul>
+
+    <p><strong>Repo delta.</strong> One new <code class="mono" style="color:var(--belief)">BeliefReceipt</code> card in <code class="mono" style="color:var(--belief)">packages/ui</code> (composes the existing <code class="mono" style="color:var(--belief)">TicketFrame</code> — no new perforation/stub CSS, per the §2 grep gate). A provenance adapter in the fingerprint job so it writes belief ops. New surface tiles on <code class="mono" style="color:var(--belief)">/you</code> (Glass Engine, obituaries) and <code class="mono" style="color:var(--belief)">/rivals</code> (shadow spar, sealed reveal). Feature flags <code class="mono" style="color:var(--belief)">xtrace_beliefs</code>, <code class="mono" style="color:var(--belief)">sealed_cipher</code>. <strong>No palette additions beyond the belief-violet signature; no engine rewrite — the fingerprint math is unchanged, only its storage becomes a legible, provenance-tracked log.</strong></p>
+
+    <div class="callout">
+      <span class="lbl">The 48-hour demo, if you only build one</span>
+      <p>Ship <strong>01 Glass Engine + 02 Why-Stamp</strong> together. One flow: place a pick, seal the "why," watch it settle, and see the engine supersede the belief on the receipt — proof, reason, and revision in a single loop. That's the whole thesis on stage in ninety seconds, and it's the pair a judge remembers.</p>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <p>Receipts × XTrace · design exploration, not implemented UI · honors <span style="color:var(--belief)">packages/ui/src/tokens.ts</span> + the §2 TicketFrame system · scored against receipts-principles.md P1–P12.</p>
+    <p>XTrace product facts drawn from public sources: <a href="https://xtrace.ai/">xtrace.ai</a> · <a href="https://xtrace.ai/research/belief-revision-system">belief-revision-system</a> · <a href="https://venturebeat.com/business/ai-remembers-who-you-are-xtrace-remembers-what-you-built">VentureBeat</a> · <a href="https://som.yale.edu/story/2026/who-owns-your-ai-memory">Yale SOM</a>. Sibling mock: docs/mockups/swipe-ux.html.</p>
+  </footer>
+
+</div>
+</body>
+</html>

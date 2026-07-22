@@ -8,6 +8,36 @@ Design explorations that are **proposals, not implemented UI**. Nothing in this
 directory ships; each mock's final section maps its ideas onto the real files a
 follow-up task would touch.
 
+## `xtrace-integration.html` — Receipts × XTrace (Jul 2026)
+
+Ten ranked ideas for folding **XTrace** (the belief-revision / procedural-memory
+cloud — encrypted `x-mem` beliefs, `x-vec` search, typed provenance edges,
+session briefings) into Receipts, from flagship arguments a hackathon panel would
+applaud down to deliberate out-there swings. The through-line: the nightly
+**fingerprint already is a belief system** — XTrace just turns the black box to
+glass and lets a receipt carry the *why*, not only the *what*.
+
+Open in a browser (self-contained, dark stage, honors `packages/ui`'s ticket
+tokens; belief-violet is the only added signature). Every concept is scored
+against `receipts-principles.md` P1–P12 at the end.
+
+Contents:
+
+- **§00 Thesis** — fingerprint ≅ belief-revision engine; the one-sentence pitch.
+- **Tier 1 (flagship)** — 01 **Glass Engine** (fingerprint as an auditable belief-log),
+  02 **Why-Stamp** (seal the reason, revise it on settle), 03 **Sealed by Cipher**
+  (cryptographic sealed picks, reveal = decryption), 04 **Portable Receipts**
+  (self-owned, cross-vendor record).
+- **Tier 2 (strong)** — 05 **Morning Briefing** (session briefing as the daily drop),
+  06 **Shadow Nemesis** (spar a persona of your rival's public log), 07 **Belief
+  Obituary** (the engine retires a belief about you).
+- **Tier 3 (out there)** — 08 **Secret-Ballot Houses** (homomorphic house tally),
+  09 **Fade the Engine's Mind** (a market on your own belief drift), 10 **Persona
+  Duo** (offline-partner stand-in — flagged trade-off included on purpose).
+- **§A Scorecard** — P1–P12 hard-lines table; XTrace never touches money/credentials.
+- **§B Build notes** — `x-mem`/`x-vec`/edges/briefing → repo delta; the one
+  `BeliefReceipt` component; the 48-hour demo pick (01 + 02).
+
 ## `swipe-ux.html` — Swipe on Tomorrow (Jul 2026)
 
 Full-experience vision for the **swipe ballot** direction (chosen over the split
