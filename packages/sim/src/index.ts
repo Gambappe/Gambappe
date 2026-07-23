@@ -186,3 +186,4 @@ export function runBaselines(rows: readonly SimMarketRow[]): SimReport[] {
 }
 
 export * from './football-data.js';
+export * from './learning.js';

@@ -17,3 +17,4 @@ export * from './scoring.js';
 export * from './narration.js';
 export * from './wallet-bucketing.js';
 export * from './cpu-persona.js';
+export * from './cpu-memory.js';
