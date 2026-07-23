@@ -23,8 +23,9 @@ import { AuthError } from '@auth/core/errors';
  * `@auth/core`'s own non-raw redirect path masks every `AuthError` NOT in its `clientErrors`
  * allowlist down to `Configuration` (see `@auth/core/src/errors.ts`'s `clientErrors`/
  * `isClientError`) to avoid leaking internal error detail to the client. `EmailSignInError` (the
- * one actually verified reachable from this app's email-signin call, on a §14.1 rate-limit trip)
- * isn't on that allowlist, so `Configuration` is the accurate equivalent for it. One allowlisted
+ * one actually verified reachable from this app's email-signin call — WS25-T4's wrapper around a
+ * §14.1 rate-limit trip, a transport misconfiguration, or a real send failure alike) isn't on
+ * that allowlist, so `Configuration` is the accurate equivalent for it. One allowlisted
  * type IS technically reachable from the initial signin action too — `@auth/core`'s
  * `send-token.ts` throws `AccessDenied` if the `signIn` callback rejects — but `auth.ts`'s own
  * callback only ever rejects a `google` account, never `email`, so it's dormant today. If that
