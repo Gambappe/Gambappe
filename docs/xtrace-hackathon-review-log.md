@@ -68,6 +68,35 @@ reviewers for a clean round):
 
 ## Round history
 
+### Round 4 — PENDING, 3 findings, 0 lenses failed
+
+```json
+[
+ {
+  "task_id": "XH-T5",
+  "severity": "minor",
+  "claim": "Batch cap per run: 200 sources (constant local to the job file), so a backlog never makes the job long-running.",
+  "problem": "The spec never states whether the 200-source cap is a single shared budget across both source queries (concluded-pairing verdicts and pairing thread posts combined) or a separate 200-item cap applied to each query independently. A junior implementing this has two structurally different ways to write the candidate-selection SQL/loop (one combined counter vs. two independent `LIMIT`s), and the acceptance criteria never exercise this constant at all \u2014 only the circuit breaker (5 consecutive failures) and idempotency are tested, so a wrong or inconsistent interpretation of the cap would ship untested and undetected.",
+  "failure_scenario": "A backlog of 150 uningested pairing verdicts and 150 uningested posts exists. Implementation A (combined cap) processes 200 total sources per run (e.g. 150 verdicts + 50 posts), leaving posts backlogged indefinitely relative to verdicts; Implementation B (per-query cap) processes up to 200 verdicts AND up to 200 posts (400 total) in one run, roughly doubling the intended per-run work bound the surrounding prose (\"so a backlog never makes the job long-running\") was meant to guarantee. Neither implementation is wrong per the letter of the spec, but they diverge in run time and in which sources get priority, and nothing in the acceptance criteria would catch the discrepancy.",
+  "suggested_fix": "State explicitly, e.g.: \"MAX_SOURCES_PER_RUN = 200 is a single shared budget for the run: select uningested pairing-verdict candidates first (up to 200), then fill any remaining budget with uningested post candidates, so the two source types combined never exceed 200 per run.\" Add an acceptance-criteria bullet asserting this (e.g. seed 150 uningested verdicts + 150 uningested posts, run once, assert total ingest attempts \u2264 200)."
+ },
+ {
+  "severity": "major",
+  "task_id": "XH-T1",
+  "claim": "MONEY_WORD_REGEX_SOURCE = '\\\\bbet\\\\b|\\\\bstake\\\\b|\\\\bwager\\\\b|\\\\$' \u2014 pinned as THE runtime filter satisfying ground rule 5 / INV-8 (\"All generated text passes a runtime filter for /\\bbet\\b|\\bstake\\b|\\bwager\\b|\\$/i before storage or render. A line that fails is dropped\").",
+  "problem": "The \\b word-boundary anchors only match the exact bare tokens 'bet', 'stake', 'wager'. Because \\b requires a transition between a word char and a non-word char, none of the common morphological variants are caught: 'betting', 'bets', 'wagering', 'wagers', 'staked' all fail to match (e.g. 'betting' contains 'bet' immediately followed by 't', a word-word transition, so \\bbet\\b never fires). Since generation prompts explicitly forbid these concepts but the LLM is not constrained to exact tokens, a plausible completion like 'no more betting against you this season' or 'she's still wagering on a rematch' would pass filterLines() untouched and get stored/rendered, directly undermining the invariant this filter exists to enforce. This is being freshly pinned as an exported core constant for this feature (XH-T1), so it is in scope for this task even though the doc notes the literal is mirrored from an existing test file.",
+  "suggested_fix": "Broaden the regex to catch common variants, e.g. MONEY_WORD_REGEX_SOURCE = '\\\\bbet(s|ting|ted)?\\\\b|\\\\bstak(e|es|ed|ing)\\\\b|\\\\bwager(s|ing|ed)?\\\\b|\\\\$' (or drop the trailing \\b and match on the stem plus optional suffix chars), and add filter unit-test cases in XH-T3's acceptance criteria for 'betting'/'wagering'/'bets' specifically, not just the bare words and '$50'."
+ },
+ {
+  "severity": "minor",
+  "task_id": "XH-T4",
+  "claim": "latestRecapForProfile(db, profileId): Promise<CompanionArtifactRow | null> \u2014 the row with kind = 'season_recap' and the greatest createdAt for that profile, or null.",
+  "problem": "Recap cache keys are scoped per season (recap:{seasonId}:{profileId}), so a profile can accumulate recap rows for multiple past seasons over time. Selecting purely by max(createdAt) picks whichever recap was most recently *generated*, not the recap for the most recently *ended* season. If an operator (or a future demo/ops re-run) generates or regenerates a recap for an older season after a newer season's recap already exists \u2014 which XH-T9's runbook explicitly supports via the given-seasonId path that skips the ended-season check \u2014 /you would silently show the older season's recap instead of the latest one, with no error surface (fail-open masks it).",
+  "suggested_fix": "Either join through `seasons` and order by `seasons.endsOn` (or `startsOn`) descending rather than `companion_artifacts.createdAt`, or have latestRecapForProfile take an explicit seasonId (mirroring how the job resolves 'latest ended season') so the /you page always requests the correct season's recap rather than trusting insertion order."
+ }
+]
+```
+
 ### Round 3 (final panel) — 8 applied, 0 rejected
 
 All 4 Sonnet lenses completed (0 failures); 8 findings, all verified valid
