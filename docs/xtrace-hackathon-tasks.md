@@ -119,6 +119,9 @@ tasks consume, defined once in `packages/core`.
   - `XTRACE_MAX_RETRIES = 2`
   - `COMPANION_PROMPT_VERSION = 1`
   - `COMPANION_BANTER_MAX_LINES = 3`
+  - `COMPANION_DRAFT_MAX = 3` (callout drafts per generation — distinct
+    from the banter constant so tuning one never silently breaks the
+    other's response schema)
   - `COMPANION_SEARCH_LIMIT = 8` (memories per retrieval)
   - `RL_COMPANION_BANTER_PROFILE_D = 30` (T6's rate rule; per profile per day)
   - `RL_CALLOUT_DRAFT_PROFILE_D = 10` (T7's rate rule; per profile per day)
@@ -128,17 +131,20 @@ tasks consume, defined once in `packages/core`.
 - `packages/core/src/errors.ts` — add `COMPANION_UNAVAILABLE: 503` to
   `ERROR_CODES` (used by T7's degraded path; the table has no generic
   degraded-feature code — its only 503, `PRICE_UNAVAILABLE`, is
-  venue-pricing-specific and must not be reused).
+  venue-pricing-specific and must not be reused). Also update
+  `packages/core/test/contracts.test.ts`: the "has all 22 codes" test pins
+  `expect(Object.keys(ERROR_CODES)).toHaveLength(22)` — bump it to 23, add
+  `expect(ERROR_CODES.COMPANION_UNAVAILABLE).toBe(503)`, and note the
+  addition in the test name/comment the way earlier additions are noted.
+  Editing that pin is expected, not a mistake.
 - `packages/core/src/enums.ts` — add registry-style
   `COMPANION_ARTIFACT_KIND = ['banter', 'callout_draft', 'season_recap'] as const`
   and `CompanionArtifactKind` type, mirroring existing enum entries.
-- `packages/core/src/ids.ts` — add `zCompanionArtifactId = zId<'CompanionArtifactId'>()`.
 - `packages/core/src/schemas/companion.ts` (new; re-export from
-  `schemas/index.ts`) — zod schemas:
+  `schemas/index.ts`) — zod schemas (define ONLY what a task consumes — no
+  extra id brands or line-object schemas; every export below has a named
+  consumer in T3/T6/T7/T8):
   ```ts
-  export const banterLineSchema = z.object({
-    line: z.string().min(1).max(280),
-  });
   export const getBanterResponseSchema = z.object({
     banter: z.object({
       lines: z.array(z.string().min(1).max(280)).min(1).max(COMPANION_BANTER_MAX_LINES),
@@ -150,7 +156,7 @@ tasks consume, defined once in `packages/core`.
     target_profile_id: zProfileId,
   }).strict();
   export const draftCalloutResponseSchema = z.object({
-    drafts: z.array(z.string().min(1).max(280)).min(1).max(3),
+    drafts: z.array(z.string().min(1).max(280)).min(1).max(COMPANION_DRAFT_MAX),
   });
   export const seasonRecapContentSchema = z.object({
     title: z.string().min(1).max(120),
@@ -200,9 +206,14 @@ I/O. No other file in the repo may call the xTrace HTTP API directly.
   per-package `lint` script anywhere in `packages/`; the root `pnpm lint`
   (`eslint . --max-warnings 0`) covers the new package automatically —
   venues being the
-  structural template for this whole package (tsconfig extending
-  `@receipts/config/tsconfig.package.json`, eslint config, `vitest.config.ts`
-  with `test/**/*.test.ts`).
+  structural template for this whole package (copy BOTH tsconfigs from
+  venues — `tsconfig.json` extends `@receipts/config/tsconfig.base.json`
+  with `noEmit`, and `tsconfig.build.json` extends
+  `@receipts/config/tsconfig.package.json`; the copied
+  `build: tsc -p tsconfig.build.json` script fails without the second.
+  No per-package eslint config file — venues has none; the root
+  `eslint.config.mjs` covers it. `vitest.config.ts` with
+  `test/**/*.test.ts`).
 - `packages/companion/src/xtrace/schemas.ts` — zod schemas for the wire
   shapes in Appendix A (only the fields we read): `xtraceMemorySchema`
   (`id`, `type`, `text`, `user_id`, `group_ids`, `score`, `created_at` —
@@ -262,11 +273,14 @@ I/O. No other file in the repo may call the xTrace HTTP API directly.
 - Timeout via `AbortController`, like the venues client.
 - Log messages must never include the API key or full request bodies (post
   bodies are user content); log method, path, status, and error class only.
-- **Naming conventions (used by T5–T8, defined here as exported constants):**
+- **Naming conventions (defined here as exported constants;
+  `pairingGroupId` is consumed by T5/T6/T7, `pairingConvId` by T5):**
   ```ts
   export const pairingGroupId = (pairingId: string) => `pairing:${pairingId}`;
   export const pairingConvId = (pairingId: string, profileId: string) => `pairing:${pairingId}:${profileId}`;
   export const seasonConvId = (seasonId: string, profileId: string) => `season:${seasonId}:${profileId}`;
+  //  ^ reserved for a future season-episode ingest; no XH task calls it —
+  //    do not invent a season-scoped ingest to justify it.
   ```
 
 **Acceptance criteria (unit tests, injected `fetchImpl` fake — no msw; repo
@@ -338,7 +352,7 @@ functions with structured outputs, the money-word filter, and a hard
   import Anthropic from '@anthropic-ai/sdk';
   export interface Generator {
     banter(ctx: BanterContext): Promise<string[] | null>;        // 1–COMPANION_BANTER_MAX_LINES lines, filtered
-    calloutDrafts(ctx: CalloutDraftContext): Promise<string[] | null>; // up to 3
+    calloutDrafts(ctx: CalloutDraftContext): Promise<string[] | null>; // up to COMPANION_DRAFT_MAX
     seasonRecap(ctx: RecapContext): Promise<SeasonRecapContent | null>; // type imported from @receipts/core (T1 exports it)
   }
   export function createGenerator(client: Anthropic): Generator;
@@ -358,8 +372,12 @@ functions with structured outputs, the money-word filter, and a hard
 - Use structured outputs: `client.messages.parse` with
   `output_config: { format: zodOutputFormat(schema) }` where schema is
   `z.object({ lines: z.array(z.string()).min(1).max(COMPANION_BANTER_MAX_LINES) })`
-  (constant from core config, matching T1's response schema — no literal 3)
-  for banter/drafts and core's `seasonRecapContentSchema` shape for recaps.
+  for banter, the same shape with `.max(COMPANION_DRAFT_MAX)` for callout
+  drafts (both constants from core config, matching T1's response schemas —
+  no literal 3s; the two caps are separate constants on purpose, so tuning
+  banter length can never make the generator emit more drafts than
+  `draftCalloutResponseSchema` accepts), and core's
+  `seasonRecapContentSchema` shape for recaps.
   Do NOT set `temperature`/`top_p` (rejected on this model). Do not
   configure `thinking` (defaults are correct).
 - `max_tokens: COMPANION_MAX_OUTPUT_TOKENS`.
@@ -437,21 +455,34 @@ ingestion idempotency, plus typed repository helpers and test factories.
   //    artifact must not shadow the recap); the (profileId, kind, createdAt)
   //    index serves exactly this query
   markIngested(db, entries: {sourceKind, sourceId}[]): Promise<string[]>
-  //  ^ INSERT ... ON CONFLICT DO NOTHING RETURNING source_id — returns the
-  //    ids that were NEWLY claimed; callers only ingest those (at-least-once
-  //    pg-boss safety)
+  //  ^ INSERT ... ON CONFLICT DO NOTHING RETURNING source_id — records
+  //    sources whose xTrace ingest SUCCEEDED. Callers (XH-T5) select
+  //    candidates with filterUningested, ingest to xTrace, and call this
+  //    only after every ingest call for the source returned true; the
+  //    RETURNING list lets a concurrent duplicate run detect ids another
+  //    run already recorded. Never call this BEFORE ingesting — a
+  //    marked-but-never-ingested source is silently lost forever
+  //    (duplicate facts are acceptable, missing facts are not).
   filterUningested(db, sourceKind, ids: string[]): Promise<string[]>
+  lifetimeRecordBetween(db, profileId, opponentProfileId): Promise<{ wins; losses; draws }>
+  //  ^ direct SQL aggregate over `completed` nemesis_pairings between the
+  //    two profiles, bucketed by winner_profile_id (null = draw), oriented
+  //    to the first argument. One owner so T6 and T7 cannot drift on
+  //    win/draw bucketing.
+  completedPairingIdsBetween(db, profileId, opponentProfileId): Promise<string[]>
+  //  ^ ids of those same completed pairings — T6/T7 map these through
+  //    pairingGroupId for memory search scoping.
   ```
 - `packages/db/src/testing/factories.ts` — add `buildCompanionArtifact`
   (defaults: kind `'banter'`, content `{lines:['…'], model:'test', promptVersion:1}`).
 
 **Cache-key format (pinned; used by T6–T8):**
 - banter: `banter:{pairingId}:{profileId}:{etDay}` where `etDay` is the
-  `YYYY-MM-DD` America/New_York calendar day of `now()` — compute it with
-  the same mechanism the pairing-reactions flow uses for `reactionDate`
-  (grep `reactionDate` under `apps/web/lib/nemesis/`; if the helper isn't
-  exported/importable from packages, add `etCalendarDay(d: Date): string`
-  to `packages/core/src/clock.ts` in this task and refactor nothing else).
+  `YYYY-MM-DD` America/New_York calendar day of `now()`: `etDay =
+  etDateString(now())` — `etDateString` from `@receipts/core`
+  (`packages/core/src/et-date.ts`, exported from the core root; the same
+  helper the pairing-reactions flow uses for `reactionDate`). Do not add a
+  new helper.
 - callout draft: `callout_draft:{challengerProfileId}:{targetProfileId}:{etDay}`
 - recap: `recap:{seasonId}:{profileId}` (no day — one per season).
 - The repository module exports the key **builders** —
@@ -463,7 +494,9 @@ ingestion idempotency, plus typed repository helpers and test factories.
   turns that into invisible per-request regeneration, not an error).
 
 **Acceptance criteria:**
-- `pnpm db:check` clean; migration applies on a fresh Postgres
+- `pnpm --filter @receipts/db db:check` clean (there is no root `db:check`
+  alias — the root package.json only aliases `db:generate`/`db:migrate`/
+  `db:seed`); migration applies on a fresh Postgres
   (integration test in `packages/db/test/integration/` following the
   existing inline-setup pattern: `TEST_DATABASE_URL`, migrate, truncate).
 - Integration tests: `insertArtifactIdempotent` called twice concurrently
@@ -494,12 +527,19 @@ so retrieval has something to find. Runs entirely off the request path.
   `{ name: 'companion:ingest', owner: 'XH-T5', cron: '0 4 * * *', handler: companionIngestHandler }`
   (04:00 ET daily; after the Sunday 22:00 `nemesis:conclude` and Monday
   cycle, and colon-namespaced like every other job).
+- `apps/worker/scripts/run-companion-ingest.mjs` — thin on-demand trigger:
+  `boss.send('companion:ingest', {})`, mirroring T8's
+  `run-season-recap.mjs` (plain `.mjs`, same PgBoss construction from
+  `DATABASE_URL`). The cron alone is useless during a live demo; T9's
+  runbook invokes this script by path.
 - `apps/worker/test/registry.test.ts` — add `companion:ingest` to
   `SPEC_JOBS` (the test asserts the registry matches that list exactly)
   and widen the owner assertion from `/^WS\d+-T\d+$/` to
-  `/^(WS|XH)\d+-T\d+$/` (it currently rejects `XH-T5`). Note both changes
-  in the test's header comment the way `bot:score`/`settle:digest` are
-  noted.
+  `/^(WS\d+|XH)-T\d+$/` (it currently rejects `XH-T5`; note the XH
+  alternative has NO digits before `-T` — the registry owners are exactly
+  `XH-T5` / `XH-T8`, so a pattern like `/^(WS|XH)\d+-T\d+$/` would still
+  reject them). Note both changes in the test's header comment the way
+  `bot:score`/`settle:digest` are noted.
 
 **Spec:**
 - Handler shape (mirror `nemesisConcludeHandler`):
@@ -631,12 +671,14 @@ generated at most once per profile per ET day.
    `generated_at`.
 6. Miss → build `BanterContext`:
    - RECORD from Postgres only:
-     - Lifetime W-L-D vs this opponent via a direct SQL aggregate: count
-       `completed` `nemesis_pairings` rows between the two profiles,
-       bucketed into win/loss/draw by `winner_profile_id`. (Do NOT fold
-       `getNemesisHistoryPage` the way the grudge book does — that fold
-       reads one page capped at `PAGINATION_MAX_LIMIT`, silently
-       truncating "lifetime" for long histories.)
+     - Lifetime W-L-D vs this opponent via T4's `lifetimeRecordBetween`
+       (a direct SQL aggregate: count `completed` `nemesis_pairings` rows
+       between the two profiles, bucketed into win/loss/draw by
+       `winner_profile_id`; T7 consumes the same helper — do not
+       reimplement it). (Do NOT fold `getNemesisHistoryPage` the way the
+       grudge book does — that fold reads one page capped at
+       `PAGINATION_MAX_LIMIT`, silently truncating "lifetime" for long
+       histories.)
      - Current week scores DERIVED from picks, never read from the
        pairing row: `scoreA`/`scoreB` are written only at conclusion by
        `updatePairingConclusion`, so the active pairing's row always
@@ -647,14 +689,34 @@ generated at most once per profile per ET day.
        `@receipts/engine`'s `scoreNemesisWeek` (engine is pure and
        `apps/web` already depends on it; INV-5 forbids only the reverse
        direction).
+     - `currentWeek` is non-null ONLY when `pairing.status === 'active'`.
+       For a `completed`/`cancelled`/`scheduled` pairing the route still
+       serves banter (subject to the same guards) with
+       `currentWeek: null` — do not 404 on status.
+       `daysRemaining` = ET calendar days from `etDateString(now())` up to
+       and including the pairing's week end
+       (`addDaysToDateString(weekStart, 6)` — both helpers from
+       `@receipts/core`), clamped to ≥ 0.
      - `lastVerdictLine = verdict.narration[viewerProfileId]?.line` from
        the most recent `completed` pairing vs this opponent (see the
        verdict-shape note in XH-T5 — it is a per-profile map, and the
        viewer's own line is the one that reads correctly).
-   - MEMORY: `xtrace.search({ query: '<opponentHandle> rivalry banter grudges history', groupIds: [pairingGroupId], include: ['fact','episode'] })`
-     — fail-open `[]`.
+   - MEMORY: gather ALL pairing ids between the two profiles — T4's
+     `completedPairingIdsBetween` (the same pairings the RECORD aggregate
+     counts) plus the current pairingId — then search ONCE:
+     `xtrace.search({ query: '<opponentHandle> rivalry banter grudges history', groupIds: allPairingIds.map(pairingGroupId), include: ['fact','episode'] })`
+     — fail-open `[]`. (Appendix A: `group_ids` are OR'd — one call covers
+     every rivalry week, mirroring T7 step 7b. Groups are per-pairing and a
+     rematch is a NEW pairing id, so searching only the current pairing's
+     group would structurally miss every concluded week's verdict memories
+     T5 ingests — silently, since retrieval is fail-open.)
 7. `generator.banter(ctx)`; null → `jsonSuccess({ banter: null })` (200,
    UI hides — degraded is not an error).
+- Instantiate via `xtraceClientFromEnv()` / `generatorFromEnv()` (a
+  module-level lazy singleton in `lib/companion/banter.ts` is fine). Null
+  xTrace client → MEMORY `[]`; null generator → same as a null generation
+  result: `jsonSuccess({ banter: null })`. Unset keys are the default dev
+  state — this path must be exercised, not accidental.
 8. `insertArtifactIdempotent` (kind `banter`, content
    `{ lines, model, promptVersion }`) and return the stored row's lines
    (covers a concurrent double-generate: both callers return the single
@@ -685,15 +747,33 @@ No polling, no retries.
   returns stored lines without invoking generator (assert generator mock
   not called); generator null → `{banter:null}` with 200; generation
   stores artifact (second call same day hits cache).
-- Island tests (`apps/web/test/`, jsdom + stubbed fetch like
-  `share-client.test.ts`): renders lines on success — the fetch stub MUST
-  return the enveloped shape `{ data: { banter: { lines, generated_at } } }`
-  so the unwrap is exercised (a stub of the bare `{ banter }` shape would
-  pass against the exact bug it exists to catch); renders nothing on
-  `{ data: { banter: null } }` and on 500.
-- Money-word safety: a generator double returning a `$` line must result in
-  that line absent from the response (i.e., the route consumes T3's
-  filtered output — assert by wiring the real `filterLines` in one test).
+- Island tests (`apps/web/test/`, node env — this repo has NO jsdom or
+  @testing-library dependency and the web vitest config pins
+  `environment: 'node'`; mount-effect behavior is e2e-only per the
+  `nemesis-components.test.tsx` convention): extract the island's
+  fetch → envelope-unwrap → parse step into a plain exported function (or
+  just use `request()` from `lib/pick-client.ts`) and unit-test THAT with
+  a stubbed `global.fetch` (the `vi.stubGlobal` style of
+  `share-client.test.ts`) — the fetch stub MUST return the enveloped shape
+  `{ data: { banter: { lines, generated_at } } }` so the unwrap is
+  exercised (a stub of the bare `{ banter }` shape would pass against the
+  exact bug it exists to catch); assert `{ data: { banter: null } }`, 500,
+  and parse failure all yield the render-nothing value. Cover the
+  presentational states (loading / lines + disclaimer / hidden) with
+  `renderToStaticMarkup`, the way `nemesis-components.test.tsx` does. Do
+  NOT add jsdom/@testing-library — that's a repo-convention change, out of
+  scope here.
+- Memory scoping: one test asserts the fake xtrace client's captured
+  `search` call passes `groupIds` covering the prior completed pairings'
+  group ids as well as the current pairing's (guards the
+  rematch-is-a-new-pairing-id trap above).
+- Money-word safety: one test wires the real T3 pipeline — build the
+  generator with `createGenerator` over a fake Anthropic-shaped client
+  whose `parsed_output` includes a `$` line — and asserts that line is
+  absent from the route's response (proving the route consumes T3's
+  filtered Generator output; the route itself does not re-filter, so
+  doubling the Generator directly would bypass the filter and fail this
+  test by design).
 - `pnpm verify` green.
 
 **Out of scope:** `/vs` page, notifications, streaming.
@@ -730,9 +810,11 @@ in-app callout contract (stamps-only, no message field) is untouched.
    drafting against strangers.
 6. `cacheKey = calloutDraftCacheKey(profileId, targetProfileId, etDay)`
    (T4's builder) — artifact hit returns stored drafts.
-7. RECORD: lifetime W-L-D vs target (same SQL aggregate as T6). MEMORY:
-   find ALL prior pairings between challenger and target (same
-   completed-pairings query as the RECORD aggregate), then run two
+7. RECORD: lifetime W-L-D vs target via T4's `lifetimeRecordBetween` (the
+   same helper T6 uses — T7 does not depend on T6 and must not wait for
+   it; the shared aggregate lives in T4 precisely so neither route
+   reimplements it). MEMORY: find ALL prior pairings between challenger
+   and target via T4's `completedPairingIdsBetween`, then run two
    searches: (a) user-scoped `{ query, userId: profileId }` — the
    challenger's own memory; (b) if any prior pairings exist, ONE
    group-scoped call
@@ -741,7 +823,11 @@ in-app callout contract (stamps-only, no message field) is untouched.
    rivalry week). Concatenate group results first, then user results,
    de-dupe by memory `id`, truncate to `COMPANION_SEARCH_LIMIT`.
 8. Generate via `generator.calloutDrafts`; null →
-   `ApiError('COMPANION_UNAVAILABLE', 'draft generation unavailable')`
+   `ApiError('COMPANION_UNAVAILABLE', 'draft generation unavailable')`.
+   Instantiate via `generatorFromEnv()` / `xtraceClientFromEnv()` like T6;
+   a null `generatorFromEnv()` (unset `ANTHROPIC_API_KEY`) is treated the
+   same as a null generation result → `COMPANION_UNAVAILABLE`; a null
+   xTrace client → MEMORY `[]`, generation proceeds
    (T1 adds `COMPANION_UNAVAILABLE: 503` to `ERROR_CODES`; do NOT reuse
    the venue-pricing-specific `PRICE_UNAVAILABLE`). Rationale: unlike the
    passive banter panel,
@@ -756,7 +842,11 @@ the T6 island) — then show the up-to-3 drafts inline
 (radio/tap-to-select), selected text is passed into the existing share flow:
 call the same share path `CalloutButton` uses but with
 `text: `${selectedDraft} ${share_url}`` — i.e., the button first creates
-the callout via the existing `POST /api/v1/callouts` (unchanged), then
+the callout via the existing `POST /api/v1/callouts` (unchanged), sending
+`{}` as the body exactly like `CalloutButton` does (the schema's optional
+`target_profile_id` stays unused — the draft targets only the share TEXT,
+not the callout row; keep the created row identical to the non-draft
+flow), then
 shares link + draft together via `navigator.share`/clipboard fallback
 (`copyShareLink` in `lib/share-client.ts` — add a sibling `copyShareText`
 if it only takes URLs). On draft failure: toast `calloutsCopy.draftFailed`,
@@ -797,7 +887,7 @@ generated by a batch job (never in-request), rendered on `/you`.
   cron later).
 - `apps/worker/test/registry.test.ts` — add `companion:season-recap` to
   `SPEC_JOBS` AND to `QUEUE_ONLY` (it has no cron), using the widened
-  `/^(WS|XH)\d+-T\d+$/` owner regex (T5 makes the same regex change;
+  `/^(WS\d+|XH)-T\d+$/` owner regex (T5 makes the same regex change;
   whichever task lands second keeps it — the edit is idempotent).
 - `apps/worker/scripts/run-season-recap.mjs` — thin script:
   `boss.send('companion:season-recap', { seasonId: process.argv[2] })`,
@@ -815,8 +905,12 @@ generated by a batch job (never in-request), rendered on `/you`.
 **Job spec:**
 - Gate: flag `season_wrapped`; `generatorFromEnv()`/`xtraceClientFromEnv()`
   null → log + return.
-- Resolve season: given id, or latest `seasons` row with `kind='nemesis'`
-  and `endsOn < today`.
+- Resolve season: given id — recap it as-is, with NO `endsOn` check (an
+  explicitly named season may still be running; T9's demo depends on
+  this) — or, when `seasonId` is omitted, the latest `seasons` row with
+  `kind='nemesis'` and `endsOn < today`, where `today` =
+  `etDateString(now())`. No season resolves → log one warn line and
+  return a zeroed report (not an error).
 - Eligible profiles: distinct claimed profiles appearing in that season's
   `nemesis_pairings` (either side) — claimed = `profiles.kind = 'claimed'`
   (the `profile_kind` enum; the same check `apps/web/app/rivals/page.tsx`
@@ -831,7 +925,24 @@ generated by a batch job (never in-request), rendered on `/you`.
   1. Skip if the `recapCacheKey(seasonId, profileId)` artifact exists
      (T4's builder; idempotent re-runs).
   2. Build `RecapContext.stats` with plain SQL over `nemesis_pairings`
-     (+ callouts counts); `verdictLines` = that profile's OWN narration
+     (+ callouts counts). Pinned formulas — no other reading is correct:
+     - `pairings`/`wins`/`losses`/`draws`: the profile's `completed`
+       pairings in this season, bucketed by `winnerProfileId`
+       (viewer = win, other side = loss, null = draw).
+     - `bestStreak`: longest run of consecutive WINS over those completed
+       pairings ordered by `weekStart` (a draw or a loss both break the
+       run). Explicitly NOT `profiles.bestStreak`/`bestWinStreak` — those
+       are daily-pick streaks; echoing them here would put a wrong number
+       in RECORD-grounded text (ground rule 4).
+     - `calloutsSent`: count of `callouts` rows with
+       `challengerProfileId = profile` and `createdAt` within the season's
+       `[startsOn, endsOn]` (callouts carry no `seasonId` — the date
+       window IS the season scoping).
+     - `calloutsWon`: of those rows, the ones whose `pairingId` resolves
+       to a `completed` pairing with `winnerProfileId = profile` (a
+       callout "win" is winning the pairing the accepted callout created;
+       the `callouts.status` enum has no win/loss).
+     `verdictLines` = that profile's OWN narration
      lines, `verdict.narration[profileId]?.line`, chronological (see the
      verdict-shape note in XH-T5).
   3. MEMORY: `xtrace.search({ userId: profileId, query: 'season rivalry highlights grudges', include: ['episode','fact'] })`.
@@ -868,26 +979,40 @@ stack.
   inserts, create: 2 claimed profiles (distinct handles with personality,
   e.g. `chalk_daddy` / `fade_the_public` — must pass any handle
   constraints), a nemesis season, 3 concluded pairings between them across
-  3 weeks (with verdict jsonb containing verdict lines; alternate winners;
-  final one `isRematch: true`), 8–10 pairing-thread posts with distinctly
+  3 weeks (verdict jsonb in the EXACT shape pinned in XH-T5 —
+  `{ scoreA, scoreB, edgeA, edgeB, winner, excludedQuestionIds, narration: { [profileId]: { line, emphasis } } }`
+  — with BOTH sides' narration lines populated; T6/T8 read
+  `verdict.narration[profileId]?.line` via optional chaining, so a
+  plausible-but-wrong shape degrades silently to empty verdict lines;
+  alternate winners; final one `isRematch: true`), 8–10 pairing-thread posts with distinctly
   quotable trash talk, and one currently-active pairing for this week.
   (Callout candidates need no extra seeding — they are derived from the
   concluded pairings via `getCalloutCandidates`; verify the seed makes
   each profile appear in the other's candidates.) Print the profile
-  ids/handles and pairing ids.
+  ids/handles, pairing ids, and the SEASON id — the recap job must be
+  invoked with it (the seeded season is still running, so T8's default
+  "latest ended season" resolution would find nothing).
 - `docs/xtrace-hackathon-demo.md` — the runbook: env vars needed (real
   `XTRACE_API_KEY` + `ANTHROPIC_API_KEY`), flag env lines, exact command
-  sequence (seed → run `companion:ingest` once via a one-off
-  `boss.send` script or direct handler invocation → hit banter route as
-  each profile → run recap job → walk the three surfaces), what each demo
+  sequence (seed → run `companion:ingest` once via
+  `node apps/worker/scripts/run-companion-ingest.mjs` (T5 ships it) → hit
+  banter route as each profile → run the recap job with the seeded season
+  id printed by the seed script:
+  `node apps/worker/scripts/run-season-recap.mjs <seasonId>` — the
+  explicit id is required, T8's given-id path skips the ended-season
+  check → walk the three surfaces), what each demo
   beat shows the judges, and the reset procedure (truncate the two
   companion tables — `companion_artifacts`, `companion_ingest_log` — and
   re-run). Include the "facts are authoritative /
   memory is color" one-liner for the pitch.
 
 **Spec notes:**
-- Script must be idempotent (re-run safe): key fixture rows on fixed ids or
-  handles and upsert, exactly like `seed-fixtures.mts` does.
+- Script must be idempotent (re-run safe). Either detect a prior run and
+  exit early exactly like `seed-fixtures.mts` does (select a sentinel row
+  by fixed handle/slug; if present, print the existing ids and
+  `process.exit(0)` — note the template does NOT upsert; its inserts are
+  plain `db.insert(...).values(...)` behind that early-exit), or upsert on
+  fixed ids — the early-exit is the established pattern.
 - Use `now()`-relative dates so `TEST_CLOCK` can shift the world if needed;
   don't hardcode calendar dates.
 - The script does NOT call xTrace/Claude itself — it seeds Postgres only;

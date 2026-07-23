@@ -1,10 +1,6 @@
 # xTrace hackathon tasks — review log & process
 
-Status: round 1 complete (30 fixes applied). Round 2 DID NOT RUN — all four
-reviewer agents failed on the session quota limit (resets 9am UTC); the
-workflow's original convergence check mistook that for a clean round (script
-since fixed to abort instead). NOT converged. Next step: re-run the Workflow
-command from the Process section once agent quota is available.
+Status: round 1 complete, 22 fixes applied, awaiting next review round.
 
 This file is the durable state of the adversarial review process for
 `docs/xtrace-hackathon-tasks.md`. It exists so the process can be resumed by
@@ -53,6 +49,35 @@ checkpoint.
   the draft first, then start the loop.
 
 ## Round history
+
+### Round 1 — 22 applied, 0 rejected
+
+(Resumed run of 2026-07-23, after the quota-aborted round below; the loop's
+round counter restarted. 26 raw findings from 4 reviewers deduped to 22
+unique; every repo fact re-verified before editing; none rejected.)
+
+- APPLIED [blocker] XH-T5/XH-T8: widened owner regex corrected to `/^(WS\d+|XH)-T\d+$/` — the previously pinned `/^(WS|XH)\d+-T\d+$/` still rejected the digit-less `XH-T5`/`XH-T8` owners (×3 dup findings merged)
+- APPLIED [major] XH-T6: MEMORY search now ORs group ids of ALL pairings between the two profiles (current + completed, via T4's `completedPairingIdsBetween`) instead of only the current pairing's group — rematches are new pairing ids, so the old scoping silently missed every concluded week's memories; AC added asserting the captured `groupIds` (×2 dup findings merged)
+- APPLIED [major] XH-T6: island-test AC rewritten to repo reality — no jsdom/@testing-library exists and web vitest pins `environment: 'node'`; fetch→envelope-unwrap→parse is extracted and unit-tested with stubbed `global.fetch`, presentational states via `renderToStaticMarkup`; adding jsdom declared out of scope
+- APPLIED [major] XH-T6: `currentWeek` pinned — non-null only when `pairing.status === 'active'`, other statuses serve `currentWeek: null` (no 404); `daysRemaining` = ET days from `etDateString(now())` through `addDaysToDateString(weekStart, 6)`, clamped ≥ 0
+- APPLIED [major] XH-T6: money-word AC de-contradicted — the test builds the real generator via `createGenerator` over a fake Anthropic-shaped client (the route does not re-filter, so doubling the Generator itself would bypass the filter the test exists to prove)
+- APPLIED [major] XH-T4: `markIngested` contract rewritten to T5's mark-AFTER-successful-ingest protocol — the old claim-before-ingest comment would permanently lose facts on any ingest failure
+- APPLIED [major] XH-T8: `stats` formulas pinned — season-scoped W-L-D bucketed by `winnerProfileId`; `bestStreak` = longest win run over completed pairings by `weekStart` (explicitly NOT `profiles.bestStreak`/`bestWinStreak`); `calloutsSent` by `createdAt` within `[startsOn, endsOn]`; `calloutsWon` via `pairingId` → completed pairing won by the profile
+- APPLIED [major] XH-T9/XH-T8: demo recap flow unbroken — seed script now prints the season id, runbook invokes `run-season-recap.mjs <seasonId>`, and T8's given-id path explicitly skips the `endsOn < today` check
+- APPLIED [minor] XH-T4: `etDay` pinned to `etDateString(now())` from `@receipts/core` (already exported from the root); dead conditional and `etCalendarDay` fallback removed
+- APPLIED [minor] XH-T4: AC changed to `pnpm --filter @receipts/db db:check` — no root `db:check` alias exists
+- APPLIED [minor] XH-T4: repository gains `lifetimeRecordBetween` + `completedPairingIdsBetween`, consumed by T6 and T7 — removes T7's dangling "same SQL aggregate as T6" reference (T7 doesn't depend on T6)
+- APPLIED [minor] XH-T9: idempotency reworded — `seed-fixtures.mts` uses a sentinel early-exit, not upsert; both patterns allowed, early-exit named as the template's
+- APPLIED [minor] XH-T2: venues template corrected — BOTH tsconfigs (`tsconfig.json` → base + noEmit, `tsconfig.build.json` → package), and no per-package eslint file (root `eslint.config.mjs` covers it)
+- APPLIED [minor] XH-T2: `seasonConvId` annotated as reserved/unconsumed; "used by T5–T8" narrowed to the actual consumers (`pairingGroupId` T5/T6/T7, `pairingConvId` T5)
+- APPLIED [minor] XH-T6/XH-T7: from-env instantiation + null-client behavior pinned — T6: null xtrace → MEMORY `[]`, null generator → `{banter:null}` 200; T7: null generator → `COMPANION_UNAVAILABLE`, null xtrace → MEMORY `[]` (×2 dup findings merged)
+- APPLIED [minor] XH-T8: no-season-resolves path pinned — warn + zeroed report, `today` = `etDateString(now())`
+- APPLIED [minor] XH-T7: draft button's callout-create POST pinned to `{}` body exactly like `CalloutButton` (optional `target_profile_id` stays unused; callout row identical to non-draft flow)
+- APPLIED [minor] XH-T1: `contracts.test.ts` ERROR_CODES count pin (22 → 23) added to the errors.ts bullet, with the "editing the pin is expected" note
+- APPLIED [minor] XH-T1/XH-T3: `COMPANION_DRAFT_MAX = 3` added to config; `draftCalloutResponseSchema` and T3's drafts output schema both use it (banter cap no longer doubles as the drafts cap)
+- APPLIED [minor] XH-T1: dead contract surface dropped — `banterLineSchema` and `zCompanionArtifactId` removed (no task consumed either)
+- APPLIED [minor] XH-T5/XH-T9: `apps/worker/scripts/run-companion-ingest.mjs` added to T5's Files list; runbook references it by path (the 04:00 cron alone can't drive a live demo)
+- APPLIED [minor] XH-T9: seed verdict jsonb pinned to XH-T5's exact shape (per-profile `narration` map, both sides' lines populated) — wrong shapes degrade silently through T6/T8's optional chaining
 
 ### Round 2 — aborted, no coverage
 
