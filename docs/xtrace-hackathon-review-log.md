@@ -65,6 +65,27 @@ reviewers for a clean round):
 
 ## Round history
 
+### Round 5 — PENDING, 2 findings, 0 lenses failed
+
+```json
+[
+ {
+  "task_id": "XH-T5",
+  "severity": "major",
+  "claim": "One ingest per post: userId = author profileId, convId = pairingConvId(...), groupIds = [pairingGroupId(...)], message = the post body with an attribution prefix (\"{handle} said in the rivalry thread: \u2026\")",
+  "problem": "Ground rule 6 explicitly forbids sending emails/tokens/secrets to xTrace or the Claude API, and XH-T5's own 'Never query or send' bullet repeats 'emails' as forbidden \u2014 but the post-ingestion path sends the raw, unfiltered post body verbatim (only an attribution prefix is added). Post bodies are free-form user-typed text (the existing moderation model in receipts-design-doc.md \u00a714/\u00a715.4 is reactive admin removal after the fact, not a pre-send filter), so a user who types an email address, phone number, or other PII into a rivalry-thread post has that content shipped to the third-party xTrace service with no redaction step anywhere in T2 (client), T5 (ingestion), or T1 (schemas). This is a straightforward, likely-to-occur path (unlike the pick-leakage question the doc does address in \u00a79.3) that violates the doc's own stated invariant. The acceptance-criteria test ('assert no @/email-like strings') only checks synthetic factory-seeded post bodies, which by construction won't contain emails, so it cannot catch this gap \u2014 it would pass even with zero redaction logic, giving false confidence that ground rule 6 is enforced.",
+  "suggested_fix": "Add an explicit redaction/scrub step (e.g. strip email-like and phone-like patterns, similar in spirit to the money-word filter but applied to ingest INPUT rather than generation output) run on post bodies before they are sent via xtrace.ingest, and add a test that seeds a post body containing a real email/phone string and asserts the captured ingest payload does not contain it verbatim."
+ },
+ {
+  "severity": "minor",
+  "task_id": "doc",
+  "claim": "Demo-critical path: T1 \u2192 T2 \u2192 T3 (T4 in parallel after T1) \u2192 T5 \u2192 T6. T7 is independently shippable once T2, T3, and T4 have merged; T8 additionally needs T6 (it reuses `companionCopy.disclaimer`).",
+  "problem": "This sentence inserts T5 into the chain immediately before T6, implying T6 depends on (or must follow) T5. But the dependency table lists XH-T6's dependencies as 'XH-T2, XH-T3, XH-T4' only \u2014 T5 is absent. The rest of the same sentence tracks the table exactly (T7: T2/T3/T4; T8: adds T6), which makes the T5\u2192T6 insertion read as a real drafting slip rather than a deliberate 'demo readiness vs. code dependency' distinction (nothing in the doc says the two orderings differ intentionally). A reader using this prose to sequence work (rather than `workstream-lock.mjs list-ready`, which presumably reflects the table) could wrongly block T6 on T5's merge, or conversely assume T5 must ship first when nothing in T6's implementation actually requires it (the banter route's memory search is fail-open and works correctly with zero ingested memories).",
+  "suggested_fix": "Either drop 'T5' from the critical-path arrow chain (`T1 \u2192 T2 \u2192 T3 (T4 in parallel after T1) \u2192 T6`) if T6 truly has no dependency on T5, or add a clarifying clause, e.g.: '...\u2192 T3 (T4 in parallel after T1) \u2192 T6 (T5 should run at least once beforehand for the demo to show grounded memory, but is not a code dependency of T6) \u2192 ...'."
+ }
+]
+```
+
 ### Round 4 — 3 applied, 0 rejected
 
 All 4 lenses ran (2 returned zero findings — converging). Applied: [major]
