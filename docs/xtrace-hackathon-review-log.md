@@ -65,6 +65,41 @@ reviewers for a clean round):
 
 ## Round history
 
+### Round 6 — PENDING, 4 findings, 0 lenses failed
+
+```json
+[
+ {
+  "task_id": "XH-T7",
+  "claim": "selected text is passed into the existing share flow: call the same share path `CalloutButton` uses but with `text: `${selectedDraft} ${share_url}``",
+  "problem": "The \"same share path CalloutButton uses\" is `shareCalloutLink(url, title)`, a module-private (unexported) helper defined inside `apps/web/components/callouts/CalloutButton.tsx` (line ~84). It is not importable from `CalloutDraftButton.tsx`, and its body calls `nav.share({ url, title })` with no `text` field at all \u2014 there is no code path in it that accepts or forwards a `text` argument. A junior literally cannot 'call the same share path... but with text' as instructed: the function has to be exported and its signature/implementation changed to accept and pass a `text` field to `ShareData`, but XH-T7's Files list never lists `CalloutButton.tsx` as a file this task touches, so it's unclear whether that edit is in-scope, whether `shareCalloutLink` should be extracted to a shared lib module, or whether `CalloutDraftButton.tsx` should instead duplicate a native-share call inline. The doc already anticipated an analogous gap for the clipboard fallback (\"add a sibling `copyShareText` if it only takes URLs\") but never extends that reasoning to the native `navigator.share` path, leaving the native-share half of the button spec unimplementable as written.",
+  "severity": "blocker",
+  "suggested_fix": "Add `CalloutButton.tsx` (or a new shared module, e.g. `apps/web/lib/callout-share.ts`) to XH-T7's Files list, and specify explicitly: export a `shareCalloutLink(url: string, title: string, text?: string)` (or equivalent) from a shared location, changing its internal `nav.share({...})` call to include `text` when provided, then have both `CalloutButton.tsx` and the new `CalloutDraftButton.tsx` import that shared function instead of `CalloutButton.tsx` keeping a private copy."
+ },
+ {
+  "task_id": "XH-T7",
+  "claim": "9. Store the artifact with `content: { drafts, model, promptVersion }` \u2014 the `drafts` key is T4's pinned slot for this kind ... and return the `draftCalloutResponseSchema` shape.",
+  "problem": "`companion_artifacts.profileId` is `not null` (XH-T4), but XH-T7's route spec never states which profile id to write for a callout-draft artifact row. Unlike banter (viewer/participant profileId, tied to `pairingId`) or season recap (the profile the recap belongs to), a callout draft involves two distinct profiles \u2014 the requesting `profileId` (challenger, rate-limited, cache-key subject) and `target_profile_id` from the request body \u2014 and the doc gives no guidance on which one (or both) goes in the row's `profileId` column, nor what to put in `pairingId`/`seasonId` (both nullable, but a junior can't tell if `pairingId` should be set from `priorPairingIds[0]` or left null).",
+  "severity": "minor",
+  "suggested_fix": "Add one line to step 9: \"insert with `profileId = <challenger's profileId>`, `pairingId: null`, `seasonId: null`\" (or whichever is intended)."
+ },
+ {
+  "task_id": "XH-T7",
+  "claim": "run two searches: (a) user-scoped `{ query, userId: profileId }` \u2014 the challenger's own memory; (b) if any prior pairings exist, ONE group-scoped call `{ query, groupIds: priorPairingIds.map(pairingGroupId) }`",
+  "problem": "T7 never defines what `query` actually is. T6 pins a literal query string ('<opponentHandle> rivalry banter grudges history') and T8 pins its own literal ('season rivalry highlights grudges'), but T7's spec uses the bare identifier `query` in both search-call object literals without ever assigning or specifying its value anywhere in the task. A junior engineer implementing T7 has no source for this string \u2014 it isn't passed into the route, isn't derived from BanterContext/CalloutDraftContext fields already in scope in an obvious single way, and isn't cross-referenced to T6's or T8's literal. This is a real gap, not an intentional simplification: every other memory-search call site in the doc pins its literal query text explicitly.",
+  "severity": "major",
+  "suggested_fix": "Add a pinned literal, e.g.: `query = '<targetHandle> rivalry trash talk grudges history'` (mirroring T6/T8's phrasing pattern), and use that literal in both the (a) and (b) search calls in step 7."
+ },
+ {
+  "task_id": "XH-T7",
+  "claim": "(a) user-scoped `{ query, userId: profileId }` ... (b) ... group-scoped call `{ query, groupIds: priorPairingIds.map(pairingGroupId) }`",
+  "problem": "Neither T7 search call sets `include`, whereas the two analogous searches in T6 (`include: ['fact','episode']`) and T8 (`include: ['episode','fact']`) both explicitly restrict memory types. `SearchArgs.include` is optional per T2's client, so omitting it isn't a type error, but it silently changes retrieval behavior versus the other two generation surfaces (e.g., it would also surface 'artifact'-type xTrace memories that T6/T8 deliberately exclude), which reads as an oversight rather than a deliberate, stated scope choice.",
+  "severity": "minor",
+  "suggested_fix": "Add `include: ['fact','episode']` to both search calls in T7 step 7 for consistency with T6/T8, or explicitly note why callout drafts intentionally include 'artifact' memories if that's deliberate."
+ }
+]
+```
+
 ### Round 5 — 2 applied, 0 rejected
 
 All 4 lenses ran (2 empty). Applied: [major] PII scrub on ingested post
