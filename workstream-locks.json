@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T05:28:44.424Z",
+  "updated_at": "2026-07-23T05:33:24.388Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2511,13 +2511,13 @@
         "WS26-T6"
       ],
       "mock_start_ok": false,
-      "note": "test. Seed one solo human -> assign -> CPU-fill -> open -> cpu:pick sweep -> lock -> settle -> reveal -> verdict vs badged CPU. AC (review #10): personas can return skip — define and assert what a CPU no-pick means for the verdict/scoreboard (human wins that question vs no-contest).",
-      "status": "in_review",
+      "note": "Merged PR #162: golden loop through all production entrypoints; CPU-skip = solo-pick day (score by winning only, question counted). Phase X1 complete.",
+      "status": "done",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws26-t11-golden-loop",
       "pr": "162",
       "claimed_at": "2026-07-23T05:25:07.473Z",
-      "updated_at": "2026-07-23T05:28:44.424Z"
+      "updated_at": "2026-07-23T05:33:24.388Z"
     },
     "WS26-T9": {
       "title": "Outcome-driven persona refinement (believability tuning)",
