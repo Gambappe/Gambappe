@@ -249,18 +249,46 @@ describe('per-profile stats (XH-T8 pinned formulas)', () => {
     const bCtx = calls.find((c) => c.handle === 'Otter #2')!;
     expect(bCtx.stats).toMatchObject({ pairings: 1, wins: 0, losses: 1, draws: 0, bestStreak: 0 });
   });
+
+  it('never lets a non-completed pairing (e.g. the current, still-active week) leak into the stats', async () => {
+    const seasonId = await seedSeasonRow('2026-01-01', '2026-03-01');
+    const a = await seedClaimedProfile('Fox #1');
+    const b = await seedClaimedProfile('Otter #2');
+    await seedCompletedPairing(seasonId, '2026-01-05', a, b, a.id as string); // win — the only one that should count
+
+    const activePairing = buildNemesisPairing(seasonId, a.id as string, b.id as string, {
+      weekStart: '2026-01-12',
+      status: 'active',
+      winnerProfileId: null,
+      verdict: null,
+    });
+    await db.insert(nemesisPairings).values(activePairing);
+
+    const { client: xtrace } = makeFakeXtrace();
+    const { generator, calls } = makeFakeGenerator();
+    await runSeasonRecap(makeCtx(), xtrace, generator, seasonId, AT);
+
+    const aCtx = calls.find((c) => c.handle === 'Fox #1')!;
+    // If the still-active pairing leaked in, this would read pairings:2/draws:1/bestStreak
+    // corrupted by an unordered null-winner row — it must read exactly the one completed win.
+    expect(aCtx.stats).toMatchObject({ pairings: 1, wins: 1, losses: 0, draws: 0, bestStreak: 1 });
+    expect(aCtx.verdictLines).toEqual(['Fox #1 verdict for 2026-01-05']);
+  });
 });
 
 describe('callout stats — ET-day season window (XH-T8 off-by-one pin)', () => {
-  it('excludes a callout the day before startsOn, includes one on endsOn itself (the last day)', async () => {
+  it('excludes a callout the day before startsOn, includes one on startsOn itself AND one on endsOn itself (both boundary days)', async () => {
     const seasonId = await seedSeasonRow('2026-01-05', '2026-01-11');
     const a = await seedClaimedProfile('Fox #1');
     const b = await seedClaimedProfile('Otter #2');
     await seedCompletedPairing(seasonId, '2026-01-05', a, b, a.id as string);
 
-    // ET is UTC-5 in January (EST) — 2026-01-04T23:00:00Z is still 2026-01-04 18:00 ET (before
-    // the season), and 2026-01-12T04:59:00Z is still 2026-01-11 23:59 ET (the season's last day).
+    // ET is UTC-5 in January (EST) — 2026-01-04T23:00:00Z is still 2026-01-04 18:00 ET (the day
+    // BEFORE the season), 2026-01-05T12:00:00Z is 2026-01-05 07:00 ET (the season's FIRST day —
+    // pins the `>=` side of the window, not just the day-before-start exclusion), and
+    // 2026-01-12T04:59:00Z is still 2026-01-11 23:59 ET (the season's LAST day).
     await seedCallout(a.id as string, new Date('2026-01-04T23:00:00Z')); // excluded (before)
+    await seedCallout(a.id as string, new Date('2026-01-05T12:00:00Z')); // included (first day)
     await seedCallout(a.id as string, new Date('2026-01-12T04:59:00Z')); // included (last day)
 
     const { client: xtrace } = makeFakeXtrace();
@@ -268,7 +296,7 @@ describe('callout stats — ET-day season window (XH-T8 off-by-one pin)', () => 
     await runSeasonRecap(makeCtx(), xtrace, generator, seasonId, AT);
 
     const aCtx = calls.find((c) => c.handle === 'Fox #1')!;
-    expect(aCtx.stats.calloutsSent).toBe(1);
+    expect(aCtx.stats.calloutsSent).toBe(2);
   });
 
   it("counts calloutsWon only when the callout's own pairing is completed with this profile as winner", async () => {
@@ -389,8 +417,17 @@ describe('memory scoping', () => {
     await runSeasonRecap(makeCtx(), xtrace, generator, seasonId, AT);
 
     expect(searchCalls).toHaveLength(2); // one per eligible profile (A, B)
-    expect(searchCalls[0]).toMatchObject({
+    // `listClaimedProfileIdsInSeason` has no ORDER BY — find by userId rather than assume a
+    // fixed index, so this test can't flake on an unrelated query-plan/row-order change.
+    const aSearchCall = searchCalls.find((c) => (c as { userId?: string }).userId === a.id);
+    expect(aSearchCall).toMatchObject({
       userId: a.id,
+      query: 'season rivalry highlights grudges',
+      include: ['episode', 'fact'],
+    });
+    const bSearchCall = searchCalls.find((c) => (c as { userId?: string }).userId === b.id);
+    expect(bSearchCall).toMatchObject({
+      userId: b.id,
       query: 'season rivalry highlights grudges',
       include: ['episode', 'fact'],
     });
