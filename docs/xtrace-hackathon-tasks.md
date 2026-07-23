@@ -82,16 +82,18 @@ Postgres (deterministic stats) ──┤
 |---|---|---|
 | XH-T1 | Contracts, flags, config (`packages/core`, contract-change) | — |
 | XH-T2 | `@receipts/companion`: xTrace client | XH-T1 |
-| XH-T3 | `@receipts/companion`: generation service | XH-T1 |
+| XH-T3 | `@receipts/companion`: generation service | XH-T1, XH-T2 |
 | XH-T4 | DB: `companion_artifacts` + `companion_ingest_log` + repository | XH-T1 |
 | XH-T5 | Worker: rivalry memory ingestion job | XH-T2, XH-T4 |
 | XH-T6 | Banter API route + Rivals hub panel | XH-T2, XH-T3, XH-T4 |
 | XH-T7 | Callout draft API + share-sheet integration | XH-T2, XH-T3, XH-T4 |
-| XH-T8 | Season wrapped: batch job + `/you` panel | XH-T2, XH-T3, XH-T4 |
+| XH-T8 | Season wrapped: batch job + `/you` panel | XH-T2, XH-T3, XH-T4, XH-T6 |
 | XH-T9 | Demo seed script + runbook | XH-T5..T8 |
 
-Demo-critical path: T1 → T2/T3/T4 → T5 → T6 → T9. T7 and T8 are
-independently shippable after T4.
+Demo-critical path: T1 → T2 → T3 (T4 in parallel after T1) → T5 → T6.
+T7 is independently shippable once T2, T3, and T4 have merged; T8
+additionally needs T6 (it reuses `companionCopy.disclaimer`). T9 requires
+all of T5–T8 — the runbook walks all three surfaces.
 
 ---
 
@@ -118,9 +120,15 @@ tasks consume, defined once in `packages/core`.
   - `COMPANION_PROMPT_VERSION = 1`
   - `COMPANION_BANTER_MAX_LINES = 3`
   - `COMPANION_SEARCH_LIMIT = 8` (memories per retrieval)
+  - `RL_COMPANION_BANTER_PROFILE_D = 30` (T6's rate rule; per profile per day)
+  - `RL_CALLOUT_DRAFT_PROFILE_D = 10` (T7's rate rule; per profile per day)
   - `MONEY_WORD_REGEX_SOURCE = '\\bbet\\b|\\bstake\\b|\\bwager\\b|\\$'`
     (same pattern `apps/web/test/copy.test.ts` pins; the test keeps its own
     literal — intentional duplication, both pinned)
+- `packages/core/src/errors.ts` — add `COMPANION_UNAVAILABLE: 503` to
+  `ERROR_CODES` (used by T7's degraded path; the table has no generic
+  degraded-feature code — its only 503, `PRICE_UNAVAILABLE`, is
+  venue-pricing-specific and must not be reused).
 - `packages/core/src/enums.ts` — add registry-style
   `COMPANION_ARTIFACT_KIND = ['banter', 'callout_draft', 'season_recap'] as const`
   and `CompanionArtifactKind` type, mirroring existing enum entries.
@@ -133,10 +141,11 @@ tasks consume, defined once in `packages/core`.
   });
   export const getBanterResponseSchema = z.object({
     banter: z.object({
-      lines: z.array(z.string().min(1).max(280)).min(1).max(3),
+      lines: z.array(z.string().min(1).max(280)).min(1).max(COMPANION_BANTER_MAX_LINES),
       generated_at: zTimestamp,
     }).nullable(),           // null = feature degraded/hidden, always 200
-  });
+  });                        // ^ import COMPANION_BANTER_MAX_LINES from config — T3's
+                             //   zodOutputFormat schema uses the same constant, no literal 3s
   export const draftCalloutBodySchema = z.object({
     target_profile_id: zProfileId,
   }).strict();
@@ -150,6 +159,8 @@ tasks consume, defined once in `packages/core`.
   export const getRecapResponseSchema = z.object({
     recap: seasonRecapContentSchema.extend({ generated_at: zTimestamp }).nullable(),
   });
+  export type SeasonRecapContent = z.infer<typeof seasonRecapContentSchema>;
+  //  ^ exported from the core root — T3's `seasonRecap` return type imports it
   ```
 
 **Spec notes:**
@@ -185,7 +196,10 @@ I/O. No other file in the repo may call the xTrace HTTP API directly.
   `"type": "module"`, private, version 0.0.0. Deps: `zod`,
   `@receipts/core`, `@anthropic-ai/sdk` (used by XH-T3; add here so the
   package.json is written once). Dev deps + scripts (`build`, `typecheck`,
-  `test`, `lint`) copied from `packages/venues/package.json`, which is the
+  `test`) copied from `packages/venues/package.json` — there is no
+  per-package `lint` script anywhere in `packages/`; the root `pnpm lint`
+  (`eslint . --max-warnings 0`) covers the new package automatically —
+  venues being the
   structural template for this whole package (tsconfig extending
   `@receipts/config/tsconfig.package.json`, eslint config, `vitest.config.ts`
   with `test/**/*.test.ts`).
@@ -229,7 +243,10 @@ I/O. No other file in the repo may call the xTrace HTTP API directly.
   }
   export function createXtraceClient(opts: XtraceClientOptions): XtraceClient;
   export function xtraceClientFromEnv(env?: NodeJS.ProcessEnv): XtraceClient | null;
-  //  ^ returns null when XTRACE_API_KEY or XTRACE_APP_ID unset — callers treat null as "memory unavailable"
+  //  ^ returns null when XTRACE_API_KEY or XTRACE_APP_ID unset — callers treat null as "memory unavailable".
+  //    apiBase falls back to XTRACE_DEFAULT_API_BASE = 'https://api.production.xtrace.ai'
+  //    (export the constant from client.ts) when XTRACE_API_BASE is unset — no
+  //    other task defines a code-level default, so it lives here.
   ```
 - `packages/companion/src/index.ts` — barrel export.
 
@@ -322,28 +339,37 @@ functions with structured outputs, the money-word filter, and a hard
   export interface Generator {
     banter(ctx: BanterContext): Promise<string[] | null>;        // 1–COMPANION_BANTER_MAX_LINES lines, filtered
     calloutDrafts(ctx: CalloutDraftContext): Promise<string[] | null>; // up to 3
-    seasonRecap(ctx: RecapContext): Promise<SeasonRecapContent | null>; // core's seasonRecapContentSchema type
+    seasonRecap(ctx: RecapContext): Promise<SeasonRecapContent | null>; // type imported from @receipts/core (T1 exports it)
   }
   export function createGenerator(client: Anthropic): Generator;
   export function generatorFromEnv(env?: NodeJS.ProcessEnv): Generator | null; // null if ANTHROPIC_API_KEY unset
   ```
+- `packages/companion/src/index.ts` — extend T2's barrel with the
+  filter/prompts/generate exports (T2 owns the file's creation; this task
+  appends to it — hence the T2 dependency).
 
 **Spec:**
 - SDK: `@anthropic-ai/sdk` (TypeScript). Model: `COMPANION_MODEL`
   (`claude-opus-4-8`) — read from core config, never inline. Client
   constructed with `timeout: COMPANION_LLM_TIMEOUT_MS` (TS SDK timeouts are
-  in **milliseconds**) and `maxRetries: 1`.
+  in **milliseconds**) and `maxRetries: 0` — the SDK timeout is per
+  *attempt* and retried attempts would double worst-case caller latency;
+  every caller here is fail-open anyway.
 - Use structured outputs: `client.messages.parse` with
   `output_config: { format: zodOutputFormat(schema) }` where schema is
-  `z.object({ lines: z.array(z.string()).min(1).max(3) })` for
-  banter/drafts and core's `seasonRecapContentSchema` shape for recaps.
+  `z.object({ lines: z.array(z.string()).min(1).max(COMPANION_BANTER_MAX_LINES) })`
+  (constant from core config, matching T1's response schema — no literal 3)
+  for banter/drafts and core's `seasonRecapContentSchema` shape for recaps.
   Do NOT set `temperature`/`top_p` (rejected on this model). Do not
   configure `thinking` (defaults are correct).
 - `max_tokens: COMPANION_MAX_OUTPUT_TOKENS`.
 - **Fail-open contract:** every path that isn't a validated, filtered,
-  non-empty result returns `null` — typed API errors (catch the SDK's typed
-  classes, most-specific first: `RateLimitError`, `APIStatusError`/`APIError`,
-  `APIConnectionError`), `stop_reason === 'refusal'`, `parsed_output` null,
+  non-empty result returns `null` — typed API errors (instanceof checks,
+  most-specific first for the TS SDK: `RateLimitError`, then
+  `APIConnectionError` — it subclasses `APIError` in the TS SDK, so it must
+  be checked before the base — then `APIError`; there is no `APIStatusError`
+  in the TypeScript SDK; keep a final catch-all so the fail-open contract
+  holds), `stop_reason === 'refusal'`, `parsed_output` null,
   all lines removed by `filterLines`, recap paragraphs failing schema.
   Log one warn line (no prompt contents in logs). Never throw.
 - Post-processing: run `filterLines` on every string field; for recaps a
@@ -406,6 +432,10 @@ ingestion idempotency, plus typed repository helpers and test factories.
   //  ^ INSERT ... ON CONFLICT (cache_key) DO NOTHING, then SELECT — safe
   //    under concurrent generation of the same key
   latestRecapForProfile(db, profileId): Promise<CompanionArtifactRow | null>
+  //  ^ the row with kind = 'season_recap' and the greatest createdAt for that
+  //    profile, or null — the kind filter is load-bearing (a fresher banter
+  //    artifact must not shadow the recap); the (profileId, kind, createdAt)
+  //    index serves exactly this query
   markIngested(db, entries: {sourceKind, sourceId}[]): Promise<string[]>
   //  ^ INSERT ... ON CONFLICT DO NOTHING RETURNING source_id — returns the
   //    ids that were NEWLY claimed; callers only ingest those (at-least-once
@@ -424,6 +454,13 @@ ingestion idempotency, plus typed repository helpers and test factories.
   to `packages/core/src/clock.ts` in this task and refactor nothing else).
 - callout draft: `callout_draft:{challengerProfileId}:{targetProfileId}:{etDay}`
 - recap: `recap:{seasonId}:{profileId}` (no day — one per season).
+- The repository module exports the key **builders** —
+  `banterCacheKey(pairingId, profileId, etDay)`,
+  `calloutDraftCacheKey(challengerProfileId, targetProfileId, etDay)`,
+  `recapCacheKey(seasonId, profileId)` — and T6/T7/T8 MUST call them
+  instead of string-formatting keys inline: a separator/ordering typo in
+  any one consumer would silently break cache hits (the fail-open design
+  turns that into invisible per-request regeneration, not an error).
 
 **Acceptance criteria:**
 - `pnpm db:check` clean; migration applies on a fresh Postgres
@@ -449,11 +486,20 @@ so retrieval has something to find. Runs entirely off the request path.
   `companionIngestHandler: JobHandler` and pure-ish core
   `runCompanionIngest(ctx: JobContext, xtrace: XtraceClient, at?: Date): Promise<CompanionIngestReport>`
   (report: counts of pairings/posts ingested and skipped — mirror
-  `NemesisConcludeReport` style).
+  `NemesisConcludeReport` style). `at` defaults to `now()` and is the run's
+  evaluation instant: it is passed as each ingest turn's `date` (ISO string)
+  and drives the wall-clock deadline below; it does not filter which
+  sources qualify.
 - `apps/worker/src/registry.ts` — add entry:
   `{ name: 'companion:ingest', owner: 'XH-T5', cron: '0 4 * * *', handler: companionIngestHandler }`
   (04:00 ET daily; after the Sunday 22:00 `nemesis:conclude` and Monday
   cycle, and colon-namespaced like every other job).
+- `apps/worker/test/registry.test.ts` — add `companion:ingest` to
+  `SPEC_JOBS` (the test asserts the registry matches that list exactly)
+  and widen the owner assertion from `/^WS\d+-T\d+$/` to
+  `/^(WS|XH)\d+-T\d+$/` (it currently rejects `XH-T5`). Note both changes
+  in the test's header comment the way `bot:score`/`settle:digest` are
+  noted.
 
 **Spec:**
 - Handler shape (mirror `nemesisConcludeHandler`):
@@ -474,17 +520,30 @@ so retrieval has something to find. Runs entirely off the request path.
   - `messages`: a single `user` turn summarizing the concluded week from
     that side's perspective, built ONLY from: both handles, final
     `scoreA/scoreB` (oriented to the side), `winnerProfileId` outcome,
-    `isRematch`, and the deterministic verdict narration line if present in
-    the `verdict` jsonb. Compose it as plain prose (xTrace extracts facts
-    server-side; no pre-classification needed).
+    `isRematch`, and that side's OWN narration line
+    (`verdict.narration[sideProfileId]?.line`) if present. Compose it as
+    plain prose (xTrace extracts facts server-side; no pre-classification
+    needed).
+  - **Verdict jsonb shape (written by `nemesis:conclude`; consumed here and
+    by T6/T8):**
+    `{ scoreA, scoreB, edgeA, edgeB, winner, excludedQuestionIds, narration: { [profileId]: { line, emphasis } } }`
+    (`ratings:weekly` later spread-merges a `rating_before` key). There is
+    no single narration line — `narration` holds TWO per-side lines keyed
+    by profile id, each written from that side's perspective ("you beat…"
+    vs "…beat you"). T5 ingests each side's own line; T6's
+    `lastVerdictLine` is the VIEWER's line; T8's `verdictLines` are that
+    profile's own lines. Picking the wrong side's line narrates the
+    opponent's perspective to the viewer.
   - After BOTH sides' `ingest` calls return true, `markIngested` the
     pairing. If either returns false, skip marking (retried next run —
     ingestion is idempotent on the xTrace side only in effect; duplicate
     facts are acceptable, missing facts are not).
 - **Source 2 — pairing thread posts.** Query `posts` where
   `contextKind = 'pairing'`, `status = 'visible'`, not yet in
-  `companion_ingest_log` (`sourceKind 'post'`), and the parent pairing is
-  concluded or active (posts are mutually visible either way — §9.3 is
+  `companion_ingest_log` (`sourceKind 'post'`), and the parent pairing's
+  `status` is `'active'` or `'completed'` (`PAIRING_STATUS` has no
+  "concluded"; posts on `scheduled`/`cancelled` pairings are skipped —
+  posts are mutually visible either way — §9.3 is
   about pick sides, which posts never contain structurally... they COULD
   contain user-typed hints; acceptable: both rivals already see the thread,
   so group-sharing adds zero new visibility). One ingest per post:
@@ -493,8 +552,15 @@ so retrieval has something to find. Runs entirely off the request path.
   attribution prefix (`"{handle} said in the rivalry thread: …"`).
   Mark ingested on success.
 - Batch cap per run: 200 sources (constant local to the job file), so a
-  backlog never makes the job long-running. Log the report via the job's
-  standard logging.
+  backlog never makes the job long-running. The cap alone doesn't bound
+  wall time — with xTrace down, each call burns ~10s of retried timeouts
+  and 200 sources × 2 calls is an hour of sequential failures, blowing
+  past pg-boss's job expiration into concurrent re-delivery. So also
+  **circuit-break on outage**: abort the run after 5 consecutive `ingest()`
+  failures (constant local to the job) or once the run exceeds a 5-minute
+  wall-clock deadline from `at` (via `now()`); record the abort in the
+  report (`aborted: true`). Unprocessed sources retry next run naturally
+  since nothing was marked. Log the report via the job's standard logging.
 - **Never** query or send: picks, open questions, emails, or anything from
   `users`.
 
@@ -521,19 +587,27 @@ and sees 1–3 lines of rivalry banter grounded in shared pairing memory,
 generated at most once per profile per ET day.
 
 **Files:**
-- `apps/web/app/api/v1/pairings/[pairingId]/banter/route.ts` — `GET`,
-  `runtime = 'nodejs'`, wrapped in `runRoute`.
+- `apps/web/app/api/v1/pairings/[id]/banter/route.ts` — `GET`,
+  `runtime = 'nodejs'`, wrapped in `runRoute`. The segment is `[id]`
+  because the existing `pairings/[id]/route.ts` already owns that slug
+  name and Next.js forbids two slug names at the same dynamic level;
+  read the pairing id as `params.id` (the route is still
+  `GET /api/v1/pairings/:pairingId/banter` conceptually).
 - `apps/web/lib/companion/banter.ts` — the logic (route stays thin like
   the callouts route → `lib/callouts.ts` split).
-- `apps/web/lib/rate-limit-rules.ts` — add rule `companion_banter`
-  (suggested: 30/day per profile; follow the file's existing rule format).
+- `apps/web/lib/rate-limit-rules.ts` — add rule `companion_banter` as
+  `{ keyType: 'profile', limit: RL_COMPANION_BANTER_PROFILE_D, windowSeconds: DAY }`,
+  importing the constant from `@receipts/core` (T1 defines it — the
+  file's header forbids hardcoding limits).
 - `apps/web/components/companion/CompanionBanter.tsx` — `'use client'`
   island.
 - `apps/web/lib/copy.ts` — add `companionCopy` block:
   `{ heading, disclaimer, loading }`; disclaimer must convey
   "AI-generated color — the record is the record" (exact wording written in
-  the task PR, must pass the money-word test automatically since it lives
-  in copy.ts).
+  the task PR; add a `companionCopy` money-word case to
+  `apps/web/test/copy.test.ts` following the per-block pattern every other
+  copy block uses — the file has no automatic whole-file scan, so a new
+  block gets zero coverage unless this task adds it).
 - Mount point: inside the claimed-nemesis-tab composition in
   `apps/web/app/rivals/page.tsx` (which is `force-dynamic` and already
   resolves identity server-side): server code checks
@@ -548,14 +622,35 @@ generated at most once per profile per ET day.
    guard); viewer's profileId must be side A or B, else
    `ApiError('FORBIDDEN')`.
 4. `enforceRateLimit('companion_banter', profileId)`.
-5. `cacheKey = banter:{pairingId}:{profileId}:{etDay}`;
+5. `cacheKey = banterCacheKey(pairingId, profileId, etDay)` (T4's builder);
    `getArtifactByCacheKey` hit → return
-   `jsonSuccess({ banter: { lines, generated_at } })`.
+   `jsonSuccess({ banter: { lines, generated_at } })`. `generated_at` =
+   the artifact row's `createdAt` serialized with `.toISOString()`
+   (satisfies `zTimestamp`); on both cache hit and fresh insert it
+   reflects the stored row, never `now()`. Same rule for T8's recap
+   `generated_at`.
 6. Miss → build `BanterContext`:
-   - RECORD from Postgres only: lifetime W-L-D vs this opponent (fold
-     `getNemesisHistoryPage` the way the grudge book does), current week
-     scores from the pairing row, `lastVerdictLine` from the most recent
-     concluded pairing's `verdict` jsonb (the stored narration line).
+   - RECORD from Postgres only:
+     - Lifetime W-L-D vs this opponent via a direct SQL aggregate: count
+       `completed` `nemesis_pairings` rows between the two profiles,
+       bucketed into win/loss/draw by `winner_profile_id`. (Do NOT fold
+       `getNemesisHistoryPage` the way the grudge book does — that fold
+       reads one page capped at `PAGINATION_MAX_LIMIT`, silently
+       truncating "lifetime" for long histories.)
+     - Current week scores DERIVED from picks, never read from the
+       pairing row: `scoreA`/`scoreB` are written only at conclusion by
+       `updatePairingConclusion`, so the active pairing's row always
+       reads 0–0 mid-week — echoing that as authoritative RECORD would
+       state a wrong live score next to the real scoreboard. Compute
+       them the way `nemesis:conclude` does:
+       `getFullPairingSharedQuestionPicks(...)` folded through
+       `@receipts/engine`'s `scoreNemesisWeek` (engine is pure and
+       `apps/web` already depends on it; INV-5 forbids only the reverse
+       direction).
+     - `lastVerdictLine = verdict.narration[viewerProfileId]?.line` from
+       the most recent `completed` pairing vs this opponent (see the
+       verdict-shape note in XH-T5 — it is a per-profile map, and the
+       viewer's own line is the one that reads correctly).
    - MEMORY: `xtrace.search({ query: '<opponentHandle> rivalry banter grudges history', groupIds: [pairingGroupId], include: ['fact','episode'] })`
      — fail-open `[]`.
 7. `generator.banter(ctx)`; null → `jsonSuccess({ banter: null })` (200,
@@ -565,15 +660,24 @@ generated at most once per profile per ET day.
    (covers a concurrent double-generate: both callers return the single
    stored artifact).
 - Both the xTrace search and the LLM call happen inside this route
-  (worst case ~20s bounded by client timeouts) — acceptable because it is
+  (worst case ~30s: one LLM attempt at `COMPANION_LLM_TIMEOUT_MS` — T3
+  pins `maxRetries: 0` — plus the xTrace search's retried timeouts)
+  — acceptable because it is
   a lazily-fetched island endpoint, never SSR. The island must show a
   loading state and tolerate the wait.
 
 **Client island spec:** on mount, `fetch('/api/v1/pairings/{id}/banter', { credentials: 'same-origin' })`;
-render `companionCopy.loading` skeleton while pending; parse with
-`getBanterResponseSchema` (import from `@receipts/core`); `banter: null`,
-non-200, or fetch error → render nothing (`return null`). Show heading,
-lines, and the disclaimer. No polling, no retries.
+render `companionCopy.loading` skeleton while pending. The body is the
+standard §9.1 success envelope `{ data: ... }` — unwrap before parsing:
+`getBanterResponseSchema.parse((await res.json()).data)` (schema from
+`@receipts/core`), or reuse the shared `request()` helper from
+`lib/pick-client.ts`, which is exported for exactly this and unwraps
+`envelope.data` before `schema.parse` (precedent: `CalloutButton.tsx`
+reads `body.data?.share_url`). Parsing the raw body with the schema
+always fails and — because failure renders nothing — would be a silently
+dead panel. `banter: null`, non-200, parse failure, or fetch error →
+render nothing (`return null`). Show heading, lines, and the disclaimer.
+No polling, no retries.
 
 **Acceptance criteria:**
 - Route unit tests (existing route-test style with mocked lib): flag off →
@@ -582,8 +686,11 @@ lines, and the disclaimer. No polling, no retries.
   not called); generator null → `{banter:null}` with 200; generation
   stores artifact (second call same day hits cache).
 - Island tests (`apps/web/test/`, jsdom + stubbed fetch like
-  `share-client.test.ts`): renders lines on success; renders nothing on
-  `{banter:null}` and on 500.
+  `share-client.test.ts`): renders lines on success — the fetch stub MUST
+  return the enveloped shape `{ data: { banter: { lines, generated_at } } }`
+  so the unwrap is exercised (a stub of the bare `{ banter }` shape would
+  pass against the exact bug it exists to catch); renders nothing on
+  `{ data: { banter: null } }` and on 500.
 - Money-word safety: a generator double returning a `$` line must result in
   that line absent from the response (i.e., the route consumes T3's
   filtered output — assert by wiring the real `filterLines` in one test).
@@ -602,8 +709,9 @@ in-app callout contract (stamps-only, no message field) is untouched.
 **Files:**
 - `apps/web/app/api/v1/callouts/draft/route.ts` — `POST`, `runRoute`,
   `assertSameOrigin`, flag `callout_draft`, claimed-only, rate rule
-  `callout_draft` (suggested 10/day per profile) added to
-  `rate-limit-rules.ts`.
+  `callout_draft` added to `rate-limit-rules.ts` as
+  `{ keyType: 'profile', limit: RL_CALLOUT_DRAFT_PROFILE_D, windowSeconds: DAY }`
+  (constant from T1 — the file's header forbids hardcoding limits).
 - `apps/web/lib/companion/callout-draft.ts` — logic.
 - `apps/web/components/callouts/CalloutDraftButton.tsx` — `'use client'`;
   rendered by `CalloutPanel` beside each candidate's existing
@@ -620,27 +728,31 @@ in-app callout contract (stamps-only, no message field) is untouched.
    candidates or nemesis history (reuse `getCalloutCandidates` /
    `getNemesisHistoryPage`); otherwise `ApiError('FORBIDDEN')` — no
    drafting against strangers.
-6. `cacheKey = callout_draft:{profileId}:{targetProfileId}:{etDay}` —
-   artifact hit returns stored drafts.
-7. RECORD: lifetime W-L-D vs target (same fold as T6). MEMORY:
-   `xtrace.search` with `userId: profileId` (the challenger's own memory;
-   there may be no shared pairing group with an expired rival —
-   own-scope + any past `pairing:` groups both sides shared are already
-   readable via user scope... no: group memories are fetched by group.
-   Keep it simple and pinned: search twice when a prior pairingId with this
-   target exists — once user-scoped, once group-scoped — concatenate, cap
-   at COMPANION_SEARCH_LIMIT).
+6. `cacheKey = calloutDraftCacheKey(profileId, targetProfileId, etDay)`
+   (T4's builder) — artifact hit returns stored drafts.
+7. RECORD: lifetime W-L-D vs target (same SQL aggregate as T6). MEMORY:
+   find ALL prior pairings between challenger and target (same
+   completed-pairings query as the RECORD aggregate), then run two
+   searches: (a) user-scoped `{ query, userId: profileId }` — the
+   challenger's own memory; (b) if any prior pairings exist, ONE
+   group-scoped call
+   `{ query, groupIds: priorPairingIds.map(pairingGroupId) }`
+   (Appendix A: `group_ids` are OR'd, so one call covers every past
+   rivalry week). Concatenate group results first, then user results,
+   de-dupe by memory `id`, truncate to `COMPANION_SEARCH_LIMIT`.
 8. Generate via `generator.calloutDrafts`; null →
-   `ApiError('UNAVAILABLE', 'draft generation unavailable')` mapped to
-   whatever existing 5xx-ish code `ERROR_CODES` has for degraded features
-   (grep `ERROR_CODES` in `packages/core/src/errors.ts`; if no fitting code
-   exists, this task adds `COMPANION_UNAVAILABLE: 503` there —
-   contract-change note in PR). Rationale: unlike the passive banter panel,
+   `ApiError('COMPANION_UNAVAILABLE', 'draft generation unavailable')`
+   (T1 adds `COMPANION_UNAVAILABLE: 503` to `ERROR_CODES`; do NOT reuse
+   the venue-pricing-specific `PRICE_UNAVAILABLE`). Rationale: unlike the
+   passive banter panel,
    the user explicitly clicked — silent nothing is worse than an honest
    error toast.
 9. Store artifact, return `draftCalloutResponseSchema` shape.
 
-**Button spec:** click → POST → on success show the up-to-3 drafts inline
+**Button spec:** click → POST → on success unwrap the §9.1 envelope —
+drafts live at `json.data.drafts` (parse with `draftCalloutResponseSchema`
+against `json.data`, or reuse `request()` from `lib/pick-client.ts` like
+the T6 island) — then show the up-to-3 drafts inline
 (radio/tap-to-select), selected text is passed into the existing share flow:
 call the same share path `CalloutButton` uses but with
 `text: `${selectedDraft} ${share_url}`` — i.e., the button first creates
@@ -652,14 +764,16 @@ and the plain share flow still works.
 
 **Acceptance criteria:**
 - Route tests: gate ladder (404/401/403/429 paths); stranger target → 403;
-  cache hit skips generator; degraded generator → the chosen error code,
-  and the plain callout flow is unaffected (separate route).
+  cache hit skips generator; degraded generator → 503
+  `COMPANION_UNAVAILABLE` envelope, and the plain callout flow is
+  unaffected (separate route).
 - Component test: drafts render after click; selecting one and sharing
   passes combined text to the (stubbed) share client; draft failure leaves
   the original `CalloutButton` functional.
-- Grep-level assertion in test: `createCalloutBodySchema` and the callouts
-  table are untouched by this task (no new columns/fields — the review
-  loop enforces via repo-reality lens; state it in the PR description).
+- No test needed for the no-contract-change guarantee: state in the PR
+  description that `createCalloutBodySchema` (`packages/core`) and the
+  `callouts` table (`packages/db`) are untouched (no new columns/fields);
+  the review loop verifies via diff.
 - `pnpm verify` green.
 
 **Out of scope:** storing drafts on the callout row, rendering drafts
@@ -681,10 +795,15 @@ generated by a batch job (never in-request), rendered on `/you`.
   `{ name: 'companion:season-recap', owner: 'XH-T8', handler: companionSeasonRecapHandler }`
   (queue-only, no cron — seasons are 12 weeks; trigger manually or wire a
   cron later).
-- `apps/worker/scripts/run-season-recap.mts` — thin script:
-  `boss.send('companion:season-recap', { seasonId: process.argv[2] })`
-  (mirror how existing worker scripts construct pg-boss), for the demo and
-  ops.
+- `apps/worker/test/registry.test.ts` — add `companion:season-recap` to
+  `SPEC_JOBS` AND to `QUEUE_ONLY` (it has no cron), using the widened
+  `/^(WS|XH)\d+-T\d+$/` owner regex (T5 makes the same regex change;
+  whichever task lands second keeps it — the edit is idempotent).
+- `apps/worker/scripts/run-season-recap.mjs` — thin script:
+  `boss.send('companion:season-recap', { seasonId: process.argv[2] })`,
+  mirroring `question-zero-drill/manual-schedule.mjs` (worker scripts are
+  plain `.mjs`, not `.mts` — same PgBoss construction from
+  `DATABASE_URL`), for the demo and ops.
 - `apps/web/app/you/page.tsx` — add a recap section for claimed viewers:
   server-side `isFlagEnabled('season_wrapped')` &&
   `latestRecapForProfile(db, profileId)` → render title + paragraphs +
@@ -699,15 +818,22 @@ generated by a batch job (never in-request), rendered on `/you`.
 - Resolve season: given id, or latest `seasons` row with `kind='nemesis'`
   and `endsOn < today`.
 - Eligible profiles: distinct claimed profiles appearing in that season's
-  `nemesis_pairings` (either side) — claimed = profile has a linked user
-  (follow however `lib/callouts-view.ts` distinguishes claimed).
+  `nemesis_pairings` (either side) — claimed = `profiles.kind = 'claimed'`
+  (the `profile_kind` enum; the same check `apps/web/app/rivals/page.tsx`
+  uses via `profile.kind === 'claimed'`). Filter with a WHERE on
+  `profiles.kind`.
 - Per profile (sequential loop — no concurrency; a season of hackathon
-  scale is tens of profiles; bounded by LLM timeout each):
-  1. Skip if `recap:{seasonId}:{profileId}` artifact exists (idempotent
-     re-runs).
+  scale is tens of profiles; each bounded by one LLM attempt + the xTrace
+  search). Worst-case runs can still exceed pg-boss's default job
+  expiration; that is safe, not a bug — a re-delivered run skips
+  already-stored recaps (step 1) and `insertArtifactIdempotent` dedupes
+  concurrent stores:
+  1. Skip if the `recapCacheKey(seasonId, profileId)` artifact exists
+     (T4's builder; idempotent re-runs).
   2. Build `RecapContext.stats` with plain SQL over `nemesis_pairings`
-     (+ callouts counts); `verdictLines` = that profile's pairings'
-     stored verdict narration lines, chronological.
+     (+ callouts counts); `verdictLines` = that profile's OWN narration
+     lines, `verdict.narration[profileId]?.line`, chronological (see the
+     verdict-shape note in XH-T5).
   3. MEMORY: `xtrace.search({ userId: profileId, query: 'season rivalry highlights grudges', include: ['episode','fact'] })`.
   4. `generator.seasonRecap(ctx)`; null → skip profile (log), continue.
   5. `insertArtifactIdempotent` kind `season_recap`,
@@ -744,15 +870,19 @@ stack.
   constraints), a nemesis season, 3 concluded pairings between them across
   3 weeks (with verdict jsonb containing verdict lines; alternate winners;
   final one `isRematch: true`), 8–10 pairing-thread posts with distinctly
-  quotable trash talk, one currently-active pairing for this week, and
-  callout candidates state. Print the profile ids/handles and pairing ids.
+  quotable trash talk, and one currently-active pairing for this week.
+  (Callout candidates need no extra seeding — they are derived from the
+  concluded pairings via `getCalloutCandidates`; verify the seed makes
+  each profile appear in the other's candidates.) Print the profile
+  ids/handles and pairing ids.
 - `docs/xtrace-hackathon-demo.md` — the runbook: env vars needed (real
   `XTRACE_API_KEY` + `ANTHROPIC_API_KEY`), flag env lines, exact command
   sequence (seed → run `companion:ingest` once via a one-off
   `boss.send` script or direct handler invocation → hit banter route as
   each profile → run recap job → walk the three surfaces), what each demo
-  beat shows the judges, and the reset procedure (truncate the three
-  companion tables + re-run). Include the "facts are authoritative /
+  beat shows the judges, and the reset procedure (truncate the two
+  companion tables — `companion_artifacts`, `companion_ingest_log` — and
+  re-run). Include the "facts are authoritative /
   memory is color" one-liner for the pitch.
 
 **Spec notes:**
@@ -824,6 +954,8 @@ Not used at hackathon scope (explicit cut, revisit before any real launch):
   `zodOutputFormat` from `@anthropic-ai/sdk/helpers/zod`;
   `parsed_output` is null on parse failure — treat as degraded.
 - Handle `stop_reason === 'refusal'` before reading content.
-- Typed errors, most-specific first: `RateLimitError`,
-  `APIStatusError`, `APIConnectionError`, `APIError`.
+- Typed errors, instanceof checks most-specific first (TS SDK):
+  `RateLimitError`, then `APIConnectionError` (it subclasses `APIError`
+  in the TS SDK — check it before the base), then `APIError`. There is
+  no `APIStatusError` in the TypeScript SDK (that class is Python-only).
 - TS client `timeout` option is milliseconds.
