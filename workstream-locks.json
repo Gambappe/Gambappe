@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T03:54:37.691Z",
+  "updated_at": "2026-07-23T03:54:39.603Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2486,6 +2486,21 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-23T03:54:37.691Z"
+    },
+    "WS26-T13": {
+      "title": "Rematch vs CPU: hide CTA or auto-accept",
+      "phase": "X1",
+      "depends_on": [
+        "WS26-T4"
+      ],
+      "mock_start_ok": false,
+      "note": "web+api. Review #5: rematch is request->accept flow assuming a human accepts; a CPU cannot. Decide in-task: hide the rematch CTA on CPU matchups (smallest) vs auto-accept (keeps the loop alive but creates a pairing outside the weekly cycle — check nemesis:conclude/assign assumptions). Either way no dangling pending requests addressed to a CPU.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T03:54:39.602Z"
     }
   }
 }
