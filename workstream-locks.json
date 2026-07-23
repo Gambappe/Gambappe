@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T04:18:58.071Z",
+  "updated_at": "2026-07-23T04:18:59.863Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2399,12 +2399,12 @@
       ],
       "mock_start_ok": false,
       "note": "db/analytics. Broadened per review #7: not just DAU/retention rollups — CPU picks must not emit pick_created analytics events nor count in any participation metric. Pin existing leaderboard + crowd-at-lock exclusion (bot_score) with tests. MUST merge before FLAG_CPU_NEMESIS is enabled in any environment whose metrics are read.",
-      "status": "available",
-      "owner": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-54bb90dd",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-23T03:54:27.253Z"
+      "claimed_at": "2026-07-23T04:18:59.863Z",
+      "updated_at": "2026-07-23T04:18:59.863Z"
     },
     "WS26-T4": {
       "title": "CPU-fill leftovers in nemesis:assign via forced pairing",
