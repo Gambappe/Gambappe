@@ -1,8 +1,8 @@
 # xTrace hackathon integration — task breakdown
 
-Status: draft v1, not yet reviewed. Review process + state:
-`docs/xtrace-hackathon-review-log.md`. Every edit to this doc must go through
-that adversarial review loop until a clean round.
+Status: REVIEWED — 63 fixes across three agent-panel rounds plus a final
+main-session pass (2026-07-23). Full round history and the mandatory
+review process for any future edit: `docs/xtrace-hackathon-review-log.md`.
 
 Branch: `claude/xtrace-integration-brainstorm-t1chgj`.
 
@@ -446,11 +446,10 @@ ingestion idempotency, plus typed repository helpers and test factories.
     `(sourceKind, sourceId)`.
 - Migration: run `pnpm db:generate` (drizzle-kit, timestamp prefix); commit
   the generated SQL + meta snapshot. Never hand-edit `0001_init.sql`.
-- `packages/db/src/repositories/companion.ts` (follow the existing
-  repository file layout under `packages/db/src` — put it wherever
-  `callouts`' queries live; if repositories live in app `lib/` instead,
-  put these helpers in `packages/db/src/repositories/companion.ts` and
-  export from the package barrel so both `web` and `worker` can use them):
+- `packages/db/src/repositories/companion.ts` — the established location:
+  `packages/db/src/repositories/` holds one file per domain (`callouts.ts`,
+  `pairings.ts`, `nemesis.ts`, …); follow that layout and export from the
+  package barrel so both `web` and `worker` can import these helpers:
   ```ts
   getArtifactByCacheKey(db, cacheKey): Promise<CompanionArtifactRow | null>
   insertArtifactIdempotent(db, row): Promise<CompanionArtifactRow>
@@ -883,7 +882,7 @@ in-app callout contract (stamps-only, no message field) is untouched.
 **Button spec:** click → POST → on success unwrap the §9.1 envelope —
 drafts live at `json.data.drafts` (parse with `draftCalloutResponseSchema`
 against `json.data`, or reuse `request()` from `lib/pick-client.ts` like
-the T6 island) — then show the up-to-3 drafts inline
+the T6 island) — then show the up-to-`COMPANION_DRAFT_MAX` drafts inline
 (radio/tap-to-select), selected text is passed into the existing share flow:
 call the same share path `CalloutButton` uses but with
 `text: `${selectedDraft} ${share_url}`` — i.e., the button first creates

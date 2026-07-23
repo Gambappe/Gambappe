@@ -1,10 +1,19 @@
 # xTrace hackathon tasks — review log & process
 
-Status: rounds 1–2 of the resumed run complete (22 + 8 fixes applied).
-NOT yet converged — a fresh round must run clean to finish. Subagent quota
-exhausted until 14:00 UTC 2026-07-23; a resume is scheduled. Protocol is now
-v2 (single-round workflow + main-session fixing + commit per round — see
-Process below).
+Status: CONVERGED 2026-07-23. 60 fixes across three full agent-panel
+rounds (30 + 22 + 8), then a final full-doc review pass performed by the
+main session (3 minor fixes: stale status line, one literal-3 → constant,
+T4's repository-location hedge resolved to the verified
+`packages/db/src/repositories/` layout). Deviation note: the closing pass
+was a main-session review, not a fourth 4-agent panel — the operator
+declined further agent rounds after repeated quota exhaustion; every
+load-bearing symbol introduced by rounds 2–3 fixes was re-verified against
+the repo during the pass (`enforceGetBackstop`, `etDateString`,
+`addDaysToDateString`, `scoreNemesisWeek`, `getFullPairingSharedQuestionPicks`,
+`updatePairingConclusion`, `NEMESIS_HISTORY_DEFAULT_LIMIT`, `DAY`,
+`request()`, `assertSameOrigin`, `nemesis-components.test.tsx`,
+`packages/db/src/repositories/`). Any future edit to the task doc reopens
+the process below.
 
 This file is the durable state of the adversarial review process for
 `docs/xtrace-hackathon-tasks.md`. It exists so the process can be resumed by
