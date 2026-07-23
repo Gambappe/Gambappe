@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T05:01:45.555Z",
+  "updated_at": "2026-07-23T05:06:29.697Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2447,13 +2447,13 @@
         "WS26-T4"
       ],
       "mock_start_ok": false,
-      "note": "[contract-change] web. Matchup/assignment/profile payloads expose opponent_is_cpu + persona label; NemesisMatchupCard, NemesisAssignmentCard, profile header render a CPU chip. e2e asserts a CPU opponent ALWAYS shows the badge. Integrity: users must always know the rival is a bot.",
-      "status": "in_review",
+      "note": "Merged PR #159: is_cpu/cpu_persona_label on profileRef + profilePublic, cpuRefFields emitter helper, CpuBadge on matchup/assignment/profile. e2e-pinned. Integrity checklist complete.",
+      "status": "done",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws26-t6-cpu-badge",
       "pr": "159",
       "claimed_at": "2026-07-23T04:49:38.496Z",
-      "updated_at": "2026-07-23T05:01:45.555Z"
+      "updated_at": "2026-07-23T05:06:29.697Z"
     },
     "WS26-T12": {
       "title": "CPU rating semantics: DRIFT (owner decision 2026-07-22)",
