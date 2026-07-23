@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T05:33:24.388Z",
+  "updated_at": "2026-07-23T07:19:19.587Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2549,6 +2549,21 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-23T03:54:44.625Z"
+    },
+    "WS26-T14": {
+      "title": "Training simulator harness (packages/sim): replay engine + metrics",
+      "phase": "X2",
+      "depends_on": [
+        "WS26-T2"
+      ],
+      "mock_start_ok": false,
+      "note": "New workspace package packages/sim (node-only, never bundled into web/worker). Replays historical binary-market rows {category, yesPrice (de-vigged), timeToLockMs, outcome} through an abstract PickPolicy {decide, observe}; baseline policies wrap the REAL decideCpuPick (the untrained twins). Metrics: realized win rate vs implied, Σedge (§8.1 math verbatim), Brier, streak-length distribution vs binomial, pick rate. Deterministic given a seeded row order. Fixture-tested, no network.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T07:19:19.575Z"
     }
   }
 }
