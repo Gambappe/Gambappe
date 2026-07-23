@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T02:54:18.928Z",
+  "updated_at": "2026-07-23T03:10:28.425Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2341,12 +2341,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": null,
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-session-1784775258",
       "branch": "claude/sw3-t1-reveal-hush-finish-u3hr2m",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/150",
       "claimed_at": "2026-07-23T02:54:18.927Z",
-      "updated_at": "2026-07-23T02:54:18.927Z"
+      "updated_at": "2026-07-23T03:10:28.425Z"
     }
   }
 }
