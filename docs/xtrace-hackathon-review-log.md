@@ -1,13 +1,10 @@
 # xTrace hackathon tasks — review log & process
 
-Status: NOT strictly converged (2026-07-23). 71 fixes total: three full
-panel rounds (30 + 22 + 8), a main-session pass (3), and a fourth full
-panel round (8 — including 4 majors the main-session pass missed; see
-Round 3 below, which retired the earlier premature CONVERGED claim).
-Strict convergence requires one more panel round returning zero findings
-— run it via the Process below when the operator approves. The doc is
-materially sound; the open question is only whether a fresh panel finds
-anything in the round-3 fixes themselves.
+Status: NOT strictly converged; loop running (operator-approved
+run-until-clean, 2026-07-23). 74 fixes total across four full panel
+rounds (30 + 22 + 8 + 8), a main-session pass (3), and round 4 (3).
+Finding counts are decaying (30 → 22 → 8 → 8 → 3); the loop continues
+until a panel round returns zero findings.
 
 This file is the durable state of the adversarial review process for
 `docs/xtrace-hackathon-tasks.md`. It exists so the process can be resumed by
@@ -68,7 +65,18 @@ reviewers for a clean round):
 
 ## Round history
 
-### Round 4 — PENDING, 3 findings, 0 lenses failed
+### Round 4 — 3 applied, 0 rejected
+
+All 4 lenses ran (2 returned zero findings — converging). Applied: [major]
+MONEY_WORD_REGEX_SOURCE broadened to catch morphological variants
+(betting/bets/wagering/staked — the \b-anchored bare tokens never matched
+them; runtime filter is now a strict superset of the copy-test literal,
+with T3 AC cases added); [minor] T5's 200-source cap pinned as a single
+shared budget (verdicts first, then posts) with a seeding AC; [minor]
+T4's latestRecapForProfile reordered by seasons.ends_on DESC instead of
+createdAt (regenerating an older season's recap can no longer shadow the
+newest season on /you). Raw findings below (PENDING-committed
+pre-application):
 
 ```json
 [

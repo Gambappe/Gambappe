@@ -127,9 +127,15 @@ tasks consume, defined once in `packages/core`.
   - `COMPANION_SEARCH_LIMIT = 8` (memories per retrieval)
   - `RL_COMPANION_BANTER_PROFILE_D = 30` (T6's rate rule; per profile per day)
   - `RL_CALLOUT_DRAFT_PROFILE_D = 10` (T7's rate rule; per profile per day)
-  - `MONEY_WORD_REGEX_SOURCE = '\\bbet\\b|\\bstake\\b|\\bwager\\b|\\$'`
-    (same pattern `apps/web/test/copy.test.ts` pins; the test keeps its own
-    literal — intentional duplication, both pinned)
+  - `MONEY_WORD_REGEX_SOURCE = '\\bbet(s|ting|ted)?\\b|\\bstak(e|es|ed|ing)\\b|\\bwager(s|ing|ed)?\\b|\\$'`
+    — a strict SUPERSET of the `apps/web/test/copy.test.ts` literal
+    (`\bbet\b|\bstake\b|\bwager\b|\$`): the copy test lints small
+    human-written pinned strings where bare tokens suffice, but this
+    constant filters LLM output, which freely produces morphological
+    variants ("no more betting against you", "still wagering on a
+    rematch") that `\b`-anchored bare tokens never match. The test keeps
+    its own literal (both pinned; the runtime filter being stricter is
+    fine, the reverse would not be).
 - `packages/core/src/errors.ts` — add `COMPANION_UNAVAILABLE: 503` to
   `ERROR_CODES` (used by T7's degraded path; the table has no generic
   degraded-feature code — its only 503, `PRICE_UNAVAILABLE`, is
@@ -422,8 +428,10 @@ define a minimal `{ messages: { parse: vi.fn() } }` double, don't hit the
 network):**
 - Happy path per kind: fake parse returns valid `parsed_output` → lines
   returned, filter applied.
-- A line containing `$50` or the word "bet" is dropped; all-lines-dropped →
-  null.
+- A line containing `$50` or the word "bet" is dropped; morphological
+  variants are dropped too — add cases for "betting", "bets", "wagering",
+  and "staked" specifically (the regex's variant coverage is the point of
+  its divergence from the copy-test literal); all-lines-dropped → null.
 - Refusal stop_reason → null; thrown `RateLimitError` → null; null
   `parsed_output` → null. No test throws.
 - Prompt builders: snapshot test the built prompts for a fixed context
@@ -473,10 +481,15 @@ ingestion idempotency, plus typed repository helpers and test factories.
   //  ^ INSERT ... ON CONFLICT (cache_key) DO NOTHING, then SELECT — safe
   //    under concurrent generation of the same key
   latestRecapForProfile(db, profileId): Promise<CompanionArtifactRow | null>
-  //  ^ the row with kind = 'season_recap' and the greatest createdAt for that
-  //    profile, or null — the kind filter is load-bearing (a fresher banter
-  //    artifact must not shadow the recap); the (profileId, kind, createdAt)
-  //    index serves exactly this query
+  //  ^ the kind = 'season_recap' row for the profile whose SEASON ended most
+  //    recently: join seasons on companion_artifacts.season_id and order by
+  //    seasons.ends_on DESC (tie-break createdAt DESC), or null. Do NOT order
+  //    by createdAt alone — recap keys are per-season and the T9 runbook's
+  //    given-seasonId path can (re)generate an OLDER season's recap after a
+  //    newer one exists; insertion order would then show the wrong season on
+  //    /you, silently (fail-open masks it). The kind filter is load-bearing
+  //    (a fresher banter artifact must not shadow the recap); the
+  //    (profileId, kind, createdAt) index still serves the filter half.
   markIngested(db, entries: {sourceKind, sourceId}[]): Promise<string[]>
   //  ^ INSERT ... ON CONFLICT DO NOTHING RETURNING source_id — records
   //    sources whose xTrace ingest SUCCEEDED. Callers (XH-T5) select
@@ -616,8 +629,13 @@ so retrieval has something to find. Runs entirely off the request path.
   `groupIds = [pairingGroupId(...)]`, message = the post body with an
   attribution prefix (`"{handle} said in the rivalry thread: …"`).
   Mark ingested on success.
-- Batch cap per run: 200 sources (constant local to the job file), so a
-  backlog never makes the job long-running. The cap alone doesn't bound
+- Batch cap per run: `MAX_SOURCES_PER_RUN = 200` (constant local to the
+  job file) — a SINGLE SHARED budget across both source types, not a
+  per-query limit: select uningested pairing-verdict candidates first (up
+  to the budget), then fill any remaining budget with uningested post
+  candidates, so the combined total never exceeds 200 per run (a per-query
+  reading would double the run's work bound). This keeps a
+  backlog from making the job long-running. The cap alone doesn't bound
   wall time — with xTrace down, each call burns ~10s of retried timeouts
   and 200 sources × 2 calls is an hour of sequential failures, blowing
   past pg-boss's job expiration into concurrent re-delivery. So also
@@ -638,6 +656,9 @@ so retrieval has something to find. Runs entirely off the request path.
   no `@`/email-like strings) + 2 post ingests + log rows; run again →
   zero new ingest calls (idempotency).
 - Fake client returning false → nothing marked; next run retries.
+- Shared budget: seed 150 uningested verdict sources + 150 uningested post
+  sources, run once → total sources attempted ≤ 200, verdicts selected
+  before posts (pins the single-shared-budget reading).
 - Circuit breaker (the load-bearing safety mechanism — it must be tested,
   not just specified): with an always-failing fake client and >5 pending
   sources, the run stops after exactly 5 consecutive `ingest()` CALLS
