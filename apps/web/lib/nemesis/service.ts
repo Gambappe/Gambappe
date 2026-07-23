@@ -320,6 +320,7 @@ export async function getNemesisHistoryPage(
         profile_id: r.opponent.profileId,
         handle: r.opponent.handle,
         slug: r.opponent.slug,
+        ...cpuRefFields(r.opponent),
       },
       my_score: r.myScore,
       their_score: r.theirScore,

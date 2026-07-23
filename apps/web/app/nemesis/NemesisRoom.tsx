@@ -84,10 +84,17 @@ export async function NemesisRoom({ profile }: { profile: ProfileRow }) {
   // deliberately INCLUDES the nemesis_bonus row (it counts toward the real score) — right for
   // staying in sync with `my_score`/`their_score`, wrong for a calendar-day strip, which always
   // wants exactly `NEMESIS_SHARED_WEEK_DAYS` dots regardless of how many real rows exist.
-  const promotedPairing = promotedEntry ? await getPairingPublicById(db, promotedEntry.pairing_id, at) : null;
+  const promotedPairing = promotedEntry
+    ? await getPairingPublicById(db, promotedEntry.pairing_id, at)
+    : null;
   const promotedDayResults: ReadonlyArray<DayResult> =
     promotedEntry && promotedPairing
-      ? deriveWeekDayResults(promotedEntry.week_start, promotedPairing.scoreboard, viewerProfileId, promotedPairing)
+      ? deriveWeekDayResults(
+          promotedEntry.week_start,
+          promotedPairing.scoreboard,
+          viewerProfileId,
+          promotedPairing,
+        )
       : [];
 
   const promotedVerdict: RematchVerdict | null = promotedEntry
@@ -120,7 +127,10 @@ export async function NemesisRoom({ profile }: { profile: ProfileRow }) {
       ) : null}
 
       {pageState.kind === 'verdict' && promotedEntry && promotedVerdict ? (
-        <div data-testid="nemesis-verdict-state" className="-mx-6 -mb-10 flex flex-1 flex-col space-y-3">
+        <div
+          data-testid="nemesis-verdict-state"
+          className="-mx-6 -mb-10 flex flex-1 flex-col space-y-3"
+        >
           <NemesisHeadToHeadBanner
             viewerHandle={profile.handle}
             opponentHandle={promotedEntry.opponent.handle}
@@ -130,21 +140,29 @@ export async function NemesisRoom({ profile }: { profile: ProfileRow }) {
             weekStart={promotedEntry.week_start}
             dayResults={promotedDayResults}
           />
-          <RematchPanel
-            viewerProfileId={viewerProfileId}
-            opponent={promotedEntry.opponent}
-            rematchRequest={
-              promotedEntry.rematch_request
-                ? {
-                    id: promotedEntry.rematch_request.id,
-                    direction: promotedEntry.rematch_request.direction,
-                    status: promotedEntry.rematch_request.status,
-                  }
-                : null
-            }
-            verdict={promotedVerdict}
-            className="flex flex-1 flex-col"
-          />
+          {promotedEntry.opponent.is_cpu ? (
+            <p data-testid="cpu-no-rematch" className="text-muted px-6 text-sm">
+              House bots don&apos;t take rematch requests — a fresh rival arrives with the next
+              weekly assignment.
+            </p>
+          ) : null}
+          {!promotedEntry.opponent.is_cpu ? (
+            <RematchPanel
+              viewerProfileId={viewerProfileId}
+              opponent={promotedEntry.opponent}
+              rematchRequest={
+                promotedEntry.rematch_request
+                  ? {
+                      id: promotedEntry.rematch_request.id,
+                      direction: promotedEntry.rematch_request.direction,
+                      status: promotedEntry.rematch_request.status,
+                    }
+                  : null
+              }
+              verdict={promotedVerdict}
+              className="flex flex-1 flex-col"
+            />
+          ) : null}
         </div>
       ) : null}
 

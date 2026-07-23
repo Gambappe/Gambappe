@@ -16,6 +16,7 @@ import { nemesisPairings, pairingReactions, profiles } from '../schema/index.js'
 // now applies to `NewNemesisPairingRow`, which WS5-T1's nemesis.ts also declares.
 import type { NemesisPairingRow } from './moderation.js';
 import type { NewNemesisPairingRow } from './nemesis.js';
+import type { ProfileKind } from '@receipts/core';
 
 export async function insertNemesisPairing(
   db: Db,
@@ -129,9 +130,15 @@ export async function getPairingScoreboardQuestions(
     }
     const pickProfileId = row['pick_profile_id'] as string | null;
     if (pickProfileId === profileAId) {
-      existing.aPick = { side: row['pick_side'] as MarketSide, result: row['pick_result'] as PickResult };
+      existing.aPick = {
+        side: row['pick_side'] as MarketSide,
+        result: row['pick_result'] as PickResult,
+      };
     } else if (pickProfileId === profileBId) {
-      existing.bPick = { side: row['pick_side'] as MarketSide, result: row['pick_result'] as PickResult };
+      existing.bPick = {
+        side: row['pick_side'] as MarketSide,
+        result: row['pick_result'] as PickResult,
+      };
     }
   }
   return order.map((id) => byQuestion.get(id)!);
@@ -150,7 +157,13 @@ export interface NemesisHistoryRow {
   winnerProfileId: string | null;
   myScore: number;
   theirScore: number;
-  opponent: { profileId: string; handle: string; slug: string };
+  opponent: {
+    profileId: string;
+    handle: string;
+    slug: string;
+    kind: ProfileKind;
+    cpuPersona: string | null;
+  };
 }
 
 /**
@@ -161,7 +174,10 @@ export interface NemesisHistoryRow {
  * at most one pairing per week (§5.5 unique constraint), so `weekStart` alone would almost
  * always be enough, but `id` breaks any theoretical tie deterministically.
  */
-export async function listNemesisHistoryForProfile(db: Db, profileId: string): Promise<NemesisHistoryRow[]> {
+export async function listNemesisHistoryForProfile(
+  db: Db,
+  profileId: string,
+): Promise<NemesisHistoryRow[]> {
   const rows = await db
     .select({
       pairingId: nemesisPairings.id,
@@ -186,9 +202,17 @@ export async function listNemesisHistoryForProfile(db: Db, profileId: string): P
 
   if (rows.length === 0) return [];
 
-  const opponentIds = [...new Set(rows.map((r) => (r.profileAId === profileId ? r.profileBId : r.profileAId)))];
+  const opponentIds = [
+    ...new Set(rows.map((r) => (r.profileAId === profileId ? r.profileBId : r.profileAId))),
+  ];
   const opponents = await db
-    .select({ id: profiles.id, handle: profiles.handle, slug: profiles.slug })
+    .select({
+      id: profiles.id,
+      handle: profiles.handle,
+      slug: profiles.slug,
+      kind: profiles.kind,
+      cpuPersona: profiles.cpuPersona,
+    })
     .from(profiles)
     .where(inArray(profiles.id, opponentIds));
   const byId = new Map(opponents.map((o) => [o.id, o]));
@@ -209,8 +233,20 @@ export async function listNemesisHistoryForProfile(db: Db, profileId: string): P
       // Profiles are never hard-deleted (§11.4), so `opponent` should always resolve — the
       // fallback keeps this function total rather than throwing on a data anomaly.
       opponent: opponent
-        ? { profileId: opponent.id, handle: opponent.handle, slug: opponent.slug }
-        : { profileId: opponentId, handle: opponentId, slug: opponentId },
+        ? {
+            profileId: opponent.id,
+            handle: opponent.handle,
+            slug: opponent.slug,
+            kind: opponent.kind,
+            cpuPersona: opponent.cpuPersona,
+          }
+        : {
+            profileId: opponentId,
+            handle: opponentId,
+            slug: opponentId,
+            kind: 'ghost' as ProfileKind,
+            cpuPersona: null,
+          },
     };
   });
 }
@@ -300,5 +336,10 @@ export async function getTodayPairingReactions(
   return db
     .select({ profileId: pairingReactions.profileId, emoji: pairingReactions.emoji })
     .from(pairingReactions)
-    .where(and(eq(pairingReactions.pairingId, pairingId), eq(pairingReactions.reactionDate, reactionDate)));
+    .where(
+      and(
+        eq(pairingReactions.pairingId, pairingId),
+        eq(pairingReactions.reactionDate, reactionDate),
+      ),
+    );
 }
