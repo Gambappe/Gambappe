@@ -5,13 +5,14 @@
  * eligibility fields.
  */
 import { sql } from 'drizzle-orm';
+import type { ProfileKind } from '@receipts/core';
 import type { Db } from '../client.js';
 
 export interface LeaderboardPickRow {
   profileId: string;
   handle: string;
   slug: string;
-  kind: 'ghost' | 'claimed';
+  kind: ProfileKind;
   botScore: number;
   category: string;
   result: 'win' | 'loss';
@@ -52,7 +53,7 @@ export async function getLeaderboardPicksForWeek(
     profileId: r['profile_id'] as string,
     handle: r['handle'] as string,
     slug: r['slug'] as string,
-    kind: r['kind'] as 'ghost' | 'claimed',
+    kind: r['kind'] as ProfileKind,
     botScore: Number(r['bot_score']),
     category: r['category'] as string,
     result: r['result'] as 'win' | 'loss',

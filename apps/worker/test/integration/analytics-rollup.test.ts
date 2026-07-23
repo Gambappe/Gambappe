@@ -42,7 +42,13 @@ beforeAll(async () => {
   await migrate(db, {
     migrationsFolder: join(
       dirname(fileURLToPath(import.meta.url)),
-      '..', '..', '..', '..', 'packages', 'db', 'drizzle',
+      '..',
+      '..',
+      '..',
+      '..',
+      'packages',
+      'db',
+      'drizzle',
     ),
   });
 
@@ -59,9 +65,19 @@ beforeAll(async () => {
   ];
   await db.insert(profiles).values([pA, pB, pC, pF, pG, pH, pI, pD, pE]);
 
+  // WS26-T7 tripwire: a CPU rival participating everywhere it plausibly could. Every
+  // metric assertion below is computed WITHOUT this profile — if any CPU exclusion
+  // regresses, the corresponding hand-computed value breaks.
+  const pCpu = buildProfile({ kind: 'cpu', botScore: 1.0 });
+  await db.insert(profiles).values(pCpu);
+
   // Q1: today's daily question (activation/daily-answer-rate).
   const market1 = buildMarket();
-  const q1 = buildQuestion(market1.id as string, { questionDate: DATE, kind: 'daily', status: 'open' });
+  const q1 = buildQuestion(market1.id as string, {
+    questionDate: DATE,
+    kind: 'daily',
+    status: 'open',
+  });
   await db.insert(markets).values(market1);
   await db.insert(questions).values(q1);
   await db.insert(picks).values({
@@ -87,7 +103,7 @@ beforeAll(async () => {
   await db.insert(markets).values(market2);
   await db.insert(questions).values(q2);
   await db.insert(picks).values(
-    [pA, pB, pD, pE].map((p) => ({
+    [pA, pB, pD, pE, pCpu].map((p) => ({
       id: uuidv7(),
       questionId: q2.id as string,
       profileId: p.id as string,
@@ -97,6 +113,7 @@ beforeAll(async () => {
       pickedAt: new Date(`${DATE}T09:05:00Z`),
     })),
   );
+  // ^ pCpu's pick must NOT enter the reveal-attendance denominator (still 2/4, not 2/5).
 
   const ev = (
     ts: string,
@@ -125,26 +142,57 @@ beforeAll(async () => {
       (${new Date(`${DATE}T16:05:00Z`).toISOString()}::timestamptz, 'chemistry_viewed', ${pB.id}::uuid, '{}'::jsonb),
       (${new Date(`${DATE}T16:10:00Z`).toISOString()}::timestamptz, 'duo_page_viewed', ${pC.id}::uuid, '{}'::jsonb),
       (${new Date(`${DATE}T17:00:00Z`).toISOString()}::timestamptz, 'block_created', ${pA.id}::uuid, '{}'::jsonb),
-      (${new Date(`${DATE}T17:05:00Z`).toISOString()}::timestamptz, 'report_filed', ${pB.id}::uuid, '{}'::jsonb)
+      (${new Date(`${DATE}T17:05:00Z`).toISOString()}::timestamptz, 'report_filed', ${pB.id}::uuid, '{}'::jsonb),
+      (${new Date(`${DATE}T15:30:00Z`).toISOString()}::timestamptz, 'spectator_view', ${pCpu.id}::uuid, '{}'::jsonb),
+      (${new Date(`${DATE}T15:35:00Z`).toISOString()}::timestamptz, 'pick_created', ${pCpu.id}::uuid, '{}'::jsonb)
   `);
+  // ^ the two pCpu events must move neither DAU/WAU (still 7) nor activation (still 1/3).
   void ev; // (kept for readability of the shape above; the raw insert covers every row)
 
   // Nemesis pairings for the week (DATE is itself the Monday): 1 completed, 1 not.
-  const season = { id: uuidv7(), kind: 'nemesis' as const, startsOn: DATE, endsOn: '2026-12-31', name: 'Test season' };
+  const season = {
+    id: uuidv7(),
+    kind: 'nemesis' as const,
+    startsOn: DATE,
+    endsOn: '2026-12-31',
+    name: 'Test season',
+  };
   await db.insert(seasons).values(season);
   await db.insert(nemesisPairings).values([
     {
-      id: uuidv7(), seasonId: season.id, weekStart: DATE,
-      profileAId: pA.id as string, profileBId: pB.id as string, status: 'completed',
+      id: uuidv7(),
+      seasonId: season.id,
+      weekStart: DATE,
+      profileAId: pA.id as string,
+      profileBId: pB.id as string,
+      status: 'completed',
     },
     {
-      id: uuidv7(), seasonId: season.id, weekStart: DATE,
-      profileAId: pC.id as string, profileBId: pF.id as string, status: 'active',
+      id: uuidv7(),
+      seasonId: season.id,
+      weekStart: DATE,
+      profileAId: pC.id as string,
+      profileBId: pF.id as string,
+      status: 'active',
+    },
+    // WS26-T7: a completed CPU pairing must NOT enter completion rate (still 1/2, not 2/3).
+    {
+      id: uuidv7(),
+      seasonId: season.id,
+      weekStart: DATE,
+      profileAId: pG.id as string,
+      profileBId: pCpu.id as string,
+      status: 'completed',
     },
   ]);
 
   // Duo queue: 3 waiting, 1 matched (excluded from depth).
-  const duo = { id: uuidv7(), profileAId: pA.id as string, profileBId: pB.id as string, status: 'active' as const };
+  const duo = {
+    id: uuidv7(),
+    profileAId: pA.id as string,
+    profileBId: pB.id as string,
+    status: 'active' as const,
+  };
   await db.insert(duos).values(duo);
   await db.insert(duoQueueEntries).values([
     { id: uuidv7(), profileId: pC.id as string, status: 'waiting' },
