@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T02:54:14.024Z",
+  "updated_at": "2026-07-23T02:54:18.928Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2341,12 +2341,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-session-1784775258",
+      "branch": "claude/sw3-t1-reveal-hush-finish-u3hr2m",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-23T02:54:14.023Z"
+      "claimed_at": "2026-07-23T02:54:18.927Z",
+      "updated_at": "2026-07-23T02:54:18.927Z"
     }
   }
 }
