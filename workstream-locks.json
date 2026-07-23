@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T20:14:18.254Z",
+  "updated_at": "2026-07-23T20:46:16.314Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2681,12 +2681,12 @@
       ],
       "mock_start_ok": false,
       "note": "Demo centerpiece. Full spec: docs/xtrace-hackathon-tasks.md XH-T6.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-session-xtrace-companion",
       "branch": "feat/xh-t6-banter-panel",
-      "pr": null,
+      "pr": "173",
       "claimed_at": "2026-07-23T20:14:18.253Z",
-      "updated_at": "2026-07-23T20:14:18.253Z"
+      "updated_at": "2026-07-23T20:46:16.314Z"
     },
     "XH-T7": {
       "title": "Callout draft API + share-sheet integration",
