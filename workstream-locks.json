@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T03:54:36.049Z",
+  "updated_at": "2026-07-23T03:54:37.691Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2469,6 +2469,23 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-23T03:54:36.049Z"
+    },
+    "WS26-T8": {
+      "title": "Persona roster + rating-band-fit CPU selection",
+      "phase": "X1",
+      "depends_on": [
+        "WS26-T3",
+        "WS26-T4",
+        "WS26-T12"
+      ],
+      "mock_start_ok": false,
+      "note": "worker. Replace single house bot: at assign time pick the CPU whose CURRENT rating sits within NEMESIS_BAND_BASE of the human (ratings drift per T12, so read live ratings, never seed-time constants). Consider roster coverage when drift clusters personas away from parts of the ladder.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T03:54:37.691Z"
     }
   }
 }
