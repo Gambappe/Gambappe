@@ -57,6 +57,27 @@
       "when": 1784624004870,
       "tag": "20260721085324_ws16_t2_topic_follows_callouts",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784779358997,
+      "tag": "20260723040238_ws26_t1_cpu_profile_kind_pick_source",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784780232821,
+      "tag": "20260723041712_ws26_t3_cpu_persona_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784834096921,
+      "tag": "20260723191456_xh_t4_companion_storage",
+      "breakpoints": true
     }
   ]
 }

@@ -72,6 +72,19 @@ describe('rankLeaderboard (§8.12)', () => {
     expect(rankLeaderboard(rows, 'overall')).toEqual([]);
   });
 
+  it('excludes CPU rivals — doubly, via kind and bot_score (WS26-T7 pin)', () => {
+    const rows: LeaderboardPickRow[] = [
+      row({ profileId: 'cpu', kind: 'cpu', botScore: 1.0, result: 'win' }),
+      row({ profileId: 'cpu', kind: 'cpu', botScore: 1.0, result: 'win' }),
+      row({ profileId: 'cpu', kind: 'cpu', botScore: 1.0, result: 'win' }),
+      // Even a hypothetical mis-seeded CPU with a low bot_score stays out via kind.
+      row({ profileId: 'cpu2', kind: 'cpu', botScore: 0.0, result: 'win' }),
+      row({ profileId: 'cpu2', kind: 'cpu', botScore: 0.0, result: 'win' }),
+      row({ profileId: 'cpu2', kind: 'cpu', botScore: 0.0, result: 'win' }),
+    ];
+    expect(rankLeaderboard(rows, 'overall')).toEqual([]);
+  });
+
   it('excludes profiles under LEADERBOARD_MIN_PICKS (3)', () => {
     const rows: LeaderboardPickRow[] = [
       row({ profileId: 'lowvolume', result: 'win' }),

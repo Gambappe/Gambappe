@@ -3,7 +3,7 @@
  * `packages/db` defines the PG enums from these arrays — one source of truth.
  */
 
-export const PROFILE_KIND = ['ghost', 'claimed'] as const;
+export const PROFILE_KIND = ['ghost', 'claimed', 'cpu'] as const;
 export type ProfileKind = (typeof PROFILE_KIND)[number];
 
 export const PROFILE_STATUS = ['active', 'paused_matchmaking', 'suspended', 'deleted'] as const;
@@ -50,7 +50,7 @@ export type QuestionStatus = (typeof QUESTION_STATUS)[number];
 export const PICK_RESULT = ['pending', 'win', 'loss', 'void'] as const;
 export type PickResult = (typeof PICK_RESULT)[number];
 
-export const PICK_SOURCE = ['web', 'share_card', 'spectator_page'] as const;
+export const PICK_SOURCE = ['web', 'share_card', 'spectator_page', 'cpu'] as const;
 export type PickSource = (typeof PICK_SOURCE)[number];
 
 export const PAIRING_STATUS = ['scheduled', 'active', 'completed', 'cancelled'] as const;
@@ -120,3 +120,8 @@ export type SeasonKind = (typeof SEASON_KIND)[number];
 /** Notification channel (§5.6 `notifications.channel`). */
 export const NOTIFICATION_CHANNEL = ['email', 'push'] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNEL)[number];
+
+/** Companion artifact kinds (docs/xtrace-hackathon-tasks.md XH-T1/T4; mirrored 1:1 into the
+ * `companion_artifact_kind` pg enum by XH-T4). */
+export const COMPANION_ARTIFACT_KIND = ['banter', 'callout_draft', 'season_recap'] as const;
+export type CompanionArtifactKind = (typeof COMPANION_ARTIFACT_KIND)[number];

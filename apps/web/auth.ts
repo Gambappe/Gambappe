@@ -10,8 +10,21 @@
  * `users`/`accounts`/`sessions`/`verification_tokens` tables (`packages/db/src/schema/identity.ts`).
  * `allowDangerousEmailAccountLinking: false` — verified-email linking only (§11.1).
  *
- * Real magic-link delivery (Resend) is WS9 scope; `sendVerificationRequest` below is the
- * pluggable stub called out in the WS2 task brief.
+ * Magic-link delivery (WS25-T3) goes through `@receipts/core/server`'s shared `EmailTransport`
+ * (originally WS9-T1's `apps/worker` implementation, extracted to `packages/core` by WS25-T2) —
+ * see `sendVerificationRequest` below. That transport already degrades to a non-production
+ * logging stub when `RESEND_API_KEY` is unset, so this file no longer needs its own
+ * `NODE_ENV`-branched stub/throw.
+ *
+ * WS25-T4: any failure inside `sendVerificationRequest` (rate limit, transport/misconfiguration)
+ * is caught and re-thrown as `EmailSignInError` — see `apps/web/lib/auth-magic-link-send.ts`
+ * (WS25-T5 extracted the handler body there so it's directly testable under vitest, since this
+ * file itself can't be — see that file's own header) and
+ * `apps/web/test/auth-error-routing.test.ts` for why: an error that ISN'T an `@auth/core`
+ * `AuthError` subclass makes Auth.js's own top-level catch block (`@auth/core`'s `Auth()`)
+ * default to its generic `/api/auth/error?error=Configuration` page — the exact page this whole
+ * WS25 effort exists to get users off of. `EmailSignInError`'s `kind: "signIn"` instead routes
+ * back to the sign-in page, a graceful, retry-inviting result instead of a dead end.
  *
  * Config is built via NextAuth's "lazy initialization" form (a function, not a plain object) —
  * this defers `getDb()` (and therefore requiring `DATABASE_URL`) until the first actual
@@ -30,9 +43,8 @@ import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import { MAGIC_LINK_TTL_MIN } from '@receipts/core';
 import { accounts, sessions, users, verificationTokens } from '@receipts/db';
 import { getDb } from './lib/stores';
-import { enforceAuthEmailSendLimit } from './lib/auth-email-limit';
+import { sendMagicLinkEmail } from './lib/auth-magic-link-send';
 import { sessionCookieConfig, SESSION_MAX_AGE_S } from './lib/auth-cookies';
-import { recordMagicLink } from './lib/magic-link-mailbox';
 
 /**
  * `DrizzleAdapter`'s generic dialect parameter (Postgres/MySQL/SQLite) can't be inferred
@@ -77,27 +89,11 @@ function buildProviders(): NextAuthConfig['providers'] {
       server: { host: 'localhost', port: 25, auth: { user: '', pass: '' } },
       from: process.env.EMAIL_FROM ?? 'noreply@receipts.example',
       maxAge: MAGIC_LINK_TTL_MIN * 60,
-      async sendVerificationRequest({ identifier, url, request }) {
-        // §14.1 "Auth email sends | email+IP | 5/hour" (audit 2.4), enforced BEFORE any
-        // dispatch (including the non-production mailbox stub, so the limit is exercisable
-        // end-to-end today). Runs strictly at send time inside this handler — nothing here
-        // executes during `next build`'s module evaluation (see the lazy-init note in this
-        // file's header), and an over-limit throw surfaces as Auth.js's normal EmailSignin
-        // error redirect, never a 500 from `auth()` itself.
-        await enforceAuthEmailSendLimit(identifier, request.headers);
-
-        // WS2-T2 stub: real Resend sending is WS9 scope (§13.2). Outside production, store the
-        // link in the in-memory mailbox so test harnesses and local dev can read it back
-        // without a mail provider — never logged (§16.2 forbids logging emails unconditionally,
-        // not just in production; `getLastMagicLink` is the intended read-back path).
-        if (process.env.NODE_ENV !== 'production') {
-          recordMagicLink(identifier, url);
-          return;
-        }
-        throw new Error(
-          'sendVerificationRequest: production email sending is not wired yet (WS9 scope)',
-        );
-      },
+      // WS25-T5: the actual handler body lives in `./lib/auth-magic-link-send.ts` (rate limit,
+      // shared-transport send, WS25-T4's error wrapping) — extracted so it's directly testable
+      // under vitest without importing `next-auth` itself. This is a thin pass-through.
+      sendVerificationRequest: ({ identifier, url, request }) =>
+        sendMagicLinkEmail(identifier, url, request.headers),
     }),
   ];
 
@@ -136,6 +132,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
     cookies: {
       sessionToken: { name: sessionCookieName, options: sessionCookieOptions },
     },
+    // Design-diff follow-up to WS25: without this, ANY sign-in failure that reaches Auth.js's
+    // top-level error routing lands on an Auth.js-owned page instead of this app's UI — the same
+    // class of bug WS25 fixed on the send side, just on the verify side. Both keys are required,
+    // not just `error`: Auth.js's own `Auth()` (`@auth/core`) picks the redirect destination from
+    // the THROWN ERROR'S OWN `kind` (`(isAuthError && error.kind) || "error"`) — `Verification`
+    // (an expired/already-used magic-link token) has `kind: "error"` and only `pages.error`
+    // catches it, but `EmailSignInError` (WS25-T4's rate-limit/transport-failure wrapper) and
+    // every OAuth callback error class extend `SignInError`, whose `kind` is `"signIn"` — those
+    // fall through to Auth.js's own default `/api/auth/signin` unless `pages.signIn` is ALSO set.
+    // Both point at `/claim`, which reads `?error=...` (`ClaimEntry`'s `authError` prop) and
+    // shows a clear, on-brand retry message regardless of which kind sent it there.
+    pages: { error: '/claim', signIn: '/claim' },
     experimental: { enableWebAuthn: false },
     trustHost: true,
     callbacks: {

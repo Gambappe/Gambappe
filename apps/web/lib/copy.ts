@@ -94,6 +94,16 @@ export const CLAIM_SIGNIN_EMAIL_SUBMIT_LABEL = 'Save';
 export const CLAIM_SIGNIN_EMAIL_SENT =
   "Check your email for a sign-in link. You can close this and come back once you've clicked it.";
 
+/** Shown on `/claim` when Auth.js redirects back with `?error=...` (design-diff follow-up to
+ * WS25: previously any sign-in failure past the send step landed on Auth.js's own generic,
+ * off-brand error page instead of here). `Verification` covers a link that's expired or was
+ * already clicked once — the single most common real case; everything else (rate limit,
+ * transport failure, misconfiguration) shares one generic retry message rather than exposing
+ * internal error codes to the user. */
+export const CLAIM_SIGNIN_LINK_EXPIRED =
+  'That link expired or was already used. Enter your email again for a fresh one.';
+export const CLAIM_SIGNIN_ERROR = 'Something went wrong signing you in. Try again.';
+
 /** INV-9 (§6.2 step 0 wording: "an explicit 'I'm 18+' confirm"). */
 export const CLAIM_AGE_ATTEST_HEADING = 'One more thing';
 export const CLAIM_AGE_ATTEST_LABEL = "I'm 18 or older";
@@ -673,6 +683,11 @@ export const calloutsCopy = {
   notFoundLine: 'This call-out link is no longer valid.',
   respondError: 'Could not respond to the call-out — try again.',
 
+  // --- AI-drafted callout text (docs/xtrace-hackathon-tasks.md XH-T7) --------------------------
+  draftButtonLabel: 'Draft it',
+  draftPickerHint: 'Pick a line to send with your challenge.',
+  draftFailed: 'Could not draft a line — you can still share the plain link.',
+
   // --- Locked-in confirmation (both sides' /rivals hubs after accept) --------------------------
   lockedInTapeLabel: 'LOCKED IN',
   lockedInLine: (opponentHandle: string) => `You face ${opponentHandle} next week — call-out accepted.`,
@@ -716,6 +731,8 @@ export const youCopy = {
   publicProfileLink: 'View public profile',
   /** Link to account settings. */
   settingsLink: 'Settings',
+  /** XH-T8 (docs/xtrace-hackathon-tasks.md) · the season-wrapped recap section heading. */
+  recapHeading: 'Season wrapped',
 } as const;
 
 /**
@@ -769,4 +786,17 @@ export const crowdCopy = {
   emptyWeek: 'No qualifying calls yet this week. The board fills as questions settle.',
   /** a11y label for the viewer's own highlighted row (hydrated client-side, INV-10). */
   youRowLabel: 'Your row',
+} as const;
+
+/**
+ * XH-T6 (docs/xtrace-hackathon-tasks.md) · the Rivals hub's `CompanionBanter` island — AI-
+ * generated rivalry color grounded in shared pairing memory. The disclaimer exists so the copy
+ * is never mistaken for the deterministic record (RECORD/scoreboard/verdict are the source of
+ * truth; this is flavor text). No money words (no bet/stake/wager/$, INV-8) — `copy.test.ts`
+ * scans this block too.
+ */
+export const companionCopy = {
+  heading: 'Rivalry radio',
+  disclaimer: 'AI-generated color — the record is the record.',
+  loading: 'Tuning in…',
 } as const;

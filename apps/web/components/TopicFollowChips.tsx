@@ -49,7 +49,9 @@ export function TopicFollowChips({
     if (disabled || pending.has(category)) return;
     const wasFollowed = followed.has(category);
 
-    // Optimistic flip + rollback on failure.
+    // Optimistic flip + rollback on failure. Functional updates (not a value computed from the
+    // captured `followed`) so rapid A-then-B toggles across categories compose instead of the last
+    // stale write clobbering the earlier one.
     setFollowed((prev) => mutate(prev, category, !wasFollowed));
     setPending((prev) => mutate(prev, category, true));
     try {

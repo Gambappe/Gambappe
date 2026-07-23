@@ -54,6 +54,30 @@ export const FLAG_DEFAULTS = {
    * renders as paper receipts. Stays off; the board skin is a flagged stretch pilot only.
    */
   departures_board: false,
+  /**
+   * CPU nemesis rivals (docs/plans/cpu-nemesis-wbs.md, WS26). Off → no CPU-fill in
+   * `nemesis:assign`, no `cpu:pick` sweep; nemesis behaves exactly as today. Env-gated like
+   * `duo_queue` (`FLAG_CPU_NEMESIS=true` per environment); WS26-T7's metrics guardrail must be
+   * live before any metrics-bearing environment enables it.
+   */
+  cpu_nemesis: false,
+  /**
+   * xTrace/Claude rivalry companion (docs/xtrace-hackathon-tasks.md XH-T1/T5/T6). Gates the
+   * `companion:ingest` worker job and the banter route + Rivals-hub panel. Off → the ingest
+   * job no-ops, the banter route 404s, and the panel never renders. Env-gated like every
+   * other flag; code default stays `false`.
+   */
+  companion: false,
+  /**
+   * "Draft my callout" share-sheet assist (XH-T7). Off → the draft route 404s and the draft
+   * button is not rendered (server reads the flag, passes a prop to `CalloutPanel`).
+   */
+  callout_draft: false,
+  /**
+   * Season-wrapped recap (XH-T8). Gates the `companion:season-recap` job and the `/you`
+   * recap section. Off → job no-ops, section hidden.
+   */
+  season_wrapped: false,
 } as const;
 
 export type FlagName = keyof typeof FLAG_DEFAULTS;
