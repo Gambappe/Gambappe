@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T03:54:39.603Z",
+  "updated_at": "2026-07-23T03:54:41.262Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2501,6 +2501,23 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-23T03:54:39.602Z"
+    },
+    "WS26-T11": {
+      "title": "Golden CPU-loop e2e incl. CPU-skip verdict semantics",
+      "phase": "X1",
+      "depends_on": [
+        "WS26-T4",
+        "WS26-T5",
+        "WS26-T6"
+      ],
+      "mock_start_ok": false,
+      "note": "test. Seed one solo human -> assign -> CPU-fill -> open -> cpu:pick sweep -> lock -> settle -> reveal -> verdict vs badged CPU. AC (review #10): personas can return skip — define and assert what a CPU no-pick means for the verdict/scoreboard (human wins that question vs no-contest).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T03:54:41.261Z"
     }
   }
 }
