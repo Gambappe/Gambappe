@@ -1,6 +1,10 @@
 # xTrace hackathon tasks — review log & process
 
-Status: round 1 complete, 22 fixes applied, awaiting next review round.
+Status: rounds 1–2 of the resumed run complete (22 + 8 fixes applied).
+NOT yet converged — a fresh round must run clean to finish. Subagent quota
+exhausted until 14:00 UTC 2026-07-23; a resume is scheduled. Protocol is now
+v2 (single-round workflow + main-session fixing + commit per round — see
+Process below).
 
 This file is the durable state of the adversarial review process for
 `docs/xtrace-hackathon-tasks.md`. It exists so the process can be resumed by
@@ -11,31 +15,37 @@ checkpoint.
 
 ## Process (mandatory for every edit to the task doc)
 
+Protocol v2 (single-round; supersedes the v1 multi-round loop after two
+quota-truncated runs — v1's in-run fixer lost a completed round's findings
+when it died, and v1's original convergence check once mistook 4 failed
+reviewers for a clean round):
+
 1. Edit `docs/xtrace-hackathon-tasks.md`.
-2. Run the adversarial review loop until it converges (a full round with zero
-   accepted findings). In a Claude session:
+2. Run ONE review round (4 reviewer agents on Sonnet, ~one quarter of the
+   old per-round cost):
 
    ```
    Workflow({ scriptPath: "scripts/xtrace-task-review.workflow.js",
-              args: { taskDocPath: "docs/xtrace-hackathon-tasks.md",
-                      logPath: "docs/xtrace-hackathon-review-log.md",
-                      maxRounds: 4 } })
+              args: { taskDocPath: "docs/xtrace-hackathon-tasks.md" } })
    ```
 
-   The loop runs 4 reviewer lenses per round (repo-reality,
-   junior-implementability, correctness/design, cross-task consistency) and
-   one fixer agent that applies or rejects each finding and appends a round
-   entry below. Cost: ~5 agents per round; historically 2–3 rounds to
-   converge. If it returns `converged: false` (hit maxRounds), re-run it —
-   the log below carries the state.
-3. Commit and push the task doc + this log after the loop finishes (or after
-   any partial progress worth keeping):
+   Returns `{ cleanRound, findings, failedLenses }`. If reviewers fail
+   (quota), their completed peers' findings are still in the return value /
+   task output on disk — nothing is lost.
+3. The MAIN SESSION (not an agent) verifies each finding against the repo,
+   applies the valid ones to the task doc, and appends a round entry below
+   (applied/rejected with reasons).
+4. Commit and push the task doc + this log IMMEDIATELY — before launching
+   the next round:
 
    ```
    git add docs/xtrace-hackathon-tasks.md docs/xtrace-hackathon-review-log.md
-   git commit -m "xtrace tasks: review round(s) N..M"
+   git commit -m "xtrace tasks: review round N (<x> applied)"
    git push -u origin claude/xtrace-integration-brainstorm-t1chgj
    ```
+5. Repeat 2–4 until a round returns `cleanRound: true` (all 4 lenses ran
+   AND zero findings — `failedLenses > 0` never counts as clean). Then set
+   Status above to "CONVERGED" with the date, commit, push.
 
 ## How to resume after an interruption
 
@@ -50,7 +60,30 @@ checkpoint.
 
 ## Round history
 
-### Round 1 — 22 applied, 0 rejected
+### Round 2 (resumed run) — 8 applied, 0 rejected — split fixer
+
+12 raw findings from 4 reviewers deduped to 8 unique. The in-run fixer
+died on quota mid-application; the main session recovered the findings
+from the workflow journal and finished the job (this event motivated
+protocol v2 above). Applied by the fixer before it died: T6 step 0
+`enforceGetBackstop` (the route would have shipped as the only backstop-less
+`/api/v1` GET); T6 cache-lookup-before-rate-limit reorder with rationale;
+`enforceRateLimit` returns-not-throws form pinned; T2 retry policy widened
+to 429/5xx/network-timeouts (matching the venues template and T5's outage
+arithmetic) with a timeout-retry AC. Applied by the main session from the
+journal: T7 gate ladder rewritten (explicit steps 1–6: same
+cache-before-limit order; target authorization via untruncated
+`completedPairingIdsBetween` OR current candidates — the page-capped
+history check would falsely 403 rivals older than 20 entries); T6 + T7 ACs
+now pin that a cache hit does not consume the rate budget (demo-killer:
+30 `/rivals` opens in a day would 429 and silently hide the panel);
+T8 `calloutsSent` season window pinned to ET-calendar-day comparison (the
+naive timestamptz-vs-DATE compare silently drops the season's final day);
+T9 seed must set `status`/`scoreA`/`scoreB`/`edgeA`/`edgeB`/
+`winnerProfileId` columns alongside the verdict jsonb (aggregates read
+columns, not jsonb — jsonb-only seeding demos as 0-0-3 all-draws).
+
+### Round 1 (resumed run) — 22 applied, 0 rejected
 
 (Resumed run of 2026-07-23, after the quota-aborted round below; the loop's
 round counter restarted. 26 raw findings from 4 reviewers deduped to 22

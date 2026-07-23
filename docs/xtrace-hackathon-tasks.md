@@ -264,8 +264,13 @@ I/O. No other file in the repo may call the xTrace HTTP API directly.
 **Spec:**
 - **Fail-open contract:** `ingest` and `search` NEVER throw. Any error
   (non-2xx, timeout, network, zod parse failure) → log via `logger` →
-  return `false` / `[]`. Retries: only on 429 and 5xx, up to `maxRetries`,
-  with full-jitter backoff (copy the `jitteredBackoff` approach from
+  return `false` / `[]`. Retries: on 429, 5xx, AND network
+  errors/timeouts, up to `maxRetries` — the venues template's catch
+  block retries fetch rejections too (`packages/venues/src/http-client.ts`
+  catch → backoff → continue), and T5's outage arithmetic (~10s per
+  failed call ≈ 3s timeout × 3 attempts) assumes exactly this. Other 4xx
+  and body-parse failures are NOT retried (retrying can't fix them).
+  Full-jitter backoff (copy the `jitteredBackoff` approach from
   `packages/venues/src/http-client.ts`; do not import it — venues is
   venue-scoped — reimplement the ~10-line helper locally).
 - Auth header: `x-api-key: <apiKey>`. Always send `app_id: appId` on ingest
@@ -291,8 +296,10 @@ precedent is fetch injection):**
 - search parses a canned response into `XtraceMemory[]`, caps at `limit`,
   and passes `mode: 'retrieve'`.
 - 500 → retried `maxRetries` times then `[]`/`false`; 400 → not retried;
-  timeout (fetchImpl that never resolves + abort) → `[]`/`false`;
-  malformed JSON → `[]`/`false`. No test throws.
+  timeout (fetchImpl that never resolves + abort) → retried `maxRetries`
+  times then `[]`/`false` (assert the attempt count — timeouts ARE
+  retried, per the spec above); malformed JSON → `[]`/`false`, not
+  retried. No test throws.
 - `xtraceClientFromEnv({})` → null; with all three vars → client.
 - `pnpm verify` green (package builds under turbo via the workspace glob).
 
@@ -528,10 +535,12 @@ so retrieval has something to find. Runs entirely off the request path.
   (04:00 ET daily; after the Sunday 22:00 `nemesis:conclude` and Monday
   cycle, and colon-namespaced like every other job).
 - `apps/worker/scripts/run-companion-ingest.mjs` — thin on-demand trigger:
-  `boss.send('companion:ingest', {})`, mirroring T8's
-  `run-season-recap.mjs` (plain `.mjs`, same PgBoss construction from
-  `DATABASE_URL`). The cron alone is useless during a live demo; T9's
-  runbook invokes this script by path.
+  `boss.send('companion:ingest', {})`, mirroring the existing
+  `apps/worker/scripts/question-zero-drill/manual-schedule.mjs` (worker
+  scripts are plain `.mjs`, PgBoss constructed from `DATABASE_URL`; T8's
+  later `run-season-recap.mjs` follows the same template — T5 lands
+  before T8, so that file does not exist yet). The cron alone is useless
+  during a live demo; T9's runbook invokes this script by path.
 - `apps/worker/test/registry.test.ts` — add `companion:ingest` to
   `SPEC_JOBS` (the test asserts the registry matches that list exactly)
   and widen the owner assertion from `/^WS\d+-T\d+$/` to
@@ -656,20 +665,37 @@ generated at most once per profile per ET day.
   `/vs/[pairingId]` (ISR, viewer-free, INV-10).
 
 **Route spec (`GET /api/v1/pairings/:pairingId/banter`):**
+0. `const limited = await enforceGetBackstop(request); if (limited) return limited;`
+   — repo rule: every `/api/v1` GET route calls the IP backstop first
+   (`apps/web/lib/rate-limit.ts` pins "Called at the top of every
+   `/api/v1` GET route handler"; see the sibling
+   `pairings/[id]/route.ts`). GET-only — T7's POST route does not call it.
 1. Flag off → `ApiError('NOT_FOUND')`.
 2. `resolveIdentityFromRequest`; not claimed → `ApiError('UNAUTHENTICATED')`.
 3. Load the pairing (reuse the nemesis service lookup used by the reactions
    guard); viewer's profileId must be side A or B, else
    `ApiError('FORBIDDEN')`.
-4. `enforceRateLimit('companion_banter', profileId)`.
-5. `cacheKey = banterCacheKey(pairingId, profileId, etDay)` (T4's builder);
+4. `cacheKey = banterCacheKey(pairingId, profileId, etDay)` (T4's builder);
    `getArtifactByCacheKey` hit → return
-   `jsonSuccess({ banter: { lines, generated_at } })`. `generated_at` =
-   the artifact row's `createdAt` serialized with `.toISOString()`
-   (satisfies `zTimestamp`); on both cache hit and fresh insert it
-   reflects the stored row, never `now()`. Same rule for T8's recap
-   `generated_at`.
-6. Miss → build `BanterContext`:
+   `jsonSuccess({ banter: { lines, generated_at } })` WITHOUT consuming
+   the `companion_banter` rate budget. The cache check comes BEFORE the
+   rate limit on purpose: generation is already bounded to once per
+   profile per ET day by the cache key, so the daily budget guards only
+   the generation (miss) path — charging cache hits would 429 a viewer
+   who opens `/rivals` more than `RL_COMPANION_BANTER_PROFILE_D` times in
+   one ET day, and the island's non-200 → render-nothing rule would then
+   silently hide the demo centerpiece for the rest of the day.
+   `generated_at` = the artifact row's `createdAt` serialized with
+   `.toISOString()` (satisfies `zTimestamp`); on both cache hit and fresh
+   insert it reflects the stored row, never `now()`. Same rule for T8's
+   recap `generated_at`.
+5. Miss →
+   `const limited = await enforceRateLimit('companion_banter', profileId); if (limited) return limited;`
+   — `enforceRateLimit` RETURNS a ready-to-return 429 `NextResponse` or
+   null to continue, it does not throw (`apps/web/lib/rate-limit.ts`); a
+   fire-and-forget call would consume the token yet never enforce the
+   limit, silently.
+6. Build `BanterContext`:
    - RECORD from Postgres only:
      - Lifetime W-L-D vs this opponent via T4's `lifetimeRecordBetween`
        (a direct SQL aggregate: count `completed` `nemesis_pairings` rows
@@ -745,7 +771,10 @@ No polling, no retries.
 - Route unit tests (existing route-test style with mocked lib): flag off →
   404 envelope; ghost → 401; non-participant claimed → 403; cache hit
   returns stored lines without invoking generator (assert generator mock
-  not called); generator null → `{banter:null}` with 200; generation
+  not called) AND without consuming the rate limit (with the
+  `companion_banter` limit exhausted, a same-day repeat request still
+  returns the cached artifact — pins the cache-before-limit order);
+  generator null → `{banter:null}` with 200; generation
   stores artifact (second call same day hits cache).
 - Island tests (`apps/web/test/`, node env — this repo has NO jsdom or
   @testing-library dependency and the web vitest config pins
@@ -803,19 +832,35 @@ in-app callout contract (stamps-only, no message field) is untouched.
 
 **Route spec (`POST /api/v1/callouts/draft`, body
 `draftCalloutBodySchema`):**
-1–4. Same gate ladder as T6 (flag, claimed, rate limit) plus body parse.
-5. Target must be a real profile that appears in the challenger's callout
-   candidates or nemesis history (reuse `getCalloutCandidates` /
-   `getNemesisHistoryPage`); otherwise `ApiError('FORBIDDEN')` — no
-   drafting against strangers.
-6. `cacheKey = calloutDraftCacheKey(profileId, targetProfileId, etDay)`
-   (T4's builder) — artifact hit returns stored drafts.
+1–3. `assertSameOrigin(request)`; flag off → `ApiError('NOT_FOUND')`;
+   claimed-only; parse body (`draftCalloutBodySchema`). No
+   `enforceGetBackstop` (that is GET-only) and NO rate limit yet —
+   see step 6.
+4. Target authorization: fetch
+   `priorPairingIds = completedPairingIdsBetween(db, profileId, target)`
+   (T4's helper). Authorized when `priorPairingIds` is non-empty OR the
+   target appears in `getCalloutCandidates(db, profileId)` (covers a
+   current-week rival with no completed pairing yet); otherwise
+   `ApiError('FORBIDDEN')` — no drafting against strangers. Do NOT check
+   membership against a paginated history page — `getCalloutCandidates`
+   is itself a fold over one `getNemesisHistoryPage` page capped at
+   `NEMESIS_HISTORY_DEFAULT_LIMIT`, so alone it would falsely 403 a
+   legitimate rival older than the 20 most-recent entries; the
+   untruncated `priorPairingIds` check is the load-bearing half. Step 7
+   reuses the already-fetched `priorPairingIds`.
+5. `cacheKey = calloutDraftCacheKey(profileId, targetProfileId, etDay)`
+   (T4's builder) — artifact hit returns stored drafts WITHOUT consuming
+   the rate budget (same cache-before-limit rule and rationale as T6
+   step 4: generation is already once-per-target-per-ET-day by cache
+   key; charging hits would 429 repeat viewers for free reads).
+6. Miss →
+   `const limited = await enforceRateLimit('callout_draft', profileId); if (limited) return limited;`
+   (returns the ready 429 or null; does not throw).
 7. RECORD: lifetime W-L-D vs target via T4's `lifetimeRecordBetween` (the
    same helper T6 uses — T7 does not depend on T6 and must not wait for
    it; the shared aggregate lives in T4 precisely so neither route
-   reimplements it). MEMORY: find ALL prior pairings between challenger
-   and target via T4's `completedPairingIdsBetween`, then run two
-   searches: (a) user-scoped `{ query, userId: profileId }` — the
+   reimplements it). MEMORY: reuse `priorPairingIds` from step 4, then
+   run two searches: (a) user-scoped `{ query, userId: profileId }` — the
    challenger's own memory; (b) if any prior pairings exist, ONE
    group-scoped call
    `{ query, groupIds: priorPairingIds.map(pairingGroupId) }`
@@ -854,9 +899,12 @@ and the plain share flow still works.
 
 **Acceptance criteria:**
 - Route tests: gate ladder (404/401/403/429 paths); stranger target → 403;
-  cache hit skips generator; degraded generator → 503
-  `COMPANION_UNAVAILABLE` envelope, and the plain callout flow is
-  unaffected (separate route).
+  a target beyond the first candidates page but with a completed pairing →
+  authorized (pins the untruncated check); cache hit skips generator AND
+  does not consume the rate limit (with the limit exhausted, a same-day
+  repeat request for the same target still returns the cached drafts);
+  degraded generator → 503 `COMPANION_UNAVAILABLE` envelope, and the
+  plain callout flow is unaffected (separate route).
 - Component test: drafts render after click; selecting one and sharing
   passes combined text to the (stubbed) share client; draft failure leaves
   the original `CalloutButton` functional.
@@ -935,9 +983,19 @@ generated by a batch job (never in-request), rendered on `/you`.
        are daily-pick streaks; echoing them here would put a wrong number
        in RECORD-grounded text (ground rule 4).
      - `calloutsSent`: count of `callouts` rows with
-       `challengerProfileId = profile` and `createdAt` within the season's
-       `[startsOn, endsOn]` (callouts carry no `seasonId` — the date
-       window IS the season scoping).
+       `challengerProfileId = profile` created within the season, where
+       "within" compares ET calendar days:
+       `etDateString(callout.createdAt) >= season.startsOn AND
+       etDateString(callout.createdAt) <= season.endsOn` (both sides
+       `YYYY-MM-DD` strings; `etDateString` from `@receipts/core`) — or
+       equivalently in SQL, `created_at >= (startsOn 00:00 ET) AND
+       created_at < (endsOn + 1 day 00:00 ET)`. A bare
+       `createdAt <= endsOn` comparison is WRONG: `createdAt` is
+       timestamptz while `startsOn`/`endsOn` are DATE columns, so the
+       cast lands on midnight at the start of `endsOn` and silently
+       excludes the season's entire final day (and skews the start
+       boundary by the UTC/ET offset). Callouts carry no `seasonId` —
+       this date window IS the season scoping.
      - `calloutsWon`: of those rows, the ones whose `pairingId` resolves
        to a `completed` pairing with `winnerProfileId = profile` (a
        callout "win" is winning the pairing the accepted callout created;
@@ -986,6 +1044,15 @@ stack.
   plausible-but-wrong shape degrades silently to empty verdict lines;
   alternate winners; final one `isRematch: true`), 8–10 pairing-thread posts with distinctly
   quotable trash talk, and one currently-active pairing for this week.
+  For each concluded pairing ALSO set the row columns the same way
+  `updatePairingConclusion` does: `status: 'completed'`,
+  `scoreA`/`scoreB` (matching the verdict), `edgeA`/`edgeB`, and
+  `winnerProfileId` consistent with `verdict.winner` (null only for a
+  draw). T4's `lifetimeRecordBetween`/`completedPairingIdsBetween` and
+  T8's stats bucket by the `winner_profile_id`/`status` COLUMNS, not the
+  jsonb — a seed that populates only the jsonb yields a demo where
+  narration lines claim wins while RECORD reads 0-0-3 all-draws,
+  silently, since everything downstream is fail-open.
   (Callout candidates need no extra seeding — they are derived from the
   concluded pairings via `getCalloutCandidates`; verify the seed makes
   each profile appear in the other's candidates.) Print the profile

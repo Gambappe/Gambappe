@@ -1,33 +1,42 @@
-// NOT a Node script. This is a workflow definition for Claude's Workflow tool
-// (Claude Code / Claude agent sessions). Run it with:
-//   Workflow({ scriptPath: "scripts/xtrace-task-review.workflow.js",
-//              args: { taskDocPath: "docs/xtrace-hackathon-tasks.md",
-//                      logPath: "docs/xtrace-hackathon-review-log.md",
-//                      maxRounds: 4 } })
+// NOT a Node script. Workflow definition for Claude's Workflow tool.
 //
-// Purpose: adversarial review loop over the xTrace hackathon task breakdown.
-// Every edit to the task doc must be followed by re-running this workflow
-// until a full round produces zero accepted findings (see the review log's
-// Process section). The loop:
-//   Round N: 4 reviewer lenses read the doc from disk in parallel
-//     -> findings merged (barrier: the fixer needs the full round's findings)
-//     -> if zero findings: done
-//     -> else a single fixer agent applies/rejects each finding in the doc,
-//        appends a round entry to the review log, and the next round begins.
+// v2 — SINGLE-ROUND design (see docs/xtrace-hackathon-review-log.md for the
+// full protocol). One invocation = one review round = 4 reviewer agents in
+// parallel. Findings are RETURNED to the main session, which verifies and
+// applies them itself, updates the review log, and commits + pushes BEFORE
+// launching the next round. Rationale (learned the hard way, twice): the v1
+// script looped rounds and delegated fixing to a 5th agent inside the run,
+// so a quota exhaustion mid-loop either lost a whole round's findings (fixer
+// died after reviewers succeeded) or produced a false "converged" result
+// (reviewers died and zero findings looked like a clean round). In v2 the
+// blast radius of a quota death is at most the current round's reviewers,
+// findings always land in the durable task output, and there is a git
+// checkpoint between every round by construction.
+//
+// Run with:
+//   Workflow({ scriptPath: "scripts/xtrace-task-review.workflow.js",
+//              args: { taskDocPath: "docs/xtrace-hackathon-tasks.md" } })
+//
+// Returns: { cleanRound, findings, failedLenses }
+//   cleanRound === true  -> all 4 lenses ran and none found anything: converged.
+//   cleanRound === false -> either findings to apply, or failedLenses > 0
+//                           (a failed lens means NO convergence claim can be
+//                           made this round, even with zero findings).
+//
+// Reviewers run on Sonnet: this is verification work (grep, read, compare),
+// and the session's token budget is the binding constraint — two earlier
+// runs died on quota with reviewers on the default (largest) model.
 
 export const meta = {
-  name: 'xtrace-task-review',
-  description: 'Adversarial review loop for the xTrace hackathon task doc: 4 lenses find issues, a fixer applies them, repeat until a clean round',
+  name: 'xtrace-task-review-round',
+  description: 'ONE adversarial review round over the xTrace hackathon task doc: 4 lenses in parallel; findings returned to the main session for fixing and git checkpointing',
   phases: [
-    { title: 'Review', detail: '4 parallel lenses: repo-reality, junior-implementability, correctness/design, cross-task consistency' },
-    { title: 'Fix', detail: 'one fixer agent applies accepted findings and logs the round' },
+    { title: 'Review', detail: '4 parallel lenses: repo-reality, junior-implementability, correctness/design, cross-task consistency', model: 'sonnet' },
   ],
 }
 
 const REPO = '/home/user/Gambappe'
 const taskDocPath = (args && args.taskDocPath) || 'docs/xtrace-hackathon-tasks.md'
-const logPath = (args && args.logPath) || 'docs/xtrace-hackathon-review-log.md'
-const maxRounds = (args && args.maxRounds) || 4
 
 const FINDINGS_SCHEMA = {
   type: 'object',
@@ -50,16 +59,6 @@ const FINDINGS_SCHEMA = {
   },
 }
 
-const FIX_SCHEMA = {
-  type: 'object',
-  required: ['applied', 'rejected', 'summary'],
-  properties: {
-    applied: { type: 'integer' },
-    rejected: { type: 'integer' },
-    summary: { type: 'string', description: 'one line per finding: APPLIED or REJECTED(reason)' },
-  },
-}
-
 const LENSES = [
   {
     key: 'repo-reality',
@@ -75,78 +74,29 @@ const LENSES = [
   },
   {
     key: 'cross-task-consistency',
-    prompt: `Lens: CROSS-TASK CONSISTENCY. Check the doc as a whole: dependency order is correct and acyclic; names (packages, tables, functions, env vars, flags, job names) are used identically across tasks; no two tasks own the same file or responsibility; no task consumes something no other task produces; shared constants/types are defined in exactly one place; the pinned xTrace API appendix matches how every task uses the API; scope boundaries between tasks leave no gaps and no overlaps; effort ordering makes sense for a hackathon (demo-critical path first).`,
+    prompt: `Lens: CROSS-TASK CONSISTENCY. Check the doc as a whole: dependency order is correct and acyclic; names (packages, tables, functions, env vars, flags, job names) are used identically across tasks; no two tasks own the same file or responsibility; no task consumes something no other task produces (respecting dependency order — a task may only rely on artifacts of tasks it depends on, directly or transitively); shared constants/types are defined in exactly one place; the pinned xTrace API appendix matches how every task uses the API; scope boundaries between tasks leave no gaps and no overlaps.`,
   },
 ]
 
-let round = 0
-let totalApplied = 0
-
-while (round < maxRounds) {
-  round += 1
-  log(`Round ${round}: reviewing ${taskDocPath}`)
-
-  // Barrier justified: the fixer must see ALL of the round's findings together
-  // to dedupe overlapping ones and apply consistent edits.
-  const results = await parallel(LENSES.map((l) => () => agent(
-    `You are an adversarial reviewer of an engineering task breakdown. Round ${round}.
+const results = await parallel(LENSES.map((l) => () => agent(
+  `You are an adversarial reviewer of an engineering task breakdown.
 
 Read ${REPO}/${taskDocPath} in full first. The doc's own "Ground rules" and "xTrace API reference" sections are part of the spec — tasks must be consistent with them.
 
 ${l.prompt}
 
-Report ONLY real findings — issues that would cause a wrong implementation, a blocked junior engineer, or a defect. Do not report stylistic preferences, restatements of intentional scope cuts the doc already declares, or hypothetical concerns the doc already addresses. If the doc is clean under your lens, return an empty findings list — do not invent findings to seem useful. Severity: blocker = would produce wrong/broken code or an unimplementable task; major = a junior would stall or likely diverge; minor = small ambiguity with a likely-correct guess.
+Report ONLY real findings — issues that would cause a wrong implementation, a blocked junior engineer, or a defect. Do not report stylistic preferences, restatements of intentional scope cuts the doc already declares, or hypothetical concerns the doc already addresses. This doc has already survived multiple review rounds: if it is clean under your lens, return an empty findings list — do not invent findings to seem useful. Severity: blocker = would produce wrong/broken code or an unimplementable task; major = a junior would stall or likely diverge; minor = small ambiguity with a likely-correct guess.
 
-Your final output is raw data for a fixer step, not prose for a human.`,
-    { label: `r${round}:${l.key}`, phase: 'Review', schema: FINDINGS_SCHEMA }
-  )))
+Your final output is raw data for the fixing step, not prose for a human.`,
+  { label: l.key, phase: 'Review', schema: FINDINGS_SCHEMA, model: 'sonnet' }
+)))
 
-  const failedLenses = results.filter((r) => !r).length
-  const findings = results.filter(Boolean).flatMap((r) => r.findings)
-  log(`Round ${round}: ${findings.length} findings (${failedLenses} lens agents failed)`)
+const failedLenses = results.filter((r) => !r).length
+const findings = results.filter(Boolean).flatMap((r) => r.findings)
+log(`${findings.length} findings, ${failedLenses}/4 lenses failed`)
 
-  if (failedLenses > 0 && findings.length === 0) {
-    // A round where reviewers errored (e.g. quota exhaustion) proves nothing.
-    // Never mistake silence-by-failure for a clean round.
-    log(`Round ${round}: ${failedLenses}/4 lenses failed with no findings — aborting, NOT converged`)
-    return { converged: false, rounds: round, totalApplied, note: `${failedLenses}/4 reviewer agents failed in round ${round} (likely quota); re-run the loop — a failed round is not a clean round` }
-  }
-
-  if (findings.length === 0) {
-    log(`Round ${round} clean — review converged`)
-    return { converged: true, rounds: round, totalApplied }
-  }
-  // Findings from a partial round still get fixed, but the round can't count
-  // as authoritative coverage — convergence requires a later full clean round.
-
-  const fix = await agent(
-    `You are the fixer for round ${round} of an adversarial review of ${REPO}/${taskDocPath}.
-
-FINDINGS (from 4 independent reviewers; may overlap or conflict):
-${JSON.stringify(findings, null, 1)}
-
-Steps:
-1. Read the task doc in full.
-2. Dedupe overlapping findings. For each unique finding, decide: APPLY (edit the doc with the fix — verify repo facts yourself with Read/Grep before writing them into the doc) or REJECT (the finding is wrong, already addressed, or out of the doc's declared scope — you must be able to say why).
-3. Apply all accepted fixes to ${REPO}/${taskDocPath} with the Edit tool. Keep the doc's structure and voice; fixes must be surgical, not rewrites. If two findings conflict, resolve in favor of repo reality, then correctness, then junior clarity.
-4. Append a round entry to ${REPO}/${logPath} under "## Round history" in this exact format:
-   ### Round ${round} — <applied> applied, <rejected> rejected
-   - APPLIED [severity] task_id: one-line description of the change
-   - REJECTED [severity] task_id: claim — reason
-5. Update the "Status" line near the top of ${logPath} to: "Status: round ${round} complete, <applied> fixes applied, awaiting next review round."
-
-Your final output is raw data, not prose.`,
-    { label: `r${round}:fixer`, phase: 'Fix', schema: FIX_SCHEMA }
-  )
-
-  if (fix) {
-    totalApplied += fix.applied
-    log(`Round ${round}: ${fix.applied} applied, ${fix.rejected} rejected`)
-    if (fix.applied === 0) {
-      log(`Round ${round}: all findings rejected — treating as converged`)
-      return { converged: true, rounds: round, totalApplied, note: 'final round findings all rejected as invalid' }
-    }
-  }
+return {
+  cleanRound: failedLenses === 0 && findings.length === 0,
+  findings,
+  failedLenses,
 }
-
-return { converged: false, rounds: round, totalApplied, note: `hit maxRounds=${maxRounds} without a clean round — re-run to continue` }
