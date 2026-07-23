@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T07:19:19.587Z",
+  "updated_at": "2026-07-23T07:19:22.182Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2564,6 +2564,21 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-23T07:19:19.575Z"
+    },
+    "WS26-T15": {
+      "title": "Football odds ingest: football-data.co.uk -> training rows, cutoff-stamped",
+      "phase": "X2",
+      "depends_on": [
+        "WS26-T14"
+      ],
+      "mock_start_ok": false,
+      "note": "Owner decision: FOOTBALL-ONLY v1. Parse football-data.co.uk league CSVs (decades of matches w/ closing odds); de-vig 1X2 odds to a binary home-win yesPrice; each artifact stamps its data cutoff (train cutoff 2026-05-31, pre-World-Cup). Validation slice = late-2025/26 club season for ALL tuning. Fixture-tested parser; real download is a runtime script.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T07:19:22.182Z"
     }
   }
 }
