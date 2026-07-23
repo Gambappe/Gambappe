@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T03:54:19.782Z",
+  "updated_at": "2026-07-23T03:54:23.545Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2360,6 +2360,21 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-23T03:54:19.761Z"
+    },
+    "WS26-T2": {
+      "title": "Pure persona pick policy decideCpuPick (price+time ONLY, no crowd input)",
+      "phase": "X0",
+      "depends_on": [
+        "WS26-T1"
+      ],
+      "mock_start_ok": false,
+      "note": "engine, DB-free, unit-tested. decideCpuPick({persona, category, impliedPrice, timeToLockMs}) -> {side}|{skip}. Personas: Chalk (favorite), Fade (fades MARKET favorite i.e. takes priced underdog — review fix: crowdLean input REMOVED, raw pre-lock crowd counts are invisible to humans per §9.3 and would be an informational edge), Longshot (entry <= LONGSHOT_THRESHOLD), Clock (late, near lock, freshest price).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T03:54:23.544Z"
     }
   }
 }
