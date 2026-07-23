@@ -22,25 +22,37 @@ import { BOT_EXCLUDE_THRESHOLD, now, REVEAL_ATTENDANCE_WINDOW_H } from '@receipt
 import { replaceMetricRollupsForDate, type Db, type MetricRollupInput } from '@receipts/db';
 import type { JobHandler } from '../heartbeat.js';
 import { logger } from '../logger.js';
-import { addDaysToDateStr, etDateString, etDayWindow, mostRecentMonday, trailingWindow, type DateWindow } from '../lib/day-window.js';
+import {
+  addDaysToDateStr,
+  etDateString,
+  etDayWindow,
+  mostRecentMonday,
+  trailingWindow,
+  type DateWindow,
+} from '../lib/day-window.js';
 
 function iso(d: Date): string {
   return d.toISOString();
 }
 
 async function activationRate(db: Db, w: DateWindow): Promise<number> {
+  // WS26-T7: same CPU exclusion as activeActorCount — see the comment there.
   const res = await db.execute(sql`
     WITH viewers AS (
-      SELECT DISTINCT COALESCE(profile_id::text, anon_id) AS actor
-      FROM analytics_events
-      WHERE event = 'spectator_view' AND ts >= ${iso(w.start)}::timestamptz AND ts < ${iso(w.end)}::timestamptz
-        AND COALESCE(profile_id::text, anon_id) IS NOT NULL
+      SELECT DISTINCT COALESCE(ae.profile_id::text, ae.anon_id) AS actor
+      FROM analytics_events ae
+      LEFT JOIN profiles pr ON pr.id = ae.profile_id
+      WHERE ae.event = 'spectator_view' AND ae.ts >= ${iso(w.start)}::timestamptz AND ae.ts < ${iso(w.end)}::timestamptz
+        AND COALESCE(ae.profile_id::text, ae.anon_id) IS NOT NULL
+        AND (pr.kind IS NULL OR pr.kind <> 'cpu')
     ),
     pickers AS (
-      SELECT DISTINCT COALESCE(profile_id::text, anon_id) AS actor
-      FROM analytics_events
-      WHERE event = 'pick_created' AND ts >= ${iso(w.start)}::timestamptz AND ts < ${iso(w.end)}::timestamptz
-        AND COALESCE(profile_id::text, anon_id) IS NOT NULL
+      SELECT DISTINCT COALESCE(ae.profile_id::text, ae.anon_id) AS actor
+      FROM analytics_events ae
+      LEFT JOIN profiles pr ON pr.id = ae.profile_id
+      WHERE ae.event = 'pick_created' AND ae.ts >= ${iso(w.start)}::timestamptz AND ae.ts < ${iso(w.end)}::timestamptz
+        AND COALESCE(ae.profile_id::text, ae.anon_id) IS NOT NULL
+        AND (pr.kind IS NULL OR pr.kind <> 'cpu')
     )
     SELECT
       (SELECT count(*) FROM viewers)::int AS viewers_n,
@@ -81,16 +93,25 @@ async function ghostClaimConversionByTrigger(db: Db, w: DateWindow): Promise<Met
 }
 
 async function activeActorCount(db: Db, w: DateWindow): Promise<number> {
+  // WS26-T7: CPU rivals never emit analytics events today, but DAU/WAU is the metric an
+  // investor reads — exclude `kind='cpu'` actors defensively rather than relying on the
+  // emitters staying CPU-free forever.
   const res = await db.execute(sql`
-    SELECT count(DISTINCT COALESCE(profile_id::text, anon_id))::int AS n
-    FROM analytics_events
-    WHERE ts >= ${iso(w.start)}::timestamptz AND ts < ${iso(w.end)}::timestamptz
-      AND COALESCE(profile_id::text, anon_id) IS NOT NULL
+    SELECT count(DISTINCT COALESCE(ae.profile_id::text, ae.anon_id))::int AS n
+    FROM analytics_events ae
+    LEFT JOIN profiles pr ON pr.id = ae.profile_id
+    WHERE ae.ts >= ${iso(w.start)}::timestamptz AND ae.ts < ${iso(w.end)}::timestamptz
+      AND COALESCE(ae.profile_id::text, ae.anon_id) IS NOT NULL
+      AND (pr.kind IS NULL OR pr.kind <> 'cpu')
   `);
   return Number((res.rows[0] as { n: number }).n);
 }
 
-async function dailyAnswerRate(db: Db, dateStr: string, w: DateWindow): Promise<MetricRollupInput | null> {
+async function dailyAnswerRate(
+  db: Db,
+  dateStr: string,
+  w: DateWindow,
+): Promise<MetricRollupInput | null> {
   const qRes = await db.execute(sql`
     SELECT id FROM questions WHERE kind = 'daily' AND question_date = ${dateStr}::date LIMIT 1
   `);
@@ -130,8 +151,12 @@ async function revealAttendanceRate(db: Db, w: DateWindow): Promise<number | nul
       WHERE status = 'revealed' AND revealed_at >= ${iso(w.start)}::timestamptz AND revealed_at < ${iso(w.end)}::timestamptz
     ),
     pick_counts AS (
+      -- WS26-T7: a CPU pick can never "attend" a reveal, so counting it in the denominator
+      -- would deflate attendance for every question a CPU played.
       SELECT q.id AS question_id, count(p.*)::int AS n
-      FROM revealed_qs q LEFT JOIN picks p ON p.question_id = q.id
+      FROM revealed_qs q
+      LEFT JOIN picks p ON p.question_id = q.id
+        AND NOT EXISTS (SELECT 1 FROM profiles pr WHERE pr.id = p.profile_id AND pr.kind = 'cpu')
       GROUP BY q.id
     ),
     attended AS (
@@ -175,25 +200,50 @@ async function kFactorChain(db: Db, w: DateWindow): Promise<MetricRollupInput[]>
   `);
   const row = res.rows[0] as Record<string, number>;
   return [
-    { metric: 'k_factor_chain', value: row['share_completed_n']!, dims: { stage: 'share_completed' } },
-    { metric: 'k_factor_chain', value: row['spectator_view_share_n']!, dims: { stage: 'spectator_view_share' } },
+    {
+      metric: 'k_factor_chain',
+      value: row['share_completed_n']!,
+      dims: { stage: 'share_completed' },
+    },
+    {
+      metric: 'k_factor_chain',
+      value: row['spectator_view_share_n']!,
+      dims: { stage: 'spectator_view_share' },
+    },
     { metric: 'k_factor_chain', value: row['ghost_minted_n']!, dims: { stage: 'ghost_minted' } },
-    { metric: 'k_factor_chain', value: row['claim_completed_n']!, dims: { stage: 'claim_completed' } },
+    {
+      metric: 'k_factor_chain',
+      value: row['claim_completed_n']!,
+      dims: { stage: 'claim_completed' },
+    },
   ];
 }
 
 async function nemesisCompletionRate(db: Db, weekStart: string): Promise<MetricRollupInput | null> {
+  // WS26-T7: CPU-filled pairings complete near-always (the CPU never forgets to pick), so
+  // including them would flatter the human-engagement signal this metric exists to read.
   const res = await db.execute(sql`
     SELECT count(*)::int AS total_n, count(*) FILTER (WHERE status = 'completed')::int AS completed_n
-    FROM nemesis_pairings WHERE week_start = ${weekStart}::date
+    FROM nemesis_pairings np
+    WHERE np.week_start = ${weekStart}::date
+      AND NOT EXISTS (
+        SELECT 1 FROM profiles pr
+        WHERE pr.id IN (np.profile_a_id, np.profile_b_id) AND pr.kind = 'cpu'
+      )
   `);
   const row = res.rows[0] as { total_n: number; completed_n: number };
   if (row.total_n === 0) return null;
-  return { metric: 'nemesis_completion_rate', value: row.completed_n / row.total_n, dims: { week_start: weekStart } };
+  return {
+    metric: 'nemesis_completion_rate',
+    value: row.completed_n / row.total_n,
+    dims: { week_start: weekStart },
+  };
 }
 
 async function duoQueueDepth(db: Db): Promise<number> {
-  const res = await db.execute(sql`SELECT count(*)::int AS n FROM duo_queue_entries WHERE status = 'waiting'`);
+  const res = await db.execute(
+    sql`SELECT count(*)::int AS n FROM duo_queue_entries WHERE status = 'waiting'`,
+  );
   return Number((res.rows[0] as { n: number }).n);
 }
 
@@ -208,16 +258,22 @@ async function duoRematchRate(db: Db, w: DateWindow): Promise<number | null> {
 }
 
 async function botFlagRate(db: Db): Promise<number> {
+  // WS26-T7: this measures SUSPECTED-human bots (§14.2). House CPUs are bots by design
+  // (bot_score=1.0) — counting them would report a permanently inflated flag rate.
   const res = await db.execute(sql`
     SELECT count(*)::int AS total_n, count(*) FILTER (WHERE bot_score >= ${BOT_EXCLUDE_THRESHOLD})::int AS flagged_n
     FROM profiles
+    WHERE kind <> 'cpu'
   `);
   const row = res.rows[0] as { total_n: number; flagged_n: number };
   return row.total_n > 0 ? row.flagged_n / row.total_n : 0;
 }
 
 /** Assembles every §16.3 metric row for `dateStr` (an ET calendar date, YYYY-MM-DD). */
-export async function computeAnalyticsRollups(db: Db, dateStr: string): Promise<MetricRollupInput[]> {
+export async function computeAnalyticsRollups(
+  db: Db,
+  dateStr: string,
+): Promise<MetricRollupInput[]> {
   const dayWindow = etDayWindow(dateStr);
   const weekWindow = trailingWindow(dateStr, 7);
   const weekStart = mostRecentMonday(dateStr);
@@ -235,10 +291,15 @@ export async function computeAnalyticsRollups(db: Db, dateStr: string): Promise<
   if (answerRate) rows.push(answerRate);
 
   const attendance = await revealAttendanceRate(db, dayWindow);
-  if (attendance !== null) rows.push({ metric: 'reveal_attendance_rate', value: attendance, dims: {} });
+  if (attendance !== null)
+    rows.push({ metric: 'reveal_attendance_rate', value: attendance, dims: {} });
 
   const cardsGenerated = await eventCount(db, weekWindow, ['share_card_generated']);
-  rows.push({ metric: 'cards_per_user_week', value: wau > 0 ? cardsGenerated / wau : 0, dims: { window: '7d' } });
+  rows.push({
+    metric: 'cards_per_user_week',
+    value: wau > 0 ? cardsGenerated / wau : 0,
+    dims: { window: '7d' },
+  });
 
   rows.push(...(await kFactorChain(db, dayWindow)));
 
@@ -248,9 +309,14 @@ export async function computeAnalyticsRollups(db: Db, dateStr: string): Promise<
   rows.push({ metric: 'duo_queue_depth', value: await duoQueueDepth(db), dims: {} });
 
   const rematch = await duoRematchRate(db, weekWindow);
-  if (rematch !== null) rows.push({ metric: 'duo_rematch_rate', value: rematch, dims: { window: '7d' } });
+  if (rematch !== null)
+    rows.push({ metric: 'duo_rematch_rate', value: rematch, dims: { window: '7d' } });
 
-  rows.push({ metric: 'chemistry_stat_views', value: await eventCount(db, dayWindow, ['chemistry_viewed', 'duo_page_viewed']), dims: {} });
+  rows.push({
+    metric: 'chemistry_stat_views',
+    value: await eventCount(db, dayWindow, ['chemistry_viewed', 'duo_page_viewed']),
+    dims: {},
+  });
 
   const blocked = await eventCount(db, dayWindow, ['block_created']);
   rows.push({ metric: 'block_rate', value: dau > 0 ? blocked / dau : 0, dims: {} });
