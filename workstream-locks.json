@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T22:14:24.124Z",
+  "updated_at": "2026-07-23T22:14:36.643Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2734,12 +2734,12 @@
       ],
       "mock_start_ok": false,
       "note": "Requires all of XH-T5..T8 merged — runbook walks all three surfaces. Full spec: docs/xtrace-hackathon-tasks.md XH-T9.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-xtrace-companion",
+      "branch": "feat/xh-t9-demo-seed",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-23T17:29:01.828Z"
+      "claimed_at": "2026-07-23T22:14:36.643Z",
+      "updated_at": "2026-07-23T22:14:36.643Z"
     }
   }
 }
