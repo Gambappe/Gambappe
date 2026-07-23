@@ -29,6 +29,7 @@ import {
   insertRematchRequest,
   sendNotification,
   updateRematchRequestStatus,
+  getProfileById,
   wasNemesisThisSeason,
   type Db,
   type RematchRequestRow,
@@ -60,6 +61,14 @@ export async function requestRematch(
 ) {
   if (requesterProfileId === targetProfileId) {
     throw new ApiError('VALIDATION_FAILED', 'cannot request a rematch against yourself');
+  }
+
+  // WS26-T13 (docs/plans/cpu-nemesis-wbs.md): a CPU rival can never accept, so a request
+  // addressed to one would dangle until the next assign sweep expires it. Server-side guard —
+  // the UI also hides the CTA on CPU matchups, but the API is the guarantee.
+  const target = await getProfileById(db, targetProfileId);
+  if (target?.kind === 'cpu') {
+    throw new ApiError('VALIDATION_FAILED', 'house CPU rivals do not take rematch requests');
   }
 
   const season = await getNemesisSeasonCoveringDate(db, etDateString(at));

@@ -30,11 +30,17 @@ import {
   type Db,
   type ProfileRow,
 } from '@receipts/db';
-import { buildNemesisPairing, buildProfile, buildSeason } from '@receipts/db/testing';
+import {
+  buildCpuProfile,
+  buildNemesisPairing,
+  buildProfile,
+  buildSeason,
+} from '@receipts/db/testing';
 import { getNemesisHistoryPage } from '@/lib/nemesis/service';
 import { requestRematch, respondToRematchRequest } from '@/lib/nemesis/rematch';
 
-const dbUrl = process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
+const dbUrl =
+  process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
 
 const NOW = new Date('2026-07-19T18:00:00Z'); // a Sunday, mid nemesis week
 
@@ -47,7 +53,16 @@ beforeAll(async () => {
   await db.execute(sql`CREATE SCHEMA public`);
   await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
   await migrate(db, {
-    migrationsFolder: join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', 'packages', 'db', 'drizzle'),
+    migrationsFolder: join(
+      dirname(fileURLToPath(import.meta.url)),
+      '..',
+      '..',
+      '..',
+      '..',
+      'packages',
+      'db',
+      'drizzle',
+    ),
   });
 });
 
@@ -62,14 +77,20 @@ beforeEach(async () => {
 });
 
 async function makeClaimedProfile(overrides: Partial<ProfileRow> = {}): Promise<ProfileRow> {
-  const [row] = await db.insert(profiles).values(buildProfile({ kind: 'claimed', status: 'active', ...overrides })).returning();
+  const [row] = await db
+    .insert(profiles)
+    .values(buildProfile({ kind: 'claimed', status: 'active', ...overrides }))
+    .returning();
   return row!;
 }
 
 /** A season covering `NOW` — "this season" for §9.2's "target must be a past nemesis this
  * season" rule. */
 async function makeCurrentSeason(): Promise<string> {
-  const [row] = await db.insert(seasons).values(buildSeason({ startsOn: '2026-07-06', endsOn: '2026-09-28' })).returning();
+  const [row] = await db
+    .insert(seasons)
+    .values(buildSeason({ startsOn: '2026-07-06', endsOn: '2026-09-28' }))
+    .returning();
   return row!.id;
 }
 
@@ -81,7 +102,13 @@ async function makeTerminalPairing(
 ): Promise<string> {
   const [inserted] = await db
     .insert(nemesisPairings)
-    .values(buildNemesisPairing(seasonId, profileAId, profileBId, { weekStart: '2026-07-06', status: 'completed', ...overrides }))
+    .values(
+      buildNemesisPairing(seasonId, profileAId, profileBId, {
+        weekStart: '2026-07-06',
+        status: 'completed',
+        ...overrides,
+      }),
+    )
     .returning();
   return inserted!.id;
 }
@@ -104,6 +131,22 @@ describe('requestRematch (§9.2 POST /rematch-requests)', () => {
     await expect(requestRematch(db, a.id, a.id, NOW)).rejects.toThrow(ApiError);
   });
 
+  it('rejects a CPU target even when it WAS a past nemesis (WS26-T13 — a bot cannot accept)', async () => {
+    const seasonId = await makeCurrentSeason();
+    const a = await makeClaimedProfile();
+    const [cpuRow] = await db.insert(profiles).values(buildCpuProfile('chalk')).returning();
+    const cpu = cpuRow!;
+    const [x, y] = a.id < cpu.id ? [a.id, cpu.id] : [cpu.id, a.id];
+    await db
+      .insert(nemesisPairings)
+      .values(
+        buildNemesisPairing(seasonId, x, y, { status: 'completed', weekStart: '2026-07-06' }),
+      );
+    await expect(requestRematch(db, a.id, cpu.id, NOW)).rejects.toThrow(
+      /house CPU rivals do not take rematch requests/,
+    );
+  });
+
   it('rejects a target who was never a nemesis this season', async () => {
     await makeCurrentSeason();
     const [a, b] = await Promise.all([makeClaimedProfile(), makeClaimedProfile()]);
@@ -112,7 +155,15 @@ describe('requestRematch (§9.2 POST /rematch-requests)', () => {
 
   it('rejects a target who was a nemesis, but in an EARLIER season (not "this season")', async () => {
     const oldSeasonId = uuidv7();
-    await db.insert(seasons).values({ id: oldSeasonId, kind: 'nemesis', startsOn: '2025-01-06', endsOn: '2025-03-30', name: 'Old season' });
+    await db
+      .insert(seasons)
+      .values({
+        id: oldSeasonId,
+        kind: 'nemesis',
+        startsOn: '2025-01-06',
+        endsOn: '2025-03-30',
+        name: 'Old season',
+      });
     await makeCurrentSeason(); // the season covering NOW — no pairing in it
     const [a, b] = await Promise.all([makeClaimedProfile(), makeClaimedProfile()]);
     await makeTerminalPairing(oldSeasonId, a.id, b.id, { weekStart: '2025-01-06' });
@@ -194,7 +245,11 @@ describe('respondToRematchRequest (§9.2 POST /rematch-requests/:id/accept|decli
 
   it('rejects a non-participant', async () => {
     const seasonId = await makeCurrentSeason();
-    const [a, b, c] = await Promise.all([makeClaimedProfile(), makeClaimedProfile(), makeClaimedProfile()]);
+    const [a, b, c] = await Promise.all([
+      makeClaimedProfile(),
+      makeClaimedProfile(),
+      makeClaimedProfile(),
+    ]);
     await makeTerminalPairing(seasonId, a.id, b.id);
     const id = await makeOpenRequest(seasonId, a.id, b.id);
 
@@ -213,7 +268,9 @@ describe('respondToRematchRequest (§9.2 POST /rematch-requests/:id/accept|decli
 
   it('rejects an unknown request id', async () => {
     const b = await makeClaimedProfile();
-    await expect(respondToRematchRequest(db, uuidv7(), b.id, 'accept', NOW)).rejects.toThrow(ApiError);
+    await expect(respondToRematchRequest(db, uuidv7(), b.id, 'accept', NOW)).rejects.toThrow(
+      ApiError,
+    );
   });
 
   it('notifies the requester on accept/decline (nemesis_rematch_accepted / _declined)', async () => {
@@ -224,7 +281,10 @@ describe('respondToRematchRequest (§9.2 POST /rematch-requests/:id/accept|decli
 
     await respondToRematchRequest(db, id, b.id, 'accept', NOW);
 
-    const notifs = await db.select().from(notifications).where(sql`kind = 'nemesis_rematch_accepted'`);
+    const notifs = await db
+      .select()
+      .from(notifications)
+      .where(sql`kind = 'nemesis_rematch_accepted'`);
     expect(notifs).toHaveLength(2);
     expect(notifs.every((n) => n.profileId === a.id)).toBe(true);
   });
@@ -240,7 +300,7 @@ describe('getNemesisHistoryPage rematch_request folding (WS5-T5 contract-change)
     expect(page.data[0]!.rematch_request).toBeNull();
   });
 
-  it('reports an outgoing open request from the viewer\'s point of view', async () => {
+  it("reports an outgoing open request from the viewer's point of view", async () => {
     const seasonId = await makeCurrentSeason();
     const [a, b] = await Promise.all([makeClaimedProfile(), makeClaimedProfile()]);
     await makeTerminalPairing(seasonId, a.id, b.id);
@@ -250,7 +310,7 @@ describe('getNemesisHistoryPage rematch_request folding (WS5-T5 contract-change)
     expect(page.data[0]!.rematch_request).toMatchObject({ direction: 'outgoing', status: 'open' });
   });
 
-  it('reports the SAME request as incoming from the opponent\'s point of view', async () => {
+  it("reports the SAME request as incoming from the opponent's point of view", async () => {
     const seasonId = await makeCurrentSeason();
     const [a, b] = await Promise.all([makeClaimedProfile(), makeClaimedProfile()]);
     await makeTerminalPairing(seasonId, a.id, b.id);
