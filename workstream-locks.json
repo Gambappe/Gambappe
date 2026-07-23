@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T20:07:12.985Z",
+  "updated_at": "2026-07-23T20:14:05.989Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2664,12 +2664,12 @@
       ],
       "mock_start_ok": false,
       "note": "companion:ingest job + registry.test.ts owner-regex widening. Full spec: docs/xtrace-hackathon-tasks.md XH-T5.",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-session-xtrace-companion",
       "branch": "feat/xh-t5-companion-ingest",
       "pr": "172",
       "claimed_at": "2026-07-23T19:40:40.234Z",
-      "updated_at": "2026-07-23T20:07:12.985Z"
+      "updated_at": "2026-07-23T20:14:05.979Z"
     },
     "XH-T6": {
       "title": "Banter API route + Rivals hub panel",
