@@ -88,7 +88,7 @@ ${l.prompt}
 Report ONLY real findings — issues that would cause a wrong implementation, a blocked junior engineer, or a defect. Do not report stylistic preferences, restatements of intentional scope cuts the doc already declares, or hypothetical concerns the doc already addresses. This doc has already survived multiple review rounds: if it is clean under your lens, return an empty findings list — do not invent findings to seem useful. Severity: blocker = would produce wrong/broken code or an unimplementable task; major = a junior would stall or likely diverge; minor = small ambiguity with a likely-correct guess.
 
 Your final output is raw data for the fixing step, not prose for a human.`,
-  { label: l.key, phase: 'Review', schema: FINDINGS_SCHEMA, model: 'sonnet' }
+  { label: l.key, phase: 'Review', schema: FINDINGS_SCHEMA, model: 'sonnet', effort: 'medium' }
 )))
 
 const failedLenses = results.filter((r) => !r).length

@@ -32,10 +32,15 @@ reviewers for a clean round):
    Returns `{ cleanRound, findings, failedLenses }`. If reviewers fail
    (quota), their completed peers' findings are still in the return value /
    task output on disk — nothing is lost.
-3. The MAIN SESSION (not an agent) verifies each finding against the repo,
-   applies the valid ones to the task doc, and appends a round entry below
-   (applied/rejected with reasons).
-4. Commit and push the task doc + this log IMMEDIATELY — before launching
+3. BEFORE applying anything: append the round's raw findings verbatim to
+   this log under a "### Round N — PENDING" heading, commit, push. This
+   makes the findings durable even if the fixing session dies mid-apply
+   (the workflow task-output file also holds them, but that lives outside
+   the repo).
+4. The MAIN SESSION (not an agent) verifies each finding against the repo,
+   applies the valid ones to the task doc, and rewrites the PENDING entry
+   as the final round entry (applied/rejected with reasons).
+5. Commit and push the task doc + this log IMMEDIATELY — before launching
    the next round:
 
    ```
@@ -43,7 +48,7 @@ reviewers for a clean round):
    git commit -m "xtrace tasks: review round N (<x> applied)"
    git push -u origin claude/xtrace-integration-brainstorm-t1chgj
    ```
-5. Repeat 2–4 until a round returns `cleanRound: true` (all 4 lenses ran
+6. Repeat 2–5 until a round returns `cleanRound: true` (all 4 lenses ran
    AND zero findings — `failedLenses > 0` never counts as clean). Then set
    Status above to "CONVERGED" with the date, commit, push.
 
