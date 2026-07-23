@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T07:23:30.965Z",
+  "updated_at": "2026-07-23T07:28:18.164Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2557,13 +2557,13 @@
         "WS26-T2"
       ],
       "mock_start_ok": false,
-      "note": "New workspace package packages/sim (node-only, never bundled into web/worker). Replays historical binary-market rows {category, yesPrice (de-vigged), timeToLockMs, outcome} through an abstract PickPolicy {decide, observe}; baseline policies wrap the REAL decideCpuPick (the untrained twins). Metrics: realized win rate vs implied, Σedge (§8.1 math verbatim), Brier, streak-length distribution vs binomial, pick rate. Deterministic given a seeded row order. Fixture-tested, no network.",
-      "status": "in_review",
+      "note": "Merged PR #163: packages/sim replay engine, structural leakage discipline, untrained twins, §8.1 metrics. Phase X2 plan revision in WBS doc.",
+      "status": "done",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws26-t14-sim-harness",
       "pr": "163",
       "claimed_at": "2026-07-23T07:19:29.545Z",
-      "updated_at": "2026-07-23T07:23:30.964Z"
+      "updated_at": "2026-07-23T07:28:18.163Z"
     },
     "WS26-T15": {
       "title": "Football odds ingest: football-data.co.uk -> training rows, cutoff-stamped",
