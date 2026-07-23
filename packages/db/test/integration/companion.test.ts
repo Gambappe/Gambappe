@@ -208,7 +208,7 @@ describe('markIngested / filterUningested', () => {
     expect(otherKind).toEqual([ingested]);
   });
 
-  it('returns [] for an empty input without querying', async () => {
+  it('returns [] for an empty input', async () => {
     expect(await markIngested(db, [])).toEqual([]);
     expect(await filterUningested(db, 'post', [])).toEqual([]);
   });
@@ -223,6 +223,9 @@ describe('lifetimeRecordBetween / completedPairingIdsBetween', () => {
 
     const [lo, hi] = a < b ? [a, b] : [b, a];
     await db.insert(nemesisPairings).values([
+      // `a` wins twice, `b` never wins — an asymmetric 2/0/1 split so a bug that fails to
+      // orient by argument (or swaps wins/losses) can't hide behind a coincidentally-symmetric
+      // record the way an even win/loss split would.
       buildNemesisPairing(season.id as string, lo, hi, {
         weekStart: '2026-01-05',
         status: 'completed',
@@ -231,7 +234,7 @@ describe('lifetimeRecordBetween / completedPairingIdsBetween', () => {
       buildNemesisPairing(season.id as string, lo, hi, {
         weekStart: '2026-01-12',
         status: 'completed',
-        winnerProfileId: b,
+        winnerProfileId: a,
       }),
       buildNemesisPairing(season.id as string, lo, hi, {
         weekStart: '2026-01-19',
@@ -246,9 +249,9 @@ describe('lifetimeRecordBetween / completedPairingIdsBetween', () => {
       }),
     ]);
 
-    expect(await lifetimeRecordBetween(db, a, b)).toEqual({ wins: 1, losses: 1, draws: 1 });
+    expect(await lifetimeRecordBetween(db, a, b)).toEqual({ wins: 2, losses: 0, draws: 1 });
     // Orientation flips with argument order.
-    expect(await lifetimeRecordBetween(db, b, a)).toEqual({ wins: 1, losses: 1, draws: 1 });
+    expect(await lifetimeRecordBetween(db, b, a)).toEqual({ wins: 0, losses: 2, draws: 1 });
 
     const ids = await completedPairingIdsBetween(db, a, b);
     expect(ids).toHaveLength(3);
