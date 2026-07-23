@@ -101,13 +101,23 @@ Your final output is raw data for a fixer step, not prose for a human.`,
     { label: `r${round}:${l.key}`, phase: 'Review', schema: FINDINGS_SCHEMA }
   )))
 
+  const failedLenses = results.filter((r) => !r).length
   const findings = results.filter(Boolean).flatMap((r) => r.findings)
-  log(`Round ${round}: ${findings.length} findings`)
+  log(`Round ${round}: ${findings.length} findings (${failedLenses} lens agents failed)`)
+
+  if (failedLenses > 0 && findings.length === 0) {
+    // A round where reviewers errored (e.g. quota exhaustion) proves nothing.
+    // Never mistake silence-by-failure for a clean round.
+    log(`Round ${round}: ${failedLenses}/4 lenses failed with no findings — aborting, NOT converged`)
+    return { converged: false, rounds: round, totalApplied, note: `${failedLenses}/4 reviewer agents failed in round ${round} (likely quota); re-run the loop — a failed round is not a clean round` }
+  }
 
   if (findings.length === 0) {
     log(`Round ${round} clean — review converged`)
     return { converged: true, rounds: round, totalApplied }
   }
+  // Findings from a partial round still get fixed, but the round can't count
+  // as authoritative coverage — convergence requires a later full clean round.
 
   const fix = await agent(
     `You are the fixer for round ${round} of an adversarial review of ${REPO}/${taskDocPath}.

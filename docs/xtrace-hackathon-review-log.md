@@ -1,6 +1,10 @@
 # xTrace hackathon tasks — review log & process
 
-Status: round 1 complete, 30 fixes applied, awaiting next review round.
+Status: round 1 complete (30 fixes applied). Round 2 DID NOT RUN — all four
+reviewer agents failed on the session quota limit (resets 9am UTC); the
+workflow's original convergence check mistook that for a clean round (script
+since fixed to abort instead). NOT converged. Next step: re-run the Workflow
+command from the Process section once agent quota is available.
 
 This file is the durable state of the adversarial review process for
 `docs/xtrace-hackathon-tasks.md`. It exists so the process can be resumed by
@@ -49,6 +53,14 @@ checkpoint.
   the draft first, then start the loop.
 
 ## Round history
+
+### Round 2 — aborted, no coverage
+
+All four reviewer lenses failed before reading the doc ("You've hit your
+session limit · resets 9am (UTC)"). Zero findings were reported because zero
+reviews ran; this round provides no evidence about doc quality. The workflow
+script's convergence check has been fixed to abort (converged: false) when
+lens agents fail with no findings, instead of declaring a clean round.
 
 ### Round 1 — 30 applied, 0 rejected
 
