@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T04:11:27.420Z",
+  "updated_at": "2026-07-23T04:18:12.532Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2368,13 +2368,13 @@
         "WS26-T1"
       ],
       "mock_start_ok": false,
-      "note": "engine, DB-free, unit-tested. decideCpuPick({persona, category, impliedPrice, timeToLockMs}) -> {side}|{skip}. Personas: Chalk (favorite), Fade (fades MARKET favorite i.e. takes priced underdog — review fix: crowdLean input REMOVED, raw pre-lock crowd counts are invisible to humans per §9.3 and would be an informational edge), Longshot (entry <= LONGSHOT_THRESHOLD), Clock (late, near lock, freshest price).",
-      "status": "available",
+      "note": "Merged PR #153: persona vocabulary in core (cpu.ts), decideCpuPick policies in engine. No crowd input by design.",
+      "status": "done",
       "owner": null,
       "branch": null,
-      "pr": null,
+      "pr": "153",
       "claimed_at": null,
-      "updated_at": "2026-07-23T03:54:23.544Z"
+      "updated_at": "2026-07-23T04:18:12.531Z"
     },
     "WS26-T3": {
       "title": "CPU repos + roster seeding (test factory AND real-env seed step)",
