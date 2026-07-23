@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T05:06:29.697Z",
+  "updated_at": "2026-07-23T05:06:31.404Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2495,12 +2495,12 @@
       ],
       "mock_start_ok": false,
       "note": "web+api. Review #5: rematch is request->accept flow assuming a human accepts; a CPU cannot. Decide in-task: hide the rematch CTA on CPU matchups (smallest) vs auto-accept (keeps the loop alive but creates a pairing outside the weekly cycle — check nemesis:conclude/assign assumptions). Either way no dangling pending requests addressed to a CPU.",
-      "status": "available",
-      "owner": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-54bb90dd",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-23T03:54:39.602Z"
+      "claimed_at": "2026-07-23T05:06:31.404Z",
+      "updated_at": "2026-07-23T05:06:31.404Z"
     },
     "WS26-T11": {
       "title": "Golden CPU-loop e2e incl. CPU-skip verdict semantics",
