@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T04:18:12.532Z",
+  "updated_at": "2026-07-23T04:18:58.071Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2384,12 +2384,12 @@
       ],
       "mock_start_ok": false,
       "note": "db. listActiveCpuPairingsWithOpenQuestion, getCpuPersona, seed helper minting roster (bot_score=1.0, kind='cpu', persona handles like Chalkbot). AC per review #9: test factory alone is NOT enough — staging/prod need the roster actually seeded; add a deploy-checklist/seed-script step.",
-      "status": "available",
+      "status": "in_review",
       "owner": null,
-      "branch": null,
-      "pr": null,
+      "branch": "claude/ws26-t3-cpu-repos",
+      "pr": "154",
       "claimed_at": null,
-      "updated_at": "2026-07-23T03:54:25.464Z"
+      "updated_at": "2026-07-23T04:18:58.071Z"
     },
     "WS26-T7": {
       "title": "Metrics guardrail: exclude CPUs from DAU/retention, analytics events, participation",
