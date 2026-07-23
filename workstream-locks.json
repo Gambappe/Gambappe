@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T05:20:05.714Z",
+  "updated_at": "2026-07-23T05:25:05.089Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2479,13 +2479,13 @@
         "WS26-T12"
       ],
       "mock_start_ok": false,
-      "note": "worker. Replace single house bot: at assign time pick the CPU whose CURRENT rating sits within NEMESIS_BAND_BASE of the human (ratings drift per T12, so read live ratings, never seed-time constants). Consider roster coverage when drift clusters personas away from parts of the ladder.",
-      "status": "in_review",
+      "note": "Merged PR #161: selectCpuByRatingBand (pure, inBand flag), live ratings in listAvailableCpusForWeek, out-of-band fill warning as roster-drift signal.",
+      "status": "done",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws26-t8-band-fit",
       "pr": "161",
       "claimed_at": "2026-07-23T05:16:35.279Z",
-      "updated_at": "2026-07-23T05:20:05.714Z"
+      "updated_at": "2026-07-23T05:25:05.087Z"
     },
     "WS26-T13": {
       "title": "Rematch vs CPU: hide CTA or auto-accept",
