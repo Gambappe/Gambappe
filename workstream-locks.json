@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T01:50:11.721Z",
+  "updated_at": "2026-07-24T01:50:13.280Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2579,22 +2579,6 @@
       "pr": "164",
       "claimed_at": "2026-07-23T07:28:20.100Z",
       "updated_at": "2026-07-23T07:37:17.956Z"
-    },
-    "WS26-T16": {
-      "title": "WC 2026 held-out evaluation: one-shot walk-forward exam",
-      "phase": "X2",
-      "depends_on": [
-        "WS26-T15",
-        "WS26-T9"
-      ],
-      "mock_start_ok": false,
-      "note": "LOCKED test set: WC 2026 matches with their own PRE-MATCH odds + real results. Walk-forward within the tournament is legal (memory updates on completed matches only); tuning against WC performance is NOT — all tuning on the T15 validation slice. Headline: trained persona vs untrained hardcoded twin on Σedge over the same matches, plus calibration tracking and believability texture. Success is calibration + target win-rate bands, NOT beating closing odds outright (a big beat is a leakage alarm).",
-      "status": "available",
-      "owner": null,
-      "branch": null,
-      "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-23T07:19:24.096Z"
     },
     "XH-T1": {
       "title": "Contracts, flags, config (packages/core, contract-change)",
