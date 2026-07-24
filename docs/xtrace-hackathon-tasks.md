@@ -1578,7 +1578,7 @@ to fix.
     also mocks `@receipts/db` entirely. Add `mockListXtraceGroupIdsForPairings`
     the same way, wire it into this file's own `vi.mock('@receipts/db', ...)`
     factory. **This file's EXISTING "memory scoping" test currently
-    asserts `groupCall.groupIds).toEqual(['pairing:pairing-1',
+    asserts `expect(groupCall.groupIds).toEqual(['pairing:pairing-1',
     'pairing:pairing-2'])` — that assertion is pinned to the OLD (broken)
     `pairingGroupId` string-synthesis behavior and MUST be updated, not
     left in place alongside a new test.** Change it to configure
