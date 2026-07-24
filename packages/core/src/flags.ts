@@ -78,6 +78,13 @@ export const FLAG_DEFAULTS = {
    * recap section. Off → job no-ops, section hidden.
    */
   season_wrapped: false,
+  /**
+   * Rumor Radar Crowd-room panel (docs/plans/ws27-rumor-radar.md, WS27-T8): the live
+   * Reddit-crowd vs Polymarket read on the LeBron destination question, rendered above
+   * the weekly boards on `/crowd` from committed snapshot data (no DB, no viewer
+   * identity — the page stays INV-10 viewer-free). Off → the panel never renders.
+   */
+  rumor_radar: false,
 } as const;
 
 export type FlagName = keyof typeof FLAG_DEFAULTS;
