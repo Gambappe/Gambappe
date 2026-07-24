@@ -468,29 +468,29 @@
   </section>
 
   <section class="slip">
-    <p class="eyebrow">The scoreboard · 2026-07-24</p>
-    <h2>Money vs mentions, today</h2>
+    <p class="eyebrow">The scoreboard · 2026-07-24 · 15 threads, 4,447 live comments</p>
+    <h2>Money vs the crowd, for real</h2>
     <p>
-      Solid bars are Polymarket's de-vigged prices this morning. Outlined bars are the first Reddit
-      read — a naive pass over three days of r/nba post titles weighted by
-      <span class="mono">log1p(upvotes)</span>. No stance detection, no training, and it still lands
-      within ~2 points of the money on four teams.
+      Solid red bars are Polymarket's de-vigged prices. Blue bars are the genuine article: the
+      <strong>trained skill</strong> reading this week's fifteen top threads — 4,447 comments with
+      live upvotes — through the full weight formula. (A naive title-only v0 previously sat here as
+      a teaser; it landed within ~2 points on four teams. This replaces it with the real read.)
     </p>
     <div class="legend">
       <span class="k-market"><i></i>Polymarket (de-vigged)</span>
-      <span class="k-crowd"><i></i>Reddit v0 (post titles only)</span>
+      <span class="k-win"><i></i>Reddit crowd (trained skill)</span>
     </div>
     <div class="chart">
       <div class="row">
         <span class="tm">MIA</span>
         <div class="pair">
           <div class="track">
-            <div class="fill market" style="width: 88%"></div>
-            <span class="bar-val">41.9%</span>
+            <div class="fill market" style="width: 93.3%"></div>
+            <span class="bar-val">42.4%</span>
           </div>
           <div class="track">
-            <div class="fill crowd-v0" style="width: 90%"></div>
-            <span class="bar-val">42.8%</span>
+            <div class="fill win" style="width: 43.3%"></div>
+            <span class="bar-val">19.7%</span>
           </div>
         </div>
       </div>
@@ -498,12 +498,12 @@
         <span class="tm">CLE</span>
         <div class="pair">
           <div class="track">
-            <div class="fill market" style="width: 52%"></div>
-            <span class="bar-val">24.6%</span>
+            <div class="fill market" style="width: 58.5%"></div>
+            <span class="bar-val">26.6%</span>
           </div>
           <div class="track">
-            <div class="fill crowd-v0" style="width: 36%"></div>
-            <span class="bar-val">17.0%</span>
+            <div class="fill win" style="width: 36.7%"></div>
+            <span class="bar-val">16.7%</span>
           </div>
         </div>
       </div>
@@ -511,12 +511,12 @@
         <span class="tm">GSW</span>
         <div class="pair">
           <div class="track">
-            <div class="fill market" style="width: 43%"></div>
-            <span class="bar-val">20.6%</span>
+            <div class="fill market" style="width: 39.2%"></div>
+            <span class="bar-val">17.8%</span>
           </div>
           <div class="track">
-            <div class="fill crowd-v0" style="width: 50%"></div>
-            <span class="bar-val">24.0%</span>
+            <div class="fill win" style="width: 36.1%"></div>
+            <span class="bar-val">16.4%</span>
           </div>
         </div>
       </div>
@@ -524,12 +524,12 @@
         <span class="tm">PHI</span>
         <div class="pair">
           <div class="track">
-            <div class="fill market" style="width: 16%"></div>
-            <span class="bar-val">7.4%</span>
+            <div class="fill market" style="width: 16.1%"></div>
+            <span class="bar-val">7.3%</span>
           </div>
           <div class="track">
-            <div class="fill crowd-v0" style="width: 17%"></div>
-            <span class="bar-val">8.0%</span>
+            <div class="fill win" style="width: 27.3%"></div>
+            <span class="bar-val">12.4%</span>
           </div>
         </div>
       </div>
@@ -537,12 +537,12 @@
         <span class="tm">MIN</span>
         <div class="pair">
           <div class="track">
-            <div class="fill market" style="width: 7%"></div>
-            <span class="bar-val">3.3%</span>
+            <div class="fill market" style="width: 7.9%"></div>
+            <span class="bar-val">3.6%</span>
           </div>
           <div class="track">
-            <div class="fill crowd-v0" style="width: 6%"></div>
-            <span class="bar-val">2.9%</span>
+            <div class="fill win" style="width: 13.2%"></div>
+            <span class="bar-val">6.0%</span>
           </div>
         </div>
       </div>
@@ -550,22 +550,24 @@
         <span class="tm">LAL</span>
         <div class="pair">
           <div class="track">
-            <div class="fill market" style="width: 1%"></div>
-            <span class="bar-val">0.4%</span>
+            <div class="fill market" style="width: 0.7%"></div>
+            <span class="bar-val">0.3%</span>
           </div>
           <div class="track">
-            <div class="fill crowd-v0" style="width: 10%"></div>
-            <span class="bar-val">4.8%</span>
+            <div class="fill win" style="width: 20.2%"></div>
+            <span class="bar-val">9.2%</span>
           </div>
         </div>
       </div>
     </div>
     <p class="sub">
-      The LAL gap is the tell: Reddit mentions the Lakers constantly because he is
-      <em>leaving</em> them. Mention ≠ destination belief — that gap is precisely what the stance
-      extractor below exists to close. The Warriors surged 15.9%&nbsp;→&nbsp;20.6% in the two hours
-      between our first probe and this snapshot; the daily history file records every move from here
-      to resolution.
+      <strong>Both oracles say Miami.</strong> Same top pick, same top-three set, GSW within 1.4
+      points — chatter and money converging from different substances. The crowd's flatter shape is
+      deliberate: τ&nbsp;=&nbsp;1.54, learned from six sagas of incumbent hype, refuses to
+      concentrate as hard as the money does — the Brier score settles who was right to be confident.
+      KL(crowd‖market) = 0.616 nats, tracked daily to resolution. The honest residue: LAL at 9.2% vs
+      0.3% — the mention&nbsp;≠&nbsp;belief gap the extractor only partially closes, and the next
+      lexicon lesson.
     </p>
   </section>
 
