@@ -24,7 +24,7 @@ import {
   type CompanionArtifactContent,
   type Db,
 } from '@receipts/db';
-import { type Generator, type XtraceClient } from '@receipts/companion';
+import type { Generator, XtraceClient } from '@receipts/companion';
 import { getCalloutCandidates } from '@/lib/callouts-view';
 
 /**
