@@ -51,8 +51,10 @@ import { ownNarrationLine } from '../lib/verdict-narration.js';
 /** Shared cap across both source types per run — keeps a backlog from making the job
  * long-running (docs/xtrace-hackathon-tasks.md XH-T5). */
 const MAX_SOURCES_PER_RUN = 200;
-/** Circuit breaker: abort after this many consecutive `ingest()` failures (calls, not sources —
- * spans the two per-side calls within one pairing). */
+/** Circuit breaker: abort after this many consecutive failures — either a failed `ingest()`
+ * call, or a failed `createGroup()` call counted once per distinct pairing (XH-T11; see
+ * `resolveGroupId`). Counts calls/pairings, not sources — spans the two per-side ingest calls
+ * within one pairing. */
 const MAX_CONSECUTIVE_FAILURES = 5;
 /** Circuit breaker: abort once the run exceeds this wall-clock budget from `at`. Without this,
  * an xTrace outage burns ~10s per retried-timeout call and 200 sources × 2 calls is an hour of
