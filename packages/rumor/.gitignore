@@ -1,5 +1,7 @@
-# Raw corpus is re-fetchable and large — never committed. Derived tiny artifacts
-# (trained skills, training report, the odds history) ARE committed, per plan §6.
+# Raw HISTORICAL corpus is re-fetchable and large — never committed. The LIVE corpus is
+# capture-once evidence (scores at capture time are unreproducible) and small, so it IS
+# committed, as are derived artifacts (skills, training report, odds history).
 data/*
 !data/skills/
 !data/live/
+!data/lebron-2026/
