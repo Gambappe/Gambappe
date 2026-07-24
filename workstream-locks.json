@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T04:34:26.017Z",
+  "updated_at": "2026-07-24T05:08:27.785Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2862,6 +2862,21 @@
       "pr": null,
       "claimed_at": "2026-07-24T04:12:56.595Z",
       "updated_at": "2026-07-24T04:34:26.016Z"
+    },
+    "WS27-T9": {
+      "title": "Rumor Radar: fact ledger — citation-backed candidate caps",
+      "phase": "R2",
+      "depends_on": [
+        "WS27-T6"
+      ],
+      "mock_start_ok": false,
+      "note": "Owner request 2026-07-24 (Murray thread: Lakers officially announced LeBron's departure while crowd read LAL at 9.2% vs market 0.3%). Sentiment aggregation cannot represent 'this candidate is eliminated' — a fact ledger can: committed data/live/fact-ledger.json entries {team, capAt, reason, source, addedAt}, validated + applied AFTER aggregation as a pure cap-and-renormalize step (raw mass untouched — audit trail intact), recorded per history row. First entry: LAL capped at 0.005.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-24T05:08:27.784Z"
     }
   }
 }
