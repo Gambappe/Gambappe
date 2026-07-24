@@ -13,11 +13,23 @@
  * first, posts take whatever's left), and a circuit breaker aborts the run on sustained xTrace
  * failure — see `pastDeadline`/`attemptIngest` below. Never touches picks, open questions,
  * emails, or `users`.
+ *
+ * Known, accepted gap (XH-T11): every `group_ids` value here used to be a caller-invented
+ * `pairing:<uuid>` string, which xTrace silently soft-skips (real groups must be created via
+ * `POST /v1/groups` first — see `resolveGroupId` below). Sources marked ingested under that
+ * OLD scheme keep their `companion_ingest_log` row and are never re-ingested, so their facts
+ * stay permanently user-scoped-only in xTrace — they were never actually group-tagged in the
+ * first place, so nothing regresses, but they also don't retroactively gain group scoping.
+ * Acceptable at current (near-zero) production data volume; not backfilled by this change. A
+ * manual remedy, if ever wanted: delete the relevant `companion_ingest_log` rows so the normal
+ * candidate queries re-select them.
  */
 import { isFlagEnabled, now } from '@receipts/core';
 import {
   filterUningested,
   getProfileById,
+  getXtraceGroupId,
+  insertXtraceGroupIdIdempotent,
   listCandidatePairingPostsForIngest,
   listConcludedPairingsWithVerdict,
   markIngested,
@@ -26,7 +38,6 @@ import {
 } from '@receipts/db';
 import {
   pairingConvId,
-  pairingGroupId,
   scrubPii,
   xtraceClientFromEnv,
   type IngestArgs,
@@ -40,8 +51,10 @@ import { ownNarrationLine } from '../lib/verdict-narration.js';
 /** Shared cap across both source types per run — keeps a backlog from making the job
  * long-running (docs/xtrace-hackathon-tasks.md XH-T5). */
 const MAX_SOURCES_PER_RUN = 200;
-/** Circuit breaker: abort after this many consecutive `ingest()` failures (calls, not sources —
- * spans the two per-side calls within one pairing). */
+/** Circuit breaker: abort after this many consecutive failures — either a failed `ingest()`
+ * call, or a failed `createGroup()` call counted once per distinct pairing (XH-T11; see
+ * `resolveGroupId`). Counts calls/pairings, not sources — spans the two per-side ingest calls
+ * within one pairing. */
 const MAX_CONSECUTIVE_FAILURES = 5;
 /** Circuit breaker: abort once the run exceeds this wall-clock budget from `at`. Without this,
  * an xTrace outage burns ~10s per retried-timeout call and 200 sources × 2 calls is an hour of
@@ -72,6 +85,16 @@ function pastDeadline(at: Date, state: RunState): boolean {
   return false;
 }
 
+/** Single failure-bookkeeping path shared by `attemptIngest`'s ingest failures and
+ * `resolveGroupId` failures (XH-T11) — a sustained group-creation outage must trip the same
+ * circuit breaker a sustained ingest outage does. */
+function recordIngestFailure(state: RunState): void {
+  state.consecutiveFailures += 1;
+  if (state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+    state.aborted = true;
+  }
+}
+
 async function attemptIngest(
   xtrace: XtraceClient,
   args: IngestArgs,
@@ -81,12 +104,55 @@ async function attemptIngest(
   if (ok) {
     state.consecutiveFailures = 0;
   } else {
-    state.consecutiveFailures += 1;
-    if (state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-      state.aborted = true;
-    }
+    recordIngestFailure(state);
   }
   return ok;
+}
+
+/**
+ * Resolves `pairingId`'s real, server-issued xTrace group id (XH-T10/T11) — `group_ids` sent to
+ * xTrace must be ids previously returned by its own `POST /v1/groups`, never caller-invented
+ * strings. Checks the DB first; on a miss, creates a group via xTrace and persists the winning
+ * id (a concurrent creator's id may lose the DB race — `insertXtraceGroupIdIdempotent` returns
+ * whichever one actually got stored, and this function always returns THAT value, never the one
+ * it just asked xTrace to create). `cache` is shared across one `runCompanionIngest` call so a
+ * pairing hit by both the verdict loop and the post loop resolves its group exactly once.
+ *
+ * `recordIngestFailure` fires HERE, not at each call site, and only on the `createGroup` branch
+ * — the one place an actual (possibly slow, possibly outage-signaling) xTrace HTTP call just
+ * failed. A pairing whose group creation fails is cached as `null` so a LATER source hitting the
+ * same already-known-bad pairing this run gets an instant, free skip — that second (third,
+ * fourth, ...) skip must NOT count toward the circuit breaker again: it made no HTTP call and
+ * reveals nothing new about xTrace's health, so counting it would let a single bad pairing with
+ * many posts trip `MAX_CONSECUTIVE_FAILURES` and abort the ENTIRE run (including unrelated,
+ * perfectly healthy later pairings) after a handful of cost-free cache hits, defeating the
+ * breaker's actual purpose (bounding wall-clock time under a SUSTAINED, REAL outage).
+ */
+async function resolveGroupId(
+  db: Db,
+  xtrace: XtraceClient,
+  pairingId: string,
+  cache: Map<string, string | null>,
+  state: RunState,
+): Promise<string | null> {
+  if (cache.has(pairingId)) return cache.get(pairingId)!;
+
+  const existing = await getXtraceGroupId(db, pairingId);
+  if (existing) {
+    cache.set(pairingId, existing);
+    return existing;
+  }
+
+  const created = await xtrace.createGroup({ name: `pairing:${pairingId}` });
+  if (!created) {
+    cache.set(pairingId, null);
+    recordIngestFailure(state);
+    return null;
+  }
+
+  const winning = await insertXtraceGroupIdIdempotent(db, pairingId, created);
+  cache.set(pairingId, winning);
+  return winning;
 }
 
 interface ConcludedPairing {
@@ -129,12 +195,13 @@ function buildVerdictIngestArgs(
   handleA: string,
   handleB: string,
   at: Date,
+  groupId: string,
 ): IngestArgs {
   const profileId = side === 'A' ? pairing.profileAId : pairing.profileBId;
   return {
     userId: profileId,
     convId: pairingConvId(pairing.id, profileId),
-    groupIds: [pairingGroupId(pairing.id)],
+    groupIds: [groupId],
     messages: [
       {
         role: 'user',
@@ -151,7 +218,11 @@ async function ingestOnePairingVerdict(
   pairing: ConcludedPairing,
   at: Date,
   state: RunState,
+  groupCache: Map<string, string | null>,
 ): Promise<boolean> {
+  const groupId = await resolveGroupId(db, xtrace, pairing.id, groupCache, state);
+  if (groupId === null) return false; // failure already recorded inside resolveGroupId
+
   const [profileA, profileB] = await Promise.all([
     getProfileById(db, pairing.profileAId),
     getProfileById(db, pairing.profileBId),
@@ -161,7 +232,7 @@ async function ingestOnePairingVerdict(
 
   const okA = await attemptIngest(
     xtrace,
-    buildVerdictIngestArgs(pairing, 'A', handleA, handleB, at),
+    buildVerdictIngestArgs(pairing, 'A', handleA, handleB, at, groupId),
     state,
   );
   // Deadline/circuit check BETWEEN the two per-side calls, not only between pairings.
@@ -169,7 +240,7 @@ async function ingestOnePairingVerdict(
 
   const okB = await attemptIngest(
     xtrace,
-    buildVerdictIngestArgs(pairing, 'B', handleA, handleB, at),
+    buildVerdictIngestArgs(pairing, 'B', handleA, handleB, at, groupId),
     state,
   );
 
@@ -182,11 +253,15 @@ async function ingestOnePairingVerdict(
   return false;
 }
 
-function buildPostIngestArgs(post: CompanionPostIngestCandidate, at: Date): IngestArgs {
+function buildPostIngestArgs(
+  post: CompanionPostIngestCandidate,
+  at: Date,
+  groupId: string,
+): IngestArgs {
   return {
     userId: post.profileId,
     convId: pairingConvId(post.pairingId, post.profileId),
-    groupIds: [pairingGroupId(post.pairingId)],
+    groupIds: [groupId],
     messages: [
       {
         role: 'user',
@@ -203,8 +278,12 @@ async function ingestOnePost(
   post: CompanionPostIngestCandidate,
   at: Date,
   state: RunState,
+  groupCache: Map<string, string | null>,
 ): Promise<boolean> {
-  const ok = await attemptIngest(xtrace, buildPostIngestArgs(post, at), state);
+  const groupId = await resolveGroupId(db, xtrace, post.pairingId, groupCache, state);
+  if (groupId === null) return false; // failure already recorded inside resolveGroupId
+
+  const ok = await attemptIngest(xtrace, buildPostIngestArgs(post, at, groupId), state);
   if (ok) {
     await markIngested(db, [{ sourceKind: 'post', sourceId: post.id }]);
   }
@@ -224,6 +303,9 @@ export async function runCompanionIngest(
     aborted: false,
   };
   const state: RunState = { consecutiveFailures: 0, aborted: false };
+  // Shared across both loops below — a pairing hit by both its verdict AND its posts in the
+  // same run resolves its xTrace group exactly once (XH-T11). Fresh per run; never persisted.
+  const groupCache = new Map<string, string | null>();
 
   // Source 1: concluded pairing verdicts fill the shared budget first.
   const allConcludedPairings = await listConcludedPairingsWithVerdict(ctx.db);
@@ -240,7 +322,7 @@ export async function runCompanionIngest(
 
   for (const pairing of pairingCandidates) {
     if (pastDeadline(at, state)) break;
-    const ingested = await ingestOnePairingVerdict(ctx.db, xtrace, pairing, at, state);
+    const ingested = await ingestOnePairingVerdict(ctx.db, xtrace, pairing, at, state, groupCache);
     if (ingested) report.pairingsIngested += 1;
     else report.pairingsSkipped += 1;
     if (state.aborted) break;
@@ -263,7 +345,7 @@ export async function runCompanionIngest(
 
     for (const post of postCandidates) {
       if (pastDeadline(at, state)) break;
-      const ingested = await ingestOnePost(ctx.db, xtrace, post, at, state);
+      const ingested = await ingestOnePost(ctx.db, xtrace, post, at, state, groupCache);
       if (ingested) report.postsIngested += 1;
       else report.postsSkipped += 1;
       if (state.aborted) break;
