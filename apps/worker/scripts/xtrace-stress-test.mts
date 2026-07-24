@@ -145,11 +145,33 @@ const QUERIES: Query[] = [
 // Systems
 // ---------------------------------------------------------------------------------------------
 
-function groupId(runId: string) {
-  return `stress:${runId}`;
+const REPORT_DIR = process.env.STRESS_REPORT_DIR ?? '/tmp';
+const statePath = (runId: string) => `${REPORT_DIR}/xtrace-stress-state-${runId}.json`;
+
+/**
+ * Groups are server-issued: POST /v1/groups returns a `grp_...` id, and ingest's `group_ids`
+ * only accepts those — arbitrary strings (e.g. the app's `pairing:<uuid>`) are soft-skipped
+ * (surfaced only in the async ingest job's `result.ignored_group_ids`, which nothing reads).
+ * Discovered by v1 of this harness: every group-scoped search returned []. A catch-all group
+ * (no prompt) is created per run here. NOTE the docs' privacy gate: memories categorized
+ * "personal" are never group-tagged, so the run also measures a user-scoped lane.
+ */
+async function xtraceCreateGroup(runId: string): Promise<string> {
+  const res = await fetch(
+    `${process.env.XTRACE_API_BASE ?? 'https://api.production.xtrace.ai'}/v1/groups`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': process.env.XTRACE_API_KEY! },
+      body: JSON.stringify({ name: `stress ${runId}`, app_id: process.env.XTRACE_APP_ID }),
+    },
+  );
+  if (!res.ok) throw new Error(`group create failed: ${res.status}`);
+  const json: any = await res.json();
+  if (!json.id) throw new Error('group create: no id in response');
+  return json.id as string;
 }
 
-async function ingestXtrace(runId: string, corpus: Msg[]): Promise<void> {
+async function ingestXtrace(runId: string, corpus: Msg[], grpId: string): Promise<void> {
   const xtrace = xtraceClientFromEnv();
   if (!xtrace) throw new Error('XTRACE_API_KEY / XTRACE_APP_ID not set');
   // One conv per author-week, mirroring how the real job batches thread posts.
@@ -164,7 +186,7 @@ async function ingestXtrace(runId: string, corpus: Msg[]): Promise<void> {
     const ok = await xtrace.ingest({
       userId: `stress:${runId}:${author}`,
       convId: `stress:${runId}:${author}:${week}`,
-      groupIds: [groupId(runId)],
+      groupIds: [grpId],
       messages: msgs.map((m) => ({
         role: 'user' as const,
         content: `${m.author}: ${m.body}`,
@@ -196,25 +218,54 @@ async function ingestFts(pool: any, runId: string, corpus: Msg[]): Promise<void>
   console.log(`fts: inserted ${corpus.length} rows for run ${runId}`);
 }
 
-async function searchXtrace(runId: string, q: Query): Promise<string[]> {
+async function searchXtraceGroup(grpId: string, q: Query): Promise<string[]> {
   const xtrace = xtraceClientFromEnv();
   if (!xtrace) throw new Error('xtrace unconfigured');
   const memories: XtraceMemory[] = await xtrace.search({
     query: q.query,
-    groupIds: [groupId(runId)],
+    groupIds: [grpId],
     include: ['fact', 'episode'],
     limit: TOP_K,
   });
   return memories.slice(0, TOP_K).map((m) => `[${m.type}] ${m.text}`);
 }
 
+/** User-scoped lane: search each rival's own memories, merge by score, take top-k. This is
+ * NOT the app's access path (routes search group-only), but the privacy gate means some
+ * memories only ever exist user-scoped — this lane measures the ceiling. */
+async function searchXtraceUser(runId: string, q: Query): Promise<string[]> {
+  const xtrace = xtraceClientFromEnv();
+  if (!xtrace) throw new Error('xtrace unconfigured');
+  const perUser = await Promise.all(
+    (['dex', 'mo'] as const).map((author) =>
+      xtrace.search({
+        query: q.query,
+        userId: `stress:${runId}:${author}`,
+        include: ['fact', 'episode'],
+        limit: TOP_K,
+      }),
+    ),
+  );
+  return perUser
+    .flat()
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .slice(0, TOP_K)
+    .map((m) => `[${m.type}] ${m.text}`);
+}
+
+/** OR-semantics FTS: websearch_to_tsquery ANDs terms, which zeroes recall the moment one
+ * query word is missing from the row ("who WON the rematch"). Rank-by-any-matching-term is
+ * the fair "normal db" baseline. */
 async function searchFts(pool: any, runId: string, q: Query): Promise<string[]> {
   const { rows } = await pool.query(
-    `SELECT author || ': ' || body AS t,
-            ts_rank(to_tsvector('english', body), websearch_to_tsquery('english', $2)) AS rank
-       FROM stress_fts
+    `WITH tq AS (
+       SELECT to_tsquery('english', replace(plainto_tsquery('english', $2)::text, ' & ', ' | ')) AS q
+     )
+     SELECT author || ': ' || body AS t,
+            ts_rank(to_tsvector('english', body), tq.q) AS rank
+       FROM stress_fts, tq
       WHERE run_id = $1
-        AND to_tsvector('english', body) @@ websearch_to_tsquery('english', $2)
+        AND to_tsvector('english', body) @@ tq.q
       ORDER BY rank DESC
       LIMIT $3`,
     [runId, q.query, TOP_K],
@@ -281,10 +332,14 @@ async function runIngest(runId: string): Promise<void> {
   const corpus = buildCorpus();
   const planted = corpus.filter((m) => m.fact).length;
   console.log(`corpus: ${corpus.length} messages (${planted} planted across 10 facts)`);
+  const grpId = await xtraceCreateGroup(runId);
+  console.log(`xtrace group: ${grpId}`);
+  const { writeFileSync } = await import('node:fs');
+  writeFileSync(statePath(runId), JSON.stringify({ runId, grpId }));
   const { pool } = connect();
   try {
     await ingestFts(pool, runId, corpus);
-    await ingestXtrace(runId, corpus);
+    await ingestXtrace(runId, corpus, grpId);
   } finally {
     await pool.end();
   }
@@ -292,30 +347,31 @@ async function runIngest(runId: string): Promise<void> {
 }
 
 async function runSearch(runId: string): Promise<void> {
+  const { readFileSync, writeFileSync } = await import('node:fs');
+  const { grpId } = JSON.parse(readFileSync(statePath(runId), 'utf8')) as { grpId: string };
   const { pool } = connect();
   const results: Array<{
     id: string;
     tier: string;
     query: string;
-    xtraceHit: boolean;
-    ftsHit: boolean;
-    xtraceRetrieved: string[];
-    ftsRetrieved: string[];
+    hits: Record<string, boolean>;
+    retrieved: Record<string, string[]>;
   }> = [];
+  const LANES = ['xtrace-group', 'xtrace-user', 'fts'] as const;
   try {
     for (const q of QUERIES) {
-      const [xr, fr] = await Promise.all([searchXtrace(runId, q), searchFts(pool, runId, q)]);
-      const [xHit, fHit] = await Promise.all([judge(q, xr), judge(q, fr)]);
-      results.push({
-        id: q.id,
-        tier: q.tier,
-        query: q.query,
-        xtraceHit: xHit,
-        ftsHit: fHit,
-        xtraceRetrieved: xr,
-        ftsRetrieved: fr,
-      });
-      console.log(`${q.id} (${q.tier}) "${q.query}" → xtrace:${xHit ? 'HIT' : 'miss'} fts:${fHit ? 'HIT' : 'miss'}`);
+      const [gr, ur, fr] = await Promise.all([
+        searchXtraceGroup(grpId, q),
+        searchXtraceUser(runId, q),
+        searchFts(pool, runId, q),
+      ]);
+      const retrieved = { 'xtrace-group': gr, 'xtrace-user': ur, fts: fr };
+      const [gHit, uHit, fHit] = await Promise.all([judge(q, gr), judge(q, ur), judge(q, fr)]);
+      const hits = { 'xtrace-group': gHit, 'xtrace-user': uHit, fts: fHit };
+      results.push({ id: q.id, tier: q.tier, query: q.query, hits, retrieved });
+      console.log(
+        `${q.id} (${q.tier}) "${q.query}" → ${LANES.map((l) => `${l}:${hits[l] ? 'HIT' : 'miss'}`).join(' ')}`,
+      );
     }
   } finally {
     await pool.end();
@@ -324,17 +380,19 @@ async function runSearch(runId: string): Promise<void> {
   console.log('\n=== hit@5 by tier ===');
   for (const tier of ['T1', 'T2', 'T3'] as const) {
     const rs = results.filter((r) => r.tier === tier);
-    const x = rs.filter((r) => r.xtraceHit).length;
-    const f = rs.filter((r) => r.ftsHit).length;
-    console.log(`${tier}: xtrace ${x}/${rs.length}  |  fts ${f}/${rs.length}`);
+    console.log(
+      `${tier}: ${LANES.map((l) => `${l} ${rs.filter((r) => r.hits[l]).length}/${rs.length}`).join('  |  ')}`,
+    );
   }
-  const xAll = results.filter((r) => r.xtraceHit).length;
-  const fAll = results.filter((r) => r.ftsHit).length;
-  console.log(`ALL: xtrace ${xAll}/${results.length}  |  fts ${fAll}/${results.length}`);
+  console.log(
+    `ALL: ${LANES.map((l) => `${l} ${results.filter((r) => r.hits[l]).length}/${results.length}`).join('  |  ')}`,
+  );
 
-  const reportPath = `${process.env.STRESS_REPORT_DIR ?? '/tmp'}/xtrace-stress-${runId}.json`;
-  const { writeFileSync } = await import('node:fs');
-  writeFileSync(reportPath, JSON.stringify({ runId, topK: TOP_K, judgeModel: JUDGE_MODEL, results }, null, 2));
+  const reportPath = `${REPORT_DIR}/xtrace-stress-${runId}.json`;
+  writeFileSync(
+    reportPath,
+    JSON.stringify({ runId, grpId, topK: TOP_K, judgeModel: JUDGE_MODEL, results }, null, 2),
+  );
   console.log(`report: ${reportPath}`);
 }
 
