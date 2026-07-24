@@ -155,14 +155,21 @@ const statePath = (runId: string) => `${REPORT_DIR}/xtrace-stress-state-${runId}
  * Discovered by v1 of this harness: every group-scoped search returned []. A catch-all group
  * (no prompt) is created per run here. NOTE the docs' privacy gate: memories categorized
  * "personal" are never group-tagged, so the run also measures a user-scoped lane.
+ *
+ * v3: also creates a SECOND, PROMPTED group in the same run — `prompt` does NOT change
+ * extraction (facts are created the same way regardless), it changes TAGGING: a classifier
+ * reads the prompt and only tags an already-extracted fact into that group when it "clearly
+ * applies" (per docs.xtrace.ai/guides/groups). Both groups are tagged onto the SAME ingest
+ * calls (group_ids accepts up to 20), so extraction itself is identical between them — any
+ * difference in search results isolates the tagging/precision effect, not extraction variance.
  */
-async function xtraceCreateGroup(runId: string): Promise<string> {
+async function xtraceCreateGroup(name: string, prompt?: string): Promise<string> {
   const res = await fetch(
     `${process.env.XTRACE_API_BASE ?? 'https://api.production.xtrace.ai'}/v1/groups`,
     {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': process.env.XTRACE_API_KEY! },
-      body: JSON.stringify({ name: `stress ${runId}`, app_id: process.env.XTRACE_APP_ID }),
+      body: JSON.stringify({ name, prompt, app_id: process.env.XTRACE_APP_ID }),
     },
   );
   if (!res.ok) throw new Error(`group create failed: ${res.status}`);
@@ -171,7 +178,19 @@ async function xtraceCreateGroup(runId: string): Promise<string> {
   return json.id as string;
 }
 
-async function ingestXtrace(runId: string, corpus: Msg[], grpId: string): Promise<void> {
+const RIVALRY_PROMPT =
+  'Betting rivalry between two people, dex and mo: their head-to-head win/loss record, ' +
+  'winning or losing streaks, betting strategy or strategy changes (e.g. favorites vs ' +
+  'underdogs), callout challenges and their stakes, and direct trash talk about the rivalry ' +
+  'itself. Exclude anything not about their head-to-head rivalry: general sports commentary, ' +
+  'food, sleep, refs, other games or players, or unrelated jokes.';
+
+async function ingestXtrace(
+  runId: string,
+  corpus: Msg[],
+  grpId: string,
+  promptedGrpId: string,
+): Promise<void> {
   const xtrace = xtraceClientFromEnv();
   if (!xtrace) throw new Error('XTRACE_API_KEY / XTRACE_APP_ID not set');
   // One conv per author-week, mirroring how the real job batches thread posts.
@@ -186,7 +205,7 @@ async function ingestXtrace(runId: string, corpus: Msg[], grpId: string): Promis
     const ok = await xtrace.ingest({
       userId: `stress:${runId}:${author}`,
       convId: `stress:${runId}:${author}:${week}`,
-      groupIds: [grpId],
+      groupIds: [grpId, promptedGrpId],
       messages: msgs.map((m) => ({
         role: 'user' as const,
         content: `${m.author}: ${m.body}`,
@@ -228,6 +247,42 @@ async function searchXtraceGroup(grpId: string, q: Query): Promise<string[]> {
     limit: TOP_K,
   });
   return memories.slice(0, TOP_K).map((m) => `[${m.type}] ${m.text}`);
+}
+
+/** Precision-side signal, not part of the pass/fail judge: how many of the top-K are on-topic
+ * for the rivalry (vs. filler noise) — a crude proxy since we don't have per-item relevance
+ * labels, computed by asking the judge model a separate yes/no per item. */
+async function relevanceRate(retrieved: string[]): Promise<number | null> {
+  if (retrieved.length === 0) return null;
+  const apiKey = process.env.ANTHROPIC_API_KEY!;
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: JUDGE_MODEL,
+      max_tokens: 200,
+      system:
+        'For each numbered item, answer whether it is substantively about a betting rivalry between two named people — their head-to-head record, streaks, strategy, callouts, or direct trash talk about the rivalry. Generic sports/food/sleep/ref/other-game commentary is NOT on-topic even if it mentions the same people incidentally. Reply with ONLY a strict JSON array of booleans, one per item, in order, e.g. [true,false,true].',
+      messages: [
+        { role: 'user', content: retrieved.map((t, i) => `${i + 1}. ${t}`).join('\n') },
+      ],
+    }),
+  });
+  if (!res.ok) return null;
+  const json: any = await res.json();
+  const text: string = json.content?.[0]?.text ?? '';
+  const match = text.match(/\[[^\]]*\]/);
+  if (!match) return null;
+  try {
+    const arr: boolean[] = JSON.parse(match[0]);
+    return arr.filter(Boolean).length / arr.length;
+  } catch {
+    return null;
+  }
 }
 
 /** User-scoped lane: search each rival's own memories, merge by score, take top-k. This is
@@ -332,14 +387,16 @@ async function runIngest(runId: string): Promise<void> {
   const corpus = buildCorpus();
   const planted = corpus.filter((m) => m.fact).length;
   console.log(`corpus: ${corpus.length} messages (${planted} planted across 10 facts)`);
-  const grpId = await xtraceCreateGroup(runId);
-  console.log(`xtrace group: ${grpId}`);
+  const grpId = await xtraceCreateGroup(`stress ${runId} catchall`);
+  const promptedGrpId = await xtraceCreateGroup(`stress ${runId} prompted`, RIVALRY_PROMPT);
+  console.log(`xtrace catch-all group: ${grpId}`);
+  console.log(`xtrace prompted group:  ${promptedGrpId}`);
   const { writeFileSync } = await import('node:fs');
-  writeFileSync(statePath(runId), JSON.stringify({ runId, grpId }));
+  writeFileSync(statePath(runId), JSON.stringify({ runId, grpId, promptedGrpId }));
   const { pool } = connect();
   try {
     await ingestFts(pool, runId, corpus);
-    await ingestXtrace(runId, corpus, grpId);
+    await ingestXtrace(runId, corpus, grpId, promptedGrpId);
   } finally {
     await pool.end();
   }
@@ -348,7 +405,10 @@ async function runIngest(runId: string): Promise<void> {
 
 async function runSearch(runId: string): Promise<void> {
   const { readFileSync, writeFileSync } = await import('node:fs');
-  const { grpId } = JSON.parse(readFileSync(statePath(runId), 'utf8')) as { grpId: string };
+  const { grpId, promptedGrpId } = JSON.parse(readFileSync(statePath(runId), 'utf8')) as {
+    grpId: string;
+    promptedGrpId: string;
+  };
   const { pool } = connect();
   const results: Array<{
     id: string;
@@ -357,20 +417,42 @@ async function runSearch(runId: string): Promise<void> {
     hits: Record<string, boolean>;
     retrieved: Record<string, string[]>;
   }> = [];
-  const LANES = ['xtrace-group', 'xtrace-user', 'fts'] as const;
+  const LANES = ['xtrace-group', 'xtrace-group-prompted', 'xtrace-user', 'fts'] as const;
+  const relevance: Record<string, number[]> = { 'xtrace-group': [], 'xtrace-group-prompted': [] };
   try {
     for (const q of QUERIES) {
-      const [gr, ur, fr] = await Promise.all([
+      const [gr, pgr, ur, fr] = await Promise.all([
         searchXtraceGroup(grpId, q),
+        searchXtraceGroup(promptedGrpId, q),
         searchXtraceUser(runId, q),
         searchFts(pool, runId, q),
       ]);
-      const retrieved = { 'xtrace-group': gr, 'xtrace-user': ur, fts: fr };
-      const [gHit, uHit, fHit] = await Promise.all([judge(q, gr), judge(q, ur), judge(q, fr)]);
-      const hits = { 'xtrace-group': gHit, 'xtrace-user': uHit, fts: fHit };
+      const retrieved = {
+        'xtrace-group': gr,
+        'xtrace-group-prompted': pgr,
+        'xtrace-user': ur,
+        fts: fr,
+      };
+      const [gHit, pgHit, uHit, fHit, gRel, pgRel] = await Promise.all([
+        judge(q, gr),
+        judge(q, pgr),
+        judge(q, ur),
+        judge(q, fr),
+        relevanceRate(gr),
+        relevanceRate(pgr),
+      ]);
+      const hits = {
+        'xtrace-group': gHit,
+        'xtrace-group-prompted': pgHit,
+        'xtrace-user': uHit,
+        fts: fHit,
+      };
+      if (gRel !== null) relevance['xtrace-group']!.push(gRel);
+      if (pgRel !== null) relevance['xtrace-group-prompted']!.push(pgRel);
       results.push({ id: q.id, tier: q.tier, query: q.query, hits, retrieved });
       console.log(
-        `${q.id} (${q.tier}) "${q.query}" → ${LANES.map((l) => `${l}:${hits[l] ? 'HIT' : 'miss'}`).join(' ')}`,
+        `${q.id} (${q.tier}) "${q.query}" → ${LANES.map((l) => `${l}:${hits[l] ? 'HIT' : 'miss'}`).join(' ')}` +
+          ` | relevance group=${gRel?.toFixed(2) ?? 'n/a'} prompted=${pgRel?.toFixed(2) ?? 'n/a'}`,
       );
     }
   } finally {
@@ -387,11 +469,21 @@ async function runSearch(runId: string): Promise<void> {
   console.log(
     `ALL: ${LANES.map((l) => `${l} ${results.filter((r) => r.hits[l]).length}/${results.length}`).join('  |  ')}`,
   );
+  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+  console.log(
+    `\n=== mean top-5 on-topic rate (precision proxy) ===\n` +
+      `catch-all: ${avg(relevance['xtrace-group']!)?.toFixed(2) ?? 'n/a'}  |  ` +
+      `prompted: ${avg(relevance['xtrace-group-prompted']!)?.toFixed(2) ?? 'n/a'}`,
+  );
 
   const reportPath = `${REPORT_DIR}/xtrace-stress-${runId}.json`;
   writeFileSync(
     reportPath,
-    JSON.stringify({ runId, grpId, topK: TOP_K, judgeModel: JUDGE_MODEL, results }, null, 2),
+    JSON.stringify(
+      { runId, grpId, promptedGrpId, topK: TOP_K, judgeModel: JUDGE_MODEL, results, relevance },
+      null,
+      2,
+    ),
   );
   console.log(`report: ${reportPath}`);
 }
