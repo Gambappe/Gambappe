@@ -16,8 +16,8 @@
  * Scoring is the harness's job, not the policy's: log-loss and Brier are computed after
  * `decide` returns, from the same odds the policy recorded.
  */
-import { aggregateCrowdOdds } from './aggregate.js';
-import type { CrowdEntry, CrowdOdds } from './aggregate.js';
+import { aggregateCrowdOdds, aggregatePrepared } from './aggregate.js';
+import type { CrowdEntry, CrowdOdds, PreparedEntry } from './aggregate.js';
 import type { SagaDef } from './sagas.js';
 import type { RumorSkill } from './skill.js';
 import type { NbaTeam } from './teams.js';
@@ -31,10 +31,15 @@ export interface SagaView {
   to: string;
 }
 
-export interface RumorPolicy {
+/** Anything replayable: raw CrowdEntry or a PreparedEntry (T5's fast path). */
+export interface Replayable {
+  createdUtc: number;
+}
+
+export interface RumorPolicy<E extends Replayable = CrowdEntry> {
   name: string;
   /** Compute the day's odds from pre-`asOf` evidence only. */
-  decide(view: SagaView, entries: readonly CrowdEntry[], asOf: number): CrowdOdds;
+  decide(view: SagaView, entries: readonly E[], asOf: number): CrowdOdds;
   /** Learning hook — the only channel the outcome ever reaches a policy through. */
   observe?(view: SagaView, report: SagaReplayReport, outcome: NbaTeam): void;
 }
@@ -86,10 +91,10 @@ export function scoreOdds(odds: CrowdOdds, outcome: NbaTeam): Omit<DayScore, 'da
  * Replay one saga through one policy. `entries` may be in any order and may extend past
  * the window — the harness sorts and slices. Deterministic for deterministic policies.
  */
-export function replaySaga(
+export function replaySaga<E extends Replayable>(
   saga: SagaDef,
-  entries: readonly CrowdEntry[],
-  policy: RumorPolicy,
+  entries: readonly E[],
+  policy: RumorPolicy<E>,
 ): SagaReplayReport {
   const view: SagaView = {
     id: saga.id,
@@ -129,5 +134,13 @@ export function skillPolicy(skill: RumorSkill, name?: string): RumorPolicy {
   return {
     name: name ?? `skill:${skill.cutoff}`,
     decide: (view, entries, asOf) => aggregateCrowdOdds(entries, skill, view.candidates, asOf),
+  };
+}
+
+/** Same, over pre-extracted entries — T5's tuning grid runs on this. */
+export function preparedSkillPolicy(skill: RumorSkill, name?: string): RumorPolicy<PreparedEntry> {
+  return {
+    name: name ?? `skill:${skill.cutoff}`,
+    decide: (view, prepared, asOf) => aggregatePrepared(prepared, skill, view.candidates, asOf),
   };
 }

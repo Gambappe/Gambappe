@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "cutoff": "2021-01-13",
+  "lexiconDeltas": {},
+  "stanceCueWeights": {
+    "going to": 0.7,
+    "goes to": 0.6,
+    "signing with": 0.9,
+    "signs with": 0.9,
+    "sign with": 0.7,
+    "headed to": 0.7,
+    "heading to": 0.7,
+    "has agreed": 0.9,
+    "agreed to": 0.8,
+    "joining": 0.7,
+    "joins": 0.7,
+    "welcome to": 0.8,
+    "done deal": 0.9,
+    "official": 0.6,
+    "confirmed": 0.6,
+    "committed": 0.6,
+    "staying": 0.7,
+    "stays": 0.7,
+    "re sign": 0.7,
+    "resign": 0.5,
+    "resigning": 0.5,
+    "best fit": 0.5,
+    "favorite": 0.4,
+    "favorites": 0.4,
+    "frontrunner": 0.6,
+    "front runner": 0.6,
+    "leaving": -0.7,
+    "leaves": -0.6,
+    "left": -0.5,
+    "leverage": -0.7,
+    "smokescreen": -0.8,
+    "smoke screen": -0.8,
+    "not happening": -0.8,
+    "ruled out": -0.9,
+    "off the table": -0.8,
+    "no cap space": -0.7,
+    "no chance": -0.8,
+    "no way": -0.7,
+    "never happening": -0.8,
+    "eliminated": -0.7,
+    "out of the running": -0.8,
+    "passed on": -0.6,
+    "moving on from": -0.6
+  },
+  "upvoteAlpha": 1,
+  "homerDiscount": 0.5,
+  "recencyHalfLifeDays": 7,
+  "temperature": 1.54,
+  "record": {
+    "lebron-2014": {
+      "logLoss": 0.9328989989397702,
+      "days": 16,
+      "outcome": "CLE"
+    },
+    "kd-2016": {
+      "logLoss": 1.3771618179901244,
+      "days": 14,
+      "outcome": "GSW"
+    },
+    "lebron-2018": {
+      "logLoss": 0.9919775308164903,
+      "days": 6,
+      "outcome": "LAL"
+    },
+    "kyrie-2019": {
+      "logLoss": 1.255379484117011,
+      "days": 15,
+      "outcome": "BKN"
+    },
+    "kawhi-2019": {
+      "logLoss": 1.68789630530132,
+      "days": 11,
+      "outcome": "LAC"
+    },
+    "harden-2021": {
+      "logLoss": 1.9292916294388098,
+      "days": 43,
+      "outcome": "BKN"
+    }
+  }
+}
