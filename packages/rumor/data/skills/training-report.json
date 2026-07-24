@@ -1,0 +1,80 @@
+[
+  {
+    "label": "skill@lebron-2014",
+    "tuned": {
+      "knob": "temperature",
+      "from": 1,
+      "to": 1.27,
+      "before": 1.699514432897688,
+      "after": 1.6148014210288015
+    },
+    "pretuneMeanLogLoss": 1.699514432897688,
+    "pretuneFinalRank": 2,
+    "cutoff": "2014-07-11"
+  },
+  {
+    "label": "skill@kd-2016",
+    "tuned": {
+      "knob": "temperature",
+      "from": 1.27,
+      "to": 1,
+      "before": 1.255849860669444,
+      "after": 1.1526961397603188
+    },
+    "pretuneMeanLogLoss": 1.255849860669444,
+    "pretuneFinalRank": 1,
+    "cutoff": "2016-07-04"
+  },
+  {
+    "label": "skill@lebron-2018",
+    "tuned": {
+      "knob": "recencyHalfLifeDays",
+      "from": 7,
+      "to": 5,
+      "before": 1.3648970015329243,
+      "after": 1.3565482100198067
+    },
+    "pretuneMeanLogLoss": 1.3648970015329243,
+    "pretuneFinalRank": 1,
+    "cutoff": "2018-07-01"
+  },
+  {
+    "label": "skill@kyrie-2019",
+    "tuned": {
+      "knob": "recencyHalfLifeDays",
+      "from": 5,
+      "to": 7,
+      "before": 1.3947107838490236,
+      "after": 1.3683708603201652
+    },
+    "pretuneMeanLogLoss": 1.3947107838490236,
+    "pretuneFinalRank": 2,
+    "cutoff": "2019-06-30"
+  },
+  {
+    "label": "skill@kawhi-2019",
+    "tuned": {
+      "knob": "temperature",
+      "from": 1,
+      "to": 1.27,
+      "before": 1.4227412507370116,
+      "after": 1.3452411936800066
+    },
+    "pretuneMeanLogLoss": 1.4227412507370116,
+    "pretuneFinalRank": 3,
+    "cutoff": "2019-07-06"
+  },
+  {
+    "label": "skill@harden-2021",
+    "tuned": {
+      "knob": "temperature",
+      "from": 1.27,
+      "to": 1.54,
+      "before": 2.552651789738685,
+      "after": 2.3376575640125914
+    },
+    "pretuneMeanLogLoss": 2.552651789738685,
+    "pretuneFinalRank": 4,
+    "cutoff": "2021-01-13"
+  }
+]

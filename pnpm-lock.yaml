@@ -314,6 +314,9 @@ importers:
 
   packages/rumor:
     devDependencies:
+      '@receipts/companion':
+        specifier: workspace:*
+        version: link:../companion
       '@receipts/config':
         specifier: workspace:*
         version: link:../config

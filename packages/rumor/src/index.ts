@@ -14,3 +14,4 @@ export * from './extract.js';
 export * from './skill.js';
 export * from './aggregate.js';
 export * from './backtest.js';
+export * from './train.js';

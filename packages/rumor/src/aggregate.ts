@@ -17,6 +17,7 @@
  * replayed at day D always produces the same odds (the WS27-T4 walk-forward contract).
  */
 import { extractTeamStances } from './extract.js';
+import type { TeamStance } from './extract.js';
 import type { PostSnapshot } from './snapshot.js';
 import { TEAM_SUBREDDITS } from './teams.js';
 import type { NbaTeam } from './teams.js';
@@ -85,12 +86,38 @@ export function entryWeight(
 }
 
 /**
- * Aggregate entries into crowd odds over `candidates`. Mentions of non-candidate teams
- * are ignored — the question is "which of THESE destinations", matching how the market
- * frames it. Deterministic: same entries, skill, candidates, and asOf → same odds.
+ * A CrowdEntry with its extraction done. Extraction depends only on the skill's
+ * `stanceCueWeights`/`lexiconDeltas`; the four scalar knobs don't touch it. Preparing
+ * once and re-aggregating many times is what makes T5's tuning grid affordable — but a
+ * prepared batch is only valid for the cue table and lexicon it was prepared with (if
+ * tuning ever learns cue weights, re-prepare).
  */
-export function aggregateCrowdOdds(
-  entries: readonly CrowdEntry[],
+export interface PreparedEntry {
+  stances: TeamStance[];
+  score: number;
+  subreddit: string;
+  createdUtc: number;
+}
+
+export function prepareEntries(entries: readonly CrowdEntry[], skill: RumorSkill): PreparedEntry[] {
+  return entries.map((e) => ({
+    stances: extractTeamStances(e.text, {
+      extraAliases: skill.lexiconDeltas,
+      cueWeights: skill.stanceCueWeights,
+    }),
+    score: e.score,
+    subreddit: e.subreddit,
+    createdUtc: e.createdUtc,
+  }));
+}
+
+/**
+ * Aggregate pre-extracted entries into crowd odds over `candidates`. Mentions of
+ * non-candidate teams are ignored — the question is "which of THESE destinations",
+ * matching how the market frames it. Deterministic: same inputs → same odds.
+ */
+export function aggregatePrepared(
+  prepared: readonly PreparedEntry[],
   skill: RumorSkill,
   candidates: readonly NbaTeam[],
   asOf: number,
@@ -98,14 +125,10 @@ export function aggregateCrowdOdds(
   const raw: Partial<Record<NbaTeam, number>> = {};
   let entriesUsed = 0;
 
-  for (const entry of entries) {
+  for (const entry of prepared) {
     if (entry.createdUtc > asOf) continue;
-    const stances = extractTeamStances(entry.text, {
-      extraAliases: skill.lexiconDeltas,
-      cueWeights: skill.stanceCueWeights,
-    });
     let used = false;
-    for (const { team, stance, confidence } of stances) {
+    for (const { team, stance, confidence } of entry.stances) {
       if (!candidates.includes(team)) continue;
       raw[team] = (raw[team] ?? 0) + stance * confidence * entryWeight(entry, team, skill, asOf);
       used = true;
@@ -127,5 +150,15 @@ export function aggregateCrowdOdds(
     rawOut[t] = raw[t] ?? 0;
   });
 
-  return { asOf, odds, raw: rawOut, entriesUsed, entriesTotal: entries.length };
+  return { asOf, odds, raw: rawOut, entriesUsed, entriesTotal: prepared.length };
+}
+
+/** Extraction + aggregation in one call — the T4/T6 convenience path. */
+export function aggregateCrowdOdds(
+  entries: readonly CrowdEntry[],
+  skill: RumorSkill,
+  candidates: readonly NbaTeam[],
+  asOf: number,
+): CrowdOdds {
+  return aggregatePrepared(prepareEntries(entries, skill), skill, candidates, asOf);
 }

@@ -7,35 +7,8 @@
  * Requires the build first: pnpm --filter @receipts/rumor build
  * Run from packages/rumor: node scripts/backtest.mjs [sagaId ...]
  */
-import { readdirSync, readFileSync, existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-import {
-  SAGAS,
-  defaultRumorSkill,
-  isPostSnapshot,
-  replaySaga,
-  skillPolicy,
-  snapshotEntries,
-} from '../dist/index.js';
-
-const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'data');
-
-export function loadSagaEntries(sagaId) {
-  const dir = join(DATA_DIR, sagaId);
-  if (!existsSync(dir)) return null;
-  const entries = [];
-  for (const file of readdirSync(dir)) {
-    const parsed = JSON.parse(readFileSync(join(dir, file), 'utf8'));
-    if (!isPostSnapshot(parsed)) {
-      console.warn(`  skipping invalid snapshot ${sagaId}/${file}`);
-      continue;
-    }
-    entries.push(...snapshotEntries(parsed));
-  }
-  return entries;
-}
+import { SAGAS, defaultRumorSkill, replaySaga, skillPolicy } from '../dist/index.js';
+import { loadSagaEntries } from './lib/load-corpus.mjs';
 
 const only = process.argv.slice(2);
 const targets = only.length > 0 ? SAGAS.filter((s) => only.includes(s.id)) : SAGAS;
