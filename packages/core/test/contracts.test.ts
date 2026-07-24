@@ -92,6 +92,9 @@ describe('flags (§4.6)', () => {
         'companion',
         'callout_draft',
         'season_wrapped',
+        // rumor_radar added by WS27-T8 (docs/plans/ws27-rumor-radar.md) — gates the Crowd-room
+        // crowd-vs-market panel.
+        'rumor_radar',
       ].sort(),
     );
     for (const name of FLAG_NAMES) expect(FLAG_DEFAULTS[name]).toBe(false);
