@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T02:52:40.071Z",
+  "updated_at": "2026-07-24T02:58:01.763Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2824,13 +2824,13 @@
         "WS27-T3"
       ],
       "mock_start_ok": false,
-      "note": "Full spec: docs/plans/ws27-rumor-radar.md §2A/§2E. BLOCKED ON OWNER: needs REDDIT_CLIENT_ID/REDDIT_CLIENT_SECRET (script app) — remind owner when starting. Capture-once at ≥2h per post (owner decision 2026-07-24). Daily: recompute crowd odds over accumulated corpus, snapshot de-vigged Polymarket prices (gamma API, slug nba-lebron-james-next-team), append committed odds-history.jsonl, divergence metrics (per-team delta, KL, top-pick agreement).",
-      "status": "in_review",
+      "note": "Merged PR #186: reddit-oauth parsers + capture-once fetcher (awaits owner creds), polymarket de-vig, divergence, committed odds-history.jsonl; first market row appended (MIA 41.9/CLE 24.6/GSW 20.6)",
+      "status": "done",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws27-t6-live-pipeline",
       "pr": "https://github.com/Gambappe/Gambappe/pull/186",
       "claimed_at": "2026-07-24T02:48:02.179Z",
-      "updated_at": "2026-07-24T02:52:40.071Z"
+      "updated_at": "2026-07-24T02:58:01.762Z"
     },
     "WS27-T7": {
       "title": "Rumor Radar: demo dashboard artifact (crowd vs market, examples, skill lineage)",
