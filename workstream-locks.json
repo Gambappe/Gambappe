@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T01:18:50.932Z",
+  "updated_at": "2026-07-24T01:50:11.721Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2774,6 +2774,110 @@
       "pr": "https://github.com/Gambappe/Gambappe/pull/179",
       "claimed_at": "2026-07-24T00:45:37.855Z",
       "updated_at": "2026-07-24T01:18:50.932Z"
+    },
+    "WS27-T1": {
+      "title": "Rumor Radar: package scaffold + snapshot format + Arctic Shift historical fetcher",
+      "phase": "R0",
+      "depends_on": [],
+      "mock_start_ok": true,
+      "note": "Full spec: docs/plans/ws27-rumor-radar.md §2A, §5. New Node-only workspace package packages/rumor (@receipts/rumor), modeled on @receipts/sim. JSONL snapshot format (one file per post, fetchedAt audit stamp, author hashed), saga manifest with outcomes (LeBron 2014→CLE, KD 2016→GSW, LeBron 2018→LAL, Kawhi 2019→LAC, Kyrie 2019→BKN, Harden 2021→BKN), Arctic Shift fetch script (undici EnvHttpProxyAgent), fixture corpus checked in for tests. Corpus data/ gitignored.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-24T01:50:11.719Z"
+    },
+    "WS27-T2": {
+      "title": "Rumor Radar: deterministic extractor — team lexicon + negation + stance cues",
+      "phase": "R0",
+      "depends_on": [
+        "WS27-T1"
+      ],
+      "mock_start_ok": false,
+      "note": "Full spec: docs/plans/ws27-rumor-radar.md §2B. Pure function per comment → {team, stance ∈ [−1,1], confidence}[]. 30-team alias lexicon incl. nicknames/cities/indirect refs (homecoming→CLE, south beach→MIA), negation/hypothetical windows, stance cues. One comment may emit opposite stances for two teams; most comments emit nothing. Unit-tested against hand-annotated real comments from T1 fixtures.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-24T01:50:11.719Z"
+    },
+    "WS27-T3": {
+      "title": "Rumor Radar: weighting + aggregation + RumorSkill schema",
+      "phase": "R0",
+      "depends_on": [
+        "WS27-T2"
+      ],
+      "mock_start_ok": false,
+      "note": "Full spec: docs/plans/ws27-rumor-radar.md §2C, §3. w = log1p(ups)^α · homerDiscount · recencyDecay; Σ stance·conf·w per team; softmax(τ) → crowd odds. RumorSkill {version, cutoff, lexiconDeltas, stanceCueWeights, upvoteAlpha, homerDiscount, recencyHalfLifeDays, temperature, record} + defaults + isRumorSkill validation. Untrained-baseline pin test (defaults reproduce documented baseline exactly).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-24T01:50:11.719Z"
+    },
+    "WS27-T4": {
+      "title": "Rumor Radar: walk-forward backtest harness over resolved sagas",
+      "phase": "R1",
+      "depends_on": [
+        "WS27-T3"
+      ],
+      "mock_start_ok": false,
+      "note": "Full spec: docs/plans/ws27-rumor-radar.md §2D. Replay a saga day-by-day: odds from comments dated ≤ D only; outcome reaches tuning only via observe AFTER the day's odds are recorded (structural leakage discipline, as @receipts/sim). Log-loss/Brier per day, trained-vs-untrained report. Runs on T1 historical corpus.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-24T01:50:11.719Z"
+    },
+    "WS27-T5": {
+      "title": "Rumor Radar: training + xTrace skill versioning (lineage upload)",
+      "phase": "R1",
+      "depends_on": [
+        "WS27-T4"
+      ],
+      "mock_start_ok": false,
+      "note": "Full spec: docs/plans/ws27-rumor-radar.md §4. Bounded tuning (RUMOR_TUNE_MAX_STEP) across sagas in chronological order; upload each skill version via @receipts/companion createXtraceClient (group rumor:lebron-2026, conv_id rumor:skill:<version>, agentId rumor-radar); lineage list/export script. Needs XTRACE_API_KEY + XTRACE_APP_ID in env.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-24T01:50:11.719Z"
+    },
+    "WS27-T6": {
+      "title": "Rumor Radar: live pipeline — Reddit OAuth capture-once fetcher + daily odds vs Polymarket",
+      "phase": "R2",
+      "depends_on": [
+        "WS27-T3"
+      ],
+      "mock_start_ok": false,
+      "note": "Full spec: docs/plans/ws27-rumor-radar.md §2A/§2E. BLOCKED ON OWNER: needs REDDIT_CLIENT_ID/REDDIT_CLIENT_SECRET (script app) — remind owner when starting. Capture-once at ≥2h per post (owner decision 2026-07-24). Daily: recompute crowd odds over accumulated corpus, snapshot de-vigged Polymarket prices (gamma API, slug nba-lebron-james-next-team), append committed odds-history.jsonl, divergence metrics (per-team delta, KL, top-pick agreement).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-24T01:50:11.719Z"
+    },
+    "WS27-T7": {
+      "title": "Rumor Radar: demo dashboard artifact (crowd vs market, examples, skill lineage)",
+      "phase": "R2",
+      "depends_on": [
+        "WS27-T5",
+        "WS27-T6"
+      ],
+      "mock_start_ok": false,
+      "note": "Full spec: docs/plans/ws27-rumor-radar.md §5. Crowd odds vs Polymarket over time, per-team gap chart, annotated example comments with weights, skill-lineage panel. Follows the existing hackathon demo page's receipt-paper design system.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-24T01:50:11.719Z"
     }
   }
 }
