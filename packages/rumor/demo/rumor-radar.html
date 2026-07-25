@@ -939,6 +939,66 @@
   </section>
 
   <section class="slip">
+    <p class="eyebrow">The skeptic's question</p>
+    <h2>"Couldn't you do this with Postgres and a model?"</h2>
+    <p>
+      Start with the concession: <strong>yes, a skill is a JSON blob</strong> — we commit cached
+      copies to git ourselves, and the math is deterministic TypeScript on purpose. The
+      justification isn't storage or arithmetic. It's that
+      <strong>a database stores state; a memory layer stores lineage</strong> — and every claim on
+      this page that earns trust hangs off lineage.
+    </p>
+    <div class="tablewrap">
+      <table>
+        <tr>
+          <th></th>
+          <th>A database row</th>
+          <th>A weights file</th>
+          <th>An xTrace skill</th>
+        </tr>
+        <tr>
+          <td>Its history</td>
+          <td>UPDATE rewrites it silently</td>
+          <td>new file replaces old</td>
+          <td>append-only versions, cutoff-stamped</td>
+        </tr>
+        <tr>
+          <td>Changing behavior</td>
+          <td>hot-reload + hand-rolled audit</td>
+          <td>retrain → redeploy</td>
+          <td>ingest a version; the reading code never changes</td>
+        </tr>
+        <tr>
+          <td>Sharing between agents</td>
+          <td>schema + credential coupling</td>
+          <td>copy the artifact, hope it fits</td>
+          <td>group share; retrieval by meaning</td>
+        </tr>
+        <tr>
+          <td>Reading it</td>
+          <td>SELECT what you anticipated</td>
+          <td>opaque — can't diff, can't explain</td>
+          <td>named knobs + cited facts, human-diffable</td>
+        </tr>
+      </table>
+    </div>
+    <p>
+      The proof points are all above on this page. The exam's credibility is a
+      <strong>provenance claim</strong> — "here's what the skill knew at each cutoff" — and a
+      mutable row can't prove that while an append-only ledger proves it structurally. The skill
+      changed seven times today; the code reading it never did. Two independent agents in this app —
+      the rivalry companion and this radar — already share one memory space with no shared schema.
+      And unlike a weights blob, you can pull <span class="mono">skill@kd-2016</span> and read the
+      knobs.
+    </p>
+    <p class="sub">
+      The bottom line, honestly stated: xTrace isn't doing our math — it's doing our trust. For a
+      one-week demo you could fake all of this with discipline; the difference between discipline
+      and structure is the difference between a demo and a system, and October 31 grades a system.
+    </p>
+  </section>
+
+  <section class="slip">
     <p class="eyebrow">The honest card</p>
     <h2>What this does and doesn't prove</h2>
     <div class="honest">
