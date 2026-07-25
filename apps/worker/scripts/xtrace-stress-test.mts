@@ -17,6 +17,15 @@
  *   - Scoring: an LLM judge (Haiku, temperature-free strict JSON) is shown the query, the
  *     ground-truth fact, and one system's top-k texts, and answers whether any retrieved item
  *     states or clearly entails the fact. Judge is blind to which system produced the list.
+ *     If the judge is unavailable (no/expired key, or STRESS_NO_JUDGE=1) every lane records
+ *     `null` = unscored rather than a misleading `false`, and the run still reports retrieval.
+ *
+ * v6 lanes, from docs/xtrace-episode-retrieval-findings.md: xTrace creates episodes with an
+ * EMPTY group_ids, so `xtrace-group` — the app's actual access path — can only ever return
+ * facts. `xtrace-user` reaches episodes in principle but a flat top-k slice still drops them
+ * (the API returns all facts before any episode), which is why it never outperformed in v1–v5.
+ * `xtrace-user-balanced` reserves episode slots; `xtrace-user-compose` reads the assembled
+ * context block instead of rows.
  *
  * Usage (from apps/worker, with XTRACE_* + ANTHROPIC_API_KEY + DATABASE_URL in the shell):
  *   npx tsx scripts/xtrace-stress-test.mts ingest            # prints RUN_ID
@@ -379,7 +388,12 @@ async function relevanceRate(retrieved: string[]): Promise<number | null> {
 
 /** User-scoped lane: search each rival's own memories, merge by score, take top-k. This is
  * NOT the app's access path (routes search group-only), but the privacy gate means some
- * memories only ever exist user-scoped — this lane measures the ceiling. */
+ * memories only ever exist user-scoped — this lane measures the ceiling.
+ *
+ * v6 NOTE: this lane is deliberately left naive (a flat `limit: TOP_K`) because it demonstrates
+ * the truncation trap documented in docs/xtrace-episode-retrieval-findings.md — the API returns
+ * ALL facts before ANY episode, so slicing to 5 keeps 5 facts and drops every episode. The
+ * `-balanced` lane below is the corrected version. */
 async function searchXtraceUser(runId: string, q: Query): Promise<string[]> {
   const xtrace = xtraceClientFromEnv();
   if (!xtrace) throw new Error('xtrace unconfigured');
@@ -398,6 +412,90 @@ async function searchXtraceUser(runId: string, q: Query): Promise<string[]> {
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, TOP_K)
     .map((m) => `[${m.type}] ${m.text}`);
+}
+
+/**
+ * Direct search (v6) — the shipped client hardcodes `mode: 'retrieve'`
+ * (packages/companion/src/xtrace/client.ts:173) and slices to a flat limit, and this harness
+ * must exercise `compose` and un-truncated reads without changing production code.
+ */
+async function searchXtraceDirect(opts: {
+  query: string;
+  userId?: string;
+  groupIds?: string[];
+  mode: 'retrieve' | 'compose';
+}): Promise<{ rows: Array<{ type: string; text: string; score: number | null }>; context: string | null }> {
+  const res = await fetch(
+    `${process.env.XTRACE_API_BASE ?? 'https://api.production.xtrace.ai'}/v1/memories/search`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': process.env.XTRACE_API_KEY! },
+      body: JSON.stringify({
+        query: opts.query,
+        mode: opts.mode,
+        user_id: opts.userId ?? null,
+        group_ids: opts.groupIds ?? [],
+        app_id: process.env.XTRACE_APP_ID,
+        include: ['fact', 'episode'],
+      }),
+    },
+  );
+  if (!res.ok) {
+    console.warn(`xtrace search (${opts.mode}): status ${res.status}`);
+    return { rows: [], context: null };
+  }
+  const json: any = await res.json();
+  return {
+    rows: (json.data ?? []).map((m: any) => ({ type: m.type, text: m.text, score: m.score ?? null })),
+    context: json.context ?? null,
+  };
+}
+
+/**
+ * Type-balanced top-k: reserve slots for episodes so abundant facts can't crowd them out.
+ * Without this a flat slice is fact-only (see `searchXtraceUser`'s note).
+ */
+function balancedTopK(
+  rows: Array<{ type: string; text: string; score: number | null }>,
+  factSlots: number,
+  episodeSlots: number,
+): string[] {
+  const byScore = (a: { score: number | null }, b: { score: number | null }) =>
+    (b.score ?? 0) - (a.score ?? 0);
+  const facts = rows.filter((m) => m.type === 'fact').sort(byScore);
+  const episodes = rows.filter((m) => m.type !== 'fact').sort(byScore);
+  const picked = [...facts.slice(0, factSlots), ...episodes.slice(0, episodeSlots)];
+  // Backfill any unused reserved slots from whatever remains, so a lane is never short-changed
+  // just because one type was scarce.
+  if (picked.length < factSlots + episodeSlots) {
+    const rest = [...facts.slice(factSlots), ...episodes.slice(episodeSlots)].sort(byScore);
+    picked.push(...rest.slice(0, factSlots + episodeSlots - picked.length));
+  }
+  return picked.map((m) => `[${m.type}] ${m.text}`);
+}
+
+/** v6 lane: user-scoped, type-balanced so episodes survive truncation. */
+async function searchXtraceUserBalanced(runId: string, q: Query): Promise<string[]> {
+  const perUser = await Promise.all(
+    (['dex', 'mo'] as const).map((author) =>
+      searchXtraceDirect({ query: q.query, userId: `stress:${runId}:${author}`, mode: 'retrieve' }),
+    ),
+  );
+  return balancedTopK(perUser.flatMap((r) => r.rows), 3, 2);
+}
+
+/** v6 lane: user-scoped `mode: 'compose'`. The consumer of compose gets the assembled `context`
+ * block, not the rows, so that block is what gets judged (one item, but it is the whole payload
+ * a generator would receive). */
+async function searchXtraceUserCompose(runId: string, q: Query): Promise<string[]> {
+  const perUser = await Promise.all(
+    (['dex', 'mo'] as const).map((author) =>
+      searchXtraceDirect({ query: q.query, userId: `stress:${runId}:${author}`, mode: 'compose' }),
+    ),
+  );
+  return perUser
+    .map((r, i) => (r.context ? `[context:${(['dex', 'mo'] as const)[i]}] ${r.context}` : null))
+    .filter((x): x is string => x !== null);
 }
 
 /** OR-semantics FTS: websearch_to_tsquery ANDs terms, which zeroes recall the moment one
@@ -424,10 +522,13 @@ async function searchFts(pool: any, runId: string, q: Query): Promise<string[]> 
 // LLM judge (blind to which system produced the list)
 // ---------------------------------------------------------------------------------------------
 
-async function judge(q: Query, retrieved: string[]): Promise<boolean> {
+async function judge(q: Query, retrieved: string[]): Promise<boolean | null> {
   if (retrieved.length === 0) return false;
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
+  // Returns null (= "unscored"), never throws, when the judge is unavailable: an expired key
+  // must not discard a completed retrieval run, and a silent `false` would be indistinguishable
+  // from a real miss and would quietly understate every lane.
+  if (!apiKey || process.env.STRESS_NO_JUDGE === '1') return null;
   const body = {
     model: JUDGE_MODEL,
     max_tokens: 150,
@@ -454,6 +555,8 @@ async function judge(q: Query, retrieved: string[]): Promise<boolean> {
     });
     if (!res.ok) {
       console.warn(`judge: status ${res.status}, attempt ${attempt + 1}`);
+      // An auth failure will never recover by retrying — bail straight to unscored.
+      if (res.status === 401 || res.status === 403) return null;
       await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
       continue;
     }
@@ -468,7 +571,8 @@ async function judge(q: Query, retrieved: string[]): Promise<boolean> {
       }
     }
   }
-  throw new Error(`judge failed for ${q.id}`);
+  console.warn(`judge: gave up on ${q.id}, recording as unscored`);
+  return null;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -507,29 +611,42 @@ async function runSearch(runId: string): Promise<void> {
     id: string;
     tier: string;
     query: string;
-    hits: Record<string, boolean>;
+    hits: Record<string, boolean | null>;
     retrieved: Record<string, string[]>;
   }> = [];
-  const LANES = ['xtrace-group', 'xtrace-cleaned', 'xtrace-user', 'fts'] as const;
+  const LANES = [
+    'xtrace-group',
+    'xtrace-cleaned',
+    'xtrace-user',
+    'xtrace-user-balanced',
+    'xtrace-user-compose',
+    'fts',
+  ] as const;
   const relevance: Record<string, number[]> = { 'xtrace-group': [], 'xtrace-cleaned': [] };
   try {
     for (const q of QUERIES) {
-      const [gr, cgr, ur, fr] = await Promise.all([
+      const [gr, cgr, ur, ubr, ucr, fr] = await Promise.all([
         searchXtraceGroup(grpId, q),
         searchXtraceGroup(cleanedGrpId, q),
         searchXtraceUser(runId, q),
+        searchXtraceUserBalanced(runId, q),
+        searchXtraceUserCompose(runId, q),
         searchFts(pool, runId, q),
       ]);
       const retrieved = {
         'xtrace-group': gr,
         'xtrace-cleaned': cgr,
         'xtrace-user': ur,
+        'xtrace-user-balanced': ubr,
+        'xtrace-user-compose': ucr,
         fts: fr,
       };
-      const [gHit, cgHit, uHit, fHit, gRel, cgRel] = await Promise.all([
+      const [gHit, cgHit, uHit, ubHit, ucHit, fHit, gRel, cgRel] = await Promise.all([
         judge(q, gr),
         judge(q, cgr),
         judge(q, ur),
+        judge(q, ubr),
+        judge(q, ucr),
         judge(q, fr),
         relevanceRate(gr),
         relevanceRate(cgr),
@@ -538,30 +655,63 @@ async function runSearch(runId: string): Promise<void> {
         'xtrace-group': gHit,
         'xtrace-cleaned': cgHit,
         'xtrace-user': uHit,
+        'xtrace-user-balanced': ubHit,
+        'xtrace-user-compose': ucHit,
         fts: fHit,
       };
       if (gRel !== null) relevance['xtrace-group']!.push(gRel);
       if (cgRel !== null) relevance['xtrace-cleaned']!.push(cgRel);
       results.push({ id: q.id, tier: q.tier, query: q.query, hits, retrieved });
+      const mark = (v: boolean | null) => (v === null ? 'unscored' : v ? 'HIT' : 'miss');
       console.log(
-        `${q.id} (${q.tier}) "${q.query}" → ${LANES.map((l) => `${l}:${hits[l] ? 'HIT' : 'miss'}`).join(' ')}` +
-          ` | relevance raw=${gRel?.toFixed(2) ?? 'n/a'} cleaned=${cgRel?.toFixed(2) ?? 'n/a'}`,
+        `${q.id} (${q.tier}) "${q.query}" → ${LANES.map((l) => `${l}:${mark(hits[l])}`).join(' ')}` +
+          ` | items ${LANES.map((l) => `${l}=${retrieved[l].length}`).join(',')}`,
       );
     }
   } finally {
     await pool.end();
   }
 
-  console.log('\n=== hit@5 by tier ===');
-  for (const tier of ['T1', 'T2', 'T3'] as const) {
-    const rs = results.filter((r) => r.tier === tier);
-    console.log(
-      `${tier}: ${LANES.map((l) => `${l} ${rs.filter((r) => r.hits[l]).length}/${rs.length}`).join('  |  ')}`,
-    );
-  }
-  console.log(
-    `ALL: ${LANES.map((l) => `${l} ${results.filter((r) => r.hits[l]).length}/${results.length}`).join('  |  ')}`,
+  // Only report a hit rate over cells the judge actually scored. Counting an unscored cell as a
+  // miss would print a confident-looking "0/10" for a run that was never graded at all.
+  const cellsTotal = results.length * LANES.length;
+  const cellsScored = results.reduce(
+    (a, r) => a + LANES.filter((l) => r.hits[l] !== null).length,
+    0,
   );
+  if (cellsScored === 0) {
+    console.log(
+      '\n=== hit@5 NOT COMPUTED — judge unavailable (no/expired ANTHROPIC_API_KEY) ===\n' +
+        "Retrieval completed; every lane's items are in the JSON report for manual scoring.",
+    );
+  } else {
+    if (cellsScored < cellsTotal) {
+      console.log(
+        `\n!! PARTIAL SCORING: only ${cellsScored}/${cellsTotal} lane-query cells were judged. ` +
+          'Rates below cover the judged cells only.',
+      );
+    }
+    const rate = (rs: typeof results, l: string) => {
+      const j = rs.filter((r) => r.hits[l] !== null);
+      return `${l} ${j.filter((r) => r.hits[l] === true).length}/${j.length}`;
+    };
+    console.log('\n=== hit@5 by tier (judged cells only) ===');
+    for (const tier of ['T1', 'T2', 'T3'] as const) {
+      const rs = results.filter((r) => r.tier === tier);
+      console.log(`${tier}: ${LANES.map((l) => rate(rs, l)).join('  |  ')}`);
+    }
+    console.log(`ALL: ${LANES.map((l) => rate(results, l)).join('  |  ')}`);
+  }
+
+  console.log('\n=== retrieved item counts (mean per query) ===');
+  for (const l of LANES) {
+    const mean = results.reduce((a, r) => a + r.retrieved[l].length, 0) / results.length;
+    const eps = results.reduce(
+      (a, r) => a + r.retrieved[l].filter((t) => t.startsWith('[episode]') || t.startsWith('[context:')).length,
+      0,
+    );
+    console.log(`  ${l.padEnd(22)} mean items ${mean.toFixed(1)}  |  episode/context items total ${eps}`);
+  }
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
   console.log(
     `\n=== mean top-5 on-topic rate (precision proxy) ===\n` +
