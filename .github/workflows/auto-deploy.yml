@@ -1,9 +1,16 @@
-# WS15-T10/T12: hands-off deploys of the live environment (owner request). On every push to
-# main (i.e. every PR merge — CI is green before merge by repo convention): apply migrations,
-# refresh the Fly worker, and deploy web to Vercel production. Feature flags are project env
-# on Vercel / secrets on Fly — this workflow never touches them, so whatever is enabled stays
-# enabled. Push-triggered rather than cron (WS15-T12): GitHub throttles `schedule` events
-# (observed 2 firings in 2.5h on a */15 cron), while push events fire immediately.
+# WS15-T10/T12: hands-off deploys of the live environment.
+#
+# ⛔ DEPLOYMENT IS OFF (owner request, 2026-07-25). Nothing here fires automatically:
+#   1. The `push: branches: [main]` trigger is REMOVED — merging to main no longer deploys.
+#   2. `workflow_dispatch` survives but demands `confirm: DEPLOY`, so no accidental run.
+#   3. The workflow is ALSO disabled at the GitHub Actions level (`gh workflow disable` /
+#      `PUT /repos/{owner}/{repo}/actions/workflows/{id}/disable`), which blocks dispatch too.
+# To re-enable: enable the workflow in the Actions tab, and restore the `push` trigger if you
+# want merge-triggered deploys back.
+#
+# What a run does when deliberately re-enabled: apply migrations, refresh the Fly worker,
+# deploy web to Vercel production. Feature flags are project env on Vercel / secrets on Fly —
+# this workflow never touches them, so whatever is enabled stays enabled.
 #
 # Secrets live in the repo's `production` GitHub Environment (owner's choice) — the job's
 # `environment: production` line is what makes them resolvable; without it every leg
@@ -15,9 +22,12 @@
 name: auto-deploy
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to confirm — deployment is off by default.'
+        required: true
+        default: ''
 
 concurrency:
   group: auto-deploy
@@ -35,6 +45,8 @@ env:
 
 jobs:
   deploy:
+    # Second gate behind the dispatch input: a run started without typing DEPLOY does nothing.
+    if: github.event.inputs.confirm == 'DEPLOY'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 30
