@@ -489,6 +489,51 @@ The one concern not settled: the as-designed product encrypts the lesson so xTra
 which precludes consolidation. `lesson → pgvector` is only a proxy for that lane — the real one
 needs the encrypted-vector API, which was never exercised here.
 
+## Encryption claims, tested
+
+Prompted by a proposal that encrypts records client-side, extracts a structured "lesson" on
+device, and pools only the lesson — declaring xTrace's encrypted-vector product the one
+dependency it will never cut.
+
+**Extraction cannot run on ciphertext. Measured.** Six confessions encrypted with AES-256-GCM
+(the scheme specified) and ingested as message content, against the same six in plaintext:
+
+| lane | memories extracted |
+| --- | --- |
+| ciphertext | **0** |
+| plaintext | **11** (10 facts + 1 episode) from 6 records |
+
+So "xTrace cannot decrypt it" and "xTrace supplies our procedural memory and belief revision"
+cannot both be true of the same data. Whichever content is encrypted is content xTrace contributes
+nothing to beyond storage.
+
+**x-vec is real, but not on the REST API.** The docs do describe it — *"your embedding vectors are
+homomorphically encrypted before they leave your machine. The server stores and searches over
+ciphertexts"* — so the capability exists and an earlier doubt here was wrong. But every candidate
+REST route 404s (`/v1/x-vec`, `/v1/vectors`, `/v1/encrypted/search`, and nine more), there is no
+served OpenAPI spec, and the documented endpoint list is Groups / Memories / Usage / Webhooks with
+no x-vec route. The documented usage is a separate SDK surface (`DataLoader`, `Retriever`,
+`execution_context`), shown in Python.
+
+**Mainline search cannot take a precomputed vector.** `query` is a required field; passing
+`vector`, `embedding`, `query_vector`, `query_embedding` or `encrypted_vector` all return 422
+`{"field":"query","message":"Field required"}`. Client-side embedding therefore cannot be used
+against `/v1/memories/search` at all — it requires the x-vec path.
+
+**Cross-user pooling under homomorphic encryption looks unsupported**, and not only per the docs
+("per-user execution contexts", an AES key that "never leaves your environment"). It is a
+cryptographic constraint: standard HE cannot compute similarity between vectors encrypted under
+*different* keys. Any design whose headline moment is "user A's encrypted record is found by user
+B's encrypted query" needs multi-key HE, which is not what is described.
+
+**A new primitive worth knowing about:** `POST /v1/memories/trigger` exists — procedural-memory
+recall, a pre-tool-call hook. It requires `action` as an object (`{tool, input}` returns 200;
+strings and `{name, arguments}` are rejected) and returns memories of `type: "lesson" |
+"procedure"`. The standard `/v1/memories` ingest produces only facts and episodes, so procedures
+and lessons are written by some other path. This corrects an earlier note here that
+`fact`/`artifact`/`episode` were the only memory types — they are the only types the *search*
+endpoint's `include` accepts, which is a narrower statement.
+
 ## Suggested follow-ups
 
 1. ~~Make `banter.ts` and `callout-draft.ts:83` pass `userId`~~ — **done**. `banter.ts` now runs
