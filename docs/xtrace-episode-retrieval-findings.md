@@ -337,6 +337,74 @@ Batch-level embedding beat message-level (6/10 vs 5/10), the same direction as t
 where per-document beat per-sentence: more surrounding context per vector is better, and
 chunking finer is a false economy.
 
+## Supersession test (food domain)
+
+The claim under test: xTrace's edge is knowing a user's **current** preference when it has
+changed, where a similarity search retrieves the higher-volume stale signal instead.
+
+39 orders over 8 months for one diner, with three deliberate reversals — each weighted so the OLD
+preference has MORE records than the new one — plus one stable aversion as a control:
+
+| | old (more records) | current |
+| --- | --- | --- |
+| dairy | heavy, 11 records | avoids, 7 records |
+| spice | mild, 7 | very hot, 6 |
+| venue | Nonna's, 9 | Saffron House, 5 |
+| olives (control) | — | dislikes, stable throughout |
+
+Same corpus into both systems. A verdict of `current` means the retrieved set contains
+current-supporting evidence and NO stale evidence — a consumer cannot get it wrong. `mixed` means
+both, so the consumer has to infer recency itself and may get it wrong.
+
+| lane | reversals correct | mixed | control | states the change |
+| --- | --- | --- | --- | --- |
+| xtrace `retrieve` | 2/3 | 1 | pass | 2/4 |
+| **xtrace `compose`** | **3/3** | 0 | pass | **4/4** |
+| pgvector per-order | 1/3 | 2 | pass | 2/4 |
+| pgvector per-month | 0/3 | 3 | pass | 4/4 |
+| **pgvector + recency weighting** | **3/3** | 0 | pass | 1/4 |
+
+**Plain semantic search does fail supersession** — 1/3 and 0/3, returning a mix of current and
+stale evidence on every reversal. That part of the hypothesis held.
+
+**But recency weighting fixes it, in one line of SQL.** `ORDER BY (1 - (emb <=> q)) + 0.06 * month`
+scores 3/3. So "which preference is current" is *not* a decisive xTrace advantage — it is a cheap
+ranking fix, at ~11 ms.
+
+What recency weighting does **not** produce is the *transition itself*: 1/4 versus compose's 4/4.
+SQL returns "Coconut milk ice cream is better than the dairy version" — correct, current, and
+silent about the fact that anything changed. xTrace returns:
+
+> User now eats dairy-free as a lasting habit, not as a phase.
+
+and titles its episodes "Settling into dairy-free favorites and a new go-to restaurant" and
+"Recurring Saffron House orders and escalating spice tolerance". "Escalating spice tolerance" is
+the induced trajectory across eight months; no record contains it.
+
+So the decisive use case is narrower than "knowing the current preference". It is **the
+explanatory layer** — copy that can say *what changed, when, and in which direction*. That is
+recap, "we noticed you switched", and reason-why text. The recommender's own filter should be
+SQL + recency: faster, complete, deterministic.
+
+One risk this test did NOT settle: recency weighting cannot distinguish a genuine reversal from a
+one-off deviation. A single dairy order in August would likely flip the recency lane to "eats
+dairy", where xTrace's "lasting habit, not a phase" framing should be more robust. Untested —
+worth a follow-up before relying on either.
+
+### Methodology correction
+
+The first scoring pass was wrong in both directions and had to be fixed. Markers derived from the
+*source* phrasing systematically penalised paraphrase: "User avoids olives at work events" is
+exactly right but matched no source-derived pattern, failing xTrace's control. And "medium heat
+was too mild" was counted as *stale* evidence when it argues for more heat. Records mentioning the
+old preference while reporting it going wrong ("Nonna's messed up the order twice") were likewise
+counted as stale when they are what motivates the switch.
+
+Correcting these moved `xtrace-compose` from 1/3 to 3/3 and repaired its control — i.e. the fix
+moved results in xTrace's favour, which is the direction that warrants the most suspicion. The
+corrected judge is in `food-judge.mjs` with the exclusion patterns stated explicitly, and the
+underlying retrieved items are in the JSON outputs for anyone who wants to re-grade them.
+
 ## Suggested follow-ups
 
 1. ~~Make `banter.ts` and `callout-draft.ts:83` pass `userId`~~ — **done**. `banter.ts` now runs
