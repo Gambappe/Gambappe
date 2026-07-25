@@ -206,6 +206,48 @@ Practical consequence: **do not pre-clean conversational input**, and prefer pro
 notation (which is the same lesson as raw PGN scoring 0 facts across 8 complete games). Clean up
 input only where it is genuinely unparseable, not where it is merely informal.
 
+## Position-keyed retrieval (per-move commentary)
+
+Separate experiment, same store: can xTrace answer *"what did this player do in a similar
+position?"* — the retrieval shape per-move commentary needs, where the key is the POSITION TYPE
+rather than the player.
+
+Setup: 16 decision points for one player across 4 archetypes (isolated queen's pawn,
+opposite-side castling, rook endgame, closed centre), 4 each, with a consistent and different
+tendency per archetype. Each ingested as its own short post-game review in natural-language
+chess terms — never FEN or movetext. Then probed with 4 *fresh* positions the player had never
+been in, and scored on precision@5 against a 0.25 base rate.
+
+| mode | IQP | opposite | rook | closed | **mean precision@5** |
+| --- | --- | --- | --- | --- | --- |
+| `retrieve` | 0.80 | 1.00 | 1.00 | 0.20 | **0.75** |
+| `compose` | 1.00 | 1.00 | 1.00 | 1.00 | **1.00** |
+
+All four probes returned distinct top-5 orderings, so the query genuinely drives ranking. (An
+earlier probe suggested user-scoped search ignored the query and returned a fixed per-user dump;
+that was an artifact of a 9-memory corpus, not general behaviour.)
+
+Extraction also induced the *tendency* across games, which is the part commentary actually needs:
+
+> Kestrel uses an opposite-castling pawn storm strategy in chess games.
+> Kestrel starts the pawn storm on move 12 before completing development.
+> The passive first-rank defence in rook endings is a decision point worth logging.
+
+None of those is stated in any single ingested review.
+
+**Constraints, measured.** Latency is ~1.0 s (`retrieve`) / ~1.7 s (`compose`) per search, so this
+cannot block a move in a live game — prefetch on position-type change, or render a beat late.
+Recall is partial: only 6–8 of the 16 decision points surfaced per probe, so this is a color
+layer, never an authoritative move history. And the one weak cell (closed centre, 0.20 under
+`retrieve`) shows discrimination tracks how distinctive the vocabulary is — "blocked structure"
+overlaps far more with other archetypes than "isolated queen's pawn" does.
+
+**What makes it work is not xTrace.** It is the position → natural-language translation, which
+has to be deterministic and use a controlled vocabulary shared by ingest and query. Derive the
+phrases from the board state (structure, phase, castling, material imbalance, the move actually
+played, the alternative declined, the outcome) and keep that translation in your own code; the
+authoritative move record stays in your own store.
+
 ## Suggested follow-ups
 
 1. ~~Make `banter.ts` and `callout-draft.ts:83` pass `userId`~~ — **done**. `banter.ts` now runs
