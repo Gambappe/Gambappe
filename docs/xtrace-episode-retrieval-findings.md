@@ -295,6 +295,48 @@ The strongest configuration is not either alone: **pgvector for the position loo
 complete, deterministic) **plus xTrace for the player-level tendencies** (the part that reads as
 insight rather than history).
 
+## Revisiting the betting result against pgvector
+
+The v6 harness reported xTrace 8/10 vs "Postgres 4/10", but that baseline was **FTS — lexical
+only**. Re-running the identical 159-message corpus and the identical 10 queries against real
+embeddings (`BAAI/bge-small-en-v1.5` in pgvector), scored by the same marker rules:
+
+| lane | T1 lexical | T2 paraphrase | T3 inference | **all** |
+| --- | --- | --- | --- | --- |
+| xtrace-group (app's path before this work) | 1/3 | 1/3 | 1/4 | 3/10 |
+| xtrace-cleaned | 0/3 | 1/3 | 1/4 | 2/10 |
+| xtrace-user (flat top-k) | 1/3 | 2/3 | 1/4 | 4/10 |
+| xtrace-user-balanced | 2/3 | 3/3 | 1/4 | 6/10 |
+| **xtrace-user-compose** | 2/3 | 3/3 | **3/4** | **8/10** |
+| postgres FTS (old baseline) | 2/3 | 1/3 | 1/4 | 4/10 |
+| pgvector, per-message | 2/3 | 2/3 | 1/4 | 5/10 |
+| pgvector, per-author-week batch | **3/3** | 2/3 | 1/4 | 6/10 |
+
+**The 8-vs-4 headline was inflated by a weak baseline.** A fair semantic baseline scores 6/10, so
+the real margin is 8 vs 6, not 8 vs 4 — and pgvector answers in ~11 ms end-to-end against
+xTrace's ~1.7 s.
+
+The margin that survives is concentrated entirely in one tier:
+
+- **T1 (facts stated in one message): pgvector wins**, 3/3 vs 2/3. Embeddings handled the
+  "lakers rematch on tv" distractor that beat FTS.
+- **T2 (paraphrase): xTrace wins**, 3/3 vs 2/3.
+- **T3 (inference across messages): xTrace wins decisively**, 3/4 vs 1/4 — the same 1/4 as FTS.
+
+So a vector index is not a substitute on the queries that need consolidation, and xTrace is not
+worth 150× the latency on the queries that don't.
+
+Two mechanisms show up in the misses. Q10 ("how long have dex and mo been rivals") is *stated* in
+the corpus — "third season running against the same guy. we should get married at this point" —
+and **both** SQL lanes missed it while every xTrace lane hit. Extraction had normalized the joke
+away into "Dex is in a third season running against the same guy", which is retrievable; the
+original is not. Q8 (mo's *current* strategy) was hit only by compose, because it requires
+knowing the chalk switch superseded the fading strategy — ordering that no single message states.
+
+Batch-level embedding beat message-level (6/10 vs 5/10), the same direction as the chess result
+where per-document beat per-sentence: more surrounding context per vector is better, and
+chunking finer is a false economy.
+
 ## Suggested follow-ups
 
 1. ~~Make `banter.ts` and `callout-draft.ts:83` pass `userId`~~ — **done**. `banter.ts` now runs
