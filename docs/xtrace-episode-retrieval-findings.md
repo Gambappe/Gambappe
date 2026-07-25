@@ -437,6 +437,58 @@ moved results in xTrace's favour, which is the direction that warrants the most 
 corrected judge is in `food-judge.mjs` with the exclusion patterns stated explicitly, and the
 underlying retrieved items are in the JSON outputs for anyone who wants to re-grade them.
 
+## Negative result: structured-lesson stripping does NOT destroy retrieval value
+
+Tested a specific piece of advice and found it wrong, so recording it here.
+
+The claim under test: a product that extracts each record on-device into a fixed five-field
+structured lesson (`{place, signal, driver, cadence, weight}`) and stores only that, rather than
+the original prose, throws away what makes memory extraction valuable — reasoning by analogy from
+the v5 pre-cleaning lane, which scored worst (2/10).
+
+Corpus: 30 first-person food confessions over 6 months for one user, with seven planted patterns
+stated in no single record, including a supersession (appetite collapses after starting a
+medication, with the OLD preference carrying more records) and an interaction (orders larger and
+spicier when observed, and regrets both). 2×2 over representation × substrate:
+
+| lane | probes hit | hard probes |
+| --- | --- | --- |
+| prose → xTrace (the proposed change) | 8/8 | 2/2 |
+| lesson → xTrace | 8/8 | 2/2 |
+| prose → pgvector | 8/8 | 2/2 |
+| lesson → pgvector (as-designed proxy) | 8/8 | 2/2 |
+
+**No lane distinguishes itself.** Three corrections fall out of this:
+
+1. **Stripping to a fixed schema did not lose the signal.** The lesson lanes matched the prose
+   lanes. An expressive enum (`driver: social_performance`) carries the induced mechanism perfectly
+   well.
+2. **"An interaction between records cannot live in a per-record schema" was wrong.** Tag each
+   record with the driver and the interaction is a `GROUP BY`. I asserted otherwise; it is false.
+3. **An apparent xTrace advantage on the hard probes was a payload-size artifact.** With pgvector
+   capped at top-5 while compose returned 14–28 lines, xTrace looked 2/2 against 1/2. Raising
+   pgvector to top-20 — comparable surface area — erased the gap entirely.
+
+Caveats that matter as much as the result:
+
+- **Ceiling effect.** 8/8 everywhere means the benchmark cannot discriminate. Thirty records with
+  3–5 lexically-close supporting records per pattern is too easy; every configuration finds
+  everything. A discriminating test needs a much larger corpus with distractors, or probes whose
+  answers require ordering and counting across records rather than locating them.
+- **The lessons were written by hand, by someone who knew the probes.** That is a leak: it grants
+  the stripped lane an ideal taxonomy. Whether an on-device extractor invents one that good,
+  before knowing what will be asked, is the real open question — and it is the actual product risk,
+  not the representation.
+- **A third scoring artifact.** `pgvector-lesson` initially missed the portion probe because
+  `/small(er)? portion/` cannot match `ordered_small_portion`. The correct rows were ranked 1, 2, 5
+  and 6. Source-phrasing regexes keep under-crediting whichever lane paraphrases or reformats —
+  every artifact found in this work has had that shape.
+- **Run-to-run variance.** The same prose lane scored 7/8 then 8/8 on identical input and queries.
+
+The one concern not settled: the as-designed product encrypts the lesson so xTrace cannot read it,
+which precludes consolidation. `lesson → pgvector` is only a proxy for that lane — the real one
+needs the encrypted-vector API, which was never exercised here.
+
 ## Suggested follow-ups
 
 1. ~~Make `banter.ts` and `callout-draft.ts:83` pass `userId`~~ — **done**. `banter.ts` now runs
