@@ -386,10 +386,42 @@ explanatory layer** — copy that can say *what changed, when, and in which dire
 recap, "we noticed you switched", and reason-why text. The recommender's own filter should be
 SQL + recency: faster, complete, deterministic.
 
-One risk this test did NOT settle: recency weighting cannot distinguish a genuine reversal from a
-one-off deviation. A single dairy order in August would likely flip the recency lane to "eats
-dairy", where xTrace's "lasting habit, not a phase" framing should be more robust. Untested —
-worth a follow-up before relying on either.
+### The one-off deviation risk did NOT reproduce
+
+The obvious objection to recency weighting is that it cannot tell a genuine reversal from a single
+recent anomaly. Tested directly: the same corpus plus ONE dairy order in month 8 — the most recent
+record, so recency weighting gives it maximum boost — in two flavours. `regretful` marks itself as
+an exception ("two days of regret, worth it exactly once a year"); `neutral` states it flatly
+("had a slice of the cheesecake at the birthday dinner tonight") and is the harder case, since
+only the weight of prior history argues against a flip. Ground truth in both: still avoids dairy.
+
+**Every lane held.** No lane flipped, and no lane even reached `at-risk`:
+
+| lane | regretful | neutral |
+| --- | --- | --- |
+| xtrace `retrieve` | robust (5 dairy-free, deviation absent) | robust (4, deviation absent) |
+| xtrace `compose` | robust (8, deviation absent) | robust (14, deviation at 15) |
+| pgvector plain | robust (5, deviation absent) | robust (5, deviation absent) |
+| pgvector + recency | robust (3, deviation at 3) | robust (3, deviation at 5) |
+
+And the recency weight turns out not to be a tuned knob: swept from 0.00 to 0.30, the top-5 never
+drops below 2/5 dairy-free evidence and the deviation never reaches rank 1. The fix is not fragile
+in the way I guessed.
+
+Two observations worth keeping:
+
+- xTrace's phrasing is supersession-aware unprompted — "User is **still** eating dairy-free",
+  "User **no longer** treats the dairy thing as a phase". That is the property doing the work, and
+  it is more robust than a ranking constant because it does not depend on record volume at all.
+- xTrace `retrieve` never surfaced the deviation. Correct for a recommender, wrong for a recap:
+  the person *did* eat dairy once, and a food diary that silently omits it is losing a real
+  record. `compose` handled this better, including it at rank 15 of a block otherwise dominated by
+  dairy-free evidence — present but correctly de-emphasised.
+
+Scoring note: the compose lane initially scored `at-risk` because the whole assembled block was
+counted as a single item, so "1 item matched" was read as "1 piece of evidence" and the deviation
+was necessarily "rank 1" in a one-item list. Scoring within the block instead gives 8 and 14
+pieces of dairy-free evidence. The corrected splitting is in `food-deviation-judge.mjs`.
 
 ### Methodology correction
 

@@ -77,16 +77,49 @@ export const ORDERS = [
   { month: 8, text: "Ordered a salad, specified no olives, and for once in my life there were no olives. Framing the receipt.", tags: ['olives-no'] },
 ];
 
+/**
+ * One-off deviation variants, for testing whether recency weighting mistakes a single recent
+ * anomaly for a reversal. Both are appended as the LAST record in month 8, so recency weighting
+ * gives them maximum boost.
+ *
+ * Ground truth in BOTH cases is unchanged: this person still avoids dairy. Four months of
+ * dairy-free records plus an explicit "not a phase" outweigh one exception, and in `regretful`
+ * the record itself says the exception was unpleasant.
+ *
+ *   regretful — the exception is marked as an exception. A system should not flip.
+ *   neutral   — the exception is stated flatly, with no signal either way. Harder: the only thing
+ *               arguing against a flip is the weight of prior history.
+ */
+export const DEVIATIONS = {
+  regretful: { month: 8, text: "Birthday dinner and the cheesecake was already ordered for the table, so I had a slice. Two days of regret afterwards. Worth it exactly once a year.", tags: ['deviation'] },
+  neutral: { month: 8, text: "Had a slice of the cheesecake at the birthday dinner tonight.", tags: ['deviation'] },
+};
+
+/** @param {keyof typeof DEVIATIONS | null} deviation */
+export function ordersWith(deviation) {
+  return deviation ? [...ORDERS, DEVIATIONS[deviation]] : ORDERS;
+}
+
 /** Group into per-month conversations. Batch-level ingest/embedding beat finer granularity in
  * both prior corpora, and isolated single messages get little or no extraction. */
-export function byMonth() {
+export function byMonth(deviation = null) {
   const m = new Map();
-  for (const o of ORDERS) {
+  for (const o of ordersWith(deviation)) {
     if (!m.has(o.month)) m.set(o.month, []);
     m.get(o.month).push(o);
   }
   return [...m.entries()].sort((a, b) => a[0] - b[0]);
 }
+
+/** The dairy probe, re-stated for the deviation test. Pattern inlined rather than read off
+ * `PROBES` below, which is not initialised yet at this point in the module. */
+export const DEVIATION_PROBE = {
+  id: 'dairy',
+  query: 'does this person eat dairy? cheese, cream, milk',
+  truth: 'still avoids dairy — one birthday exception does not undo four months of dairy-free',
+  dairyFreeRe: /dairy[- ]free|off dairy|oat milk|no cheese|avoid(s|ing)? dairy|without cream|stopped .*dairy|coconut (yoghurt|milk)|not a phase|no dairy/i,
+  deviationRe: /cheesecake/i,
+};
 
 const MONTH_NAME = { 1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May', 6: 'June', 7: 'July', 8: 'August' };
 export const monthName = (n) => MONTH_NAME[n];
