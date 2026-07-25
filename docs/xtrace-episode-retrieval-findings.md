@@ -248,6 +248,53 @@ phrases from the board state (structure, phase, castling, material imbalance, th
 played, the alternative declined, the outcome) and keep that translation in your own code; the
 authoritative move record stays in your own store.
 
+### vs a real SQL semantic baseline
+
+The earlier FTS baseline was lexical, so it was never a fair test of semantic retrieval. This one
+is: the identical 16 decision points and 4 probes, embedded with `BAAI/bge-small-en-v1.5`
+(384-dim, run locally) into **pgvector 0.6.0**, ranked by cosine distance.
+
+| system | mean precision@5 | end-to-end latency | decision-point coverage |
+| --- | --- | --- | --- |
+| xTrace `retrieve` | 0.75 | ~1045 ms | 11/16 |
+| xTrace `compose` | **1.00** | ~1710 ms | 11/16 |
+| pgvector, per-document | 0.75 | **~10 ms** | **16/16** |
+| pgvector, per-sentence | 0.65 | ~10 ms | **16/16** |
+
+Base rate is 0.25. Sentence-chunking *hurt* — short fragments ("Another rook ending a pawn down
+for Kestrel.") match too many probes.
+
+On the numbers that look like a search benchmark, SQL wins decisively: it ties xTrace's
+`retrieve` precision, is ~100× faster, and never loses a record. xTrace's extraction dropped 5 of
+16 decision points outright, and lossy extraction is not recoverable downstream — a decision point
+that never became a memory cannot be retrieved by any query.
+
+**But precision@5 measures the wrong thing for this use case.** The two systems return different
+kinds of object. SQL returns the source documents; xTrace returns 28 memories for 16 inputs, of
+which **9 are generalizations that appear in no single document**:
+
+> Kestrel uses an opposite-castling pawn storm strategy in chess games.
+> Kestrel starts the pawn storm on move 12 before completing development.
+> Kestrel aims to break through first in opposite-castling races.
+
+That is the commentary. "Kestrel starts the pawn storm on move 12" is a claim about a *player*,
+induced across four games; no document says it, so no retrieval over those documents can return
+it.
+
+The honest caveat: a generation-time LLM handed SQL's four opposite-castling documents could
+induce the same tendency itself. So xTrace is not buying a capability that is otherwise
+unreachable — it is **pre-computing the induction at ingest time instead of paying for it per
+request**, in exchange for ~100× latency, 5/16 lost records, and non-determinism.
+
+Which is the right trade depends on the surface. For per-move commentary in a live game, SQL's
+10 ms and total recall matter more than pre-computed synthesis, and the generation call is
+already happening anyway. For a season recap or a weekly banter panel — cached, latency-tolerant,
+and specifically wanting "what is this player *like*" — the pre-computed induction is the product.
+
+The strongest configuration is not either alone: **pgvector for the position lookup** (fast,
+complete, deterministic) **plus xTrace for the player-level tendencies** (the part that reads as
+insight rather than history).
+
 ## Suggested follow-ups
 
 1. ~~Make `banter.ts` and `callout-draft.ts:83` pass `userId`~~ — **done**. `banter.ts` now runs
