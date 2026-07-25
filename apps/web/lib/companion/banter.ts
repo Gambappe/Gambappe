@@ -16,6 +16,7 @@ import {
   now,
   COMPANION_MODEL,
   COMPANION_PROMPT_VERSION,
+  COMPANION_SEARCH_LIMIT,
 } from '@receipts/core';
 import {
   banterCacheKey,
@@ -170,12 +171,40 @@ async function buildBanterContext(
     ...(await completedPairingIdsBetween(db, viewerProfileId, opponentProfileId)),
     pairing.id,
   ]);
+  // Group- AND user-scoped, because they reach different things: xTrace tags facts with the
+  // ingest's group_ids but creates episodes with an EMPTY group_ids, so a group-only search can
+  // never return an episode — and episodes are where the cross-week synthesis lives (see
+  // docs/xtrace-episode-retrieval-findings.md). The user leg is scoped to the VIEWER's own
+  // profile id, never the opponent's: pairing groups are shared context both players are party
+  // to, but a profile's user-scoped memories span all their rivalries, so reading the opponent's
+  // would surface their other matchups to this viewer. Mirrors `searchDraftMemory`'s
+  // own-profile posture. `episodeSlots` stops facts (which xTrace returns first) from crowding
+  // every episode back out of the top-k.
   const memory = xtrace
-    ? await xtrace.search({
-        query: `${opponentHandle} rivalry banter grudges history`,
-        groupIds: await listXtraceGroupIdsForPairings(db, [...pairingIds]),
-        include: ['fact', 'episode'],
-      })
+    ? await (async () => {
+        const query = `${opponentHandle} rivalry banter grudges history`;
+        const [groupResults, userResults] = await Promise.all([
+          xtrace.search({
+            query,
+            groupIds: await listXtraceGroupIdsForPairings(db, [...pairingIds]),
+            include: ['fact', 'episode'],
+          }),
+          xtrace.search({
+            query,
+            userId: viewerProfileId,
+            include: ['fact', 'episode'],
+            episodeSlots: 2,
+          }),
+        ]);
+        const seen = new Set<string>();
+        const merged: string[] = [];
+        for (const m of [...groupResults, ...userResults]) {
+          if (seen.has(m.id)) continue;
+          seen.add(m.id);
+          merged.push(m.text);
+        }
+        return merged.slice(0, COMPANION_SEARCH_LIMIT);
+      })()
     : [];
 
   return {
@@ -184,7 +213,7 @@ async function buildBanterContext(
     record,
     currentWeek,
     lastVerdictLine,
-    memory: memory.map((m) => m.text),
+    memory,
   };
 }
 

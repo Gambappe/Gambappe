@@ -156,10 +156,16 @@ async function recapOneProfile(
   } = computeSeasonPairingStats(pairings, profileId);
   const { calloutsSent, calloutsWon } = computeSeasonCalloutStats(sentCallouts, profileId, season);
 
+  // A season recap is the surface that most wants episodes — they are the only memories that
+  // span more than one week — but xTrace returns every fact before any episode, so an
+  // unreserved top-k is fact-only for any profile with a full season of facts. Reserving 3 of
+  // the 8 slots is what actually gets season-spanning material into the prompt
+  // (docs/xtrace-episode-retrieval-findings.md).
   const memory = await xtrace.search({
     userId: profileId,
     query: 'season rivalry highlights grudges',
     include: ['episode', 'fact'],
+    episodeSlots: 3,
   });
 
   const ctx: RecapContext = {

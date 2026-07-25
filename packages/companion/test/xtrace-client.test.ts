@@ -181,6 +181,80 @@ describe('createXtraceClient — search', () => {
     expect(results).toHaveLength(COMPANION_SEARCH_LIMIT);
   });
 
+  // xTrace returns EVERY fact before ANY episode, so a flat slice is fact-only whenever a
+  // subject has limit-many facts — the exact bug that made episodes unreachable in production
+  // (docs/xtrace-episode-retrieval-findings.md). These pin the reservation behaviour.
+  it('reserves episodeSlots so abundant facts cannot crowd out episodes', async () => {
+    const data = [
+      ...Array.from({ length: 9 }, (_, i) => ({ id: `f-${i}`, type: 'fact', text: `fact ${i}`, score: null })),
+      ...Array.from({ length: 3 }, (_, i) => ({ id: `e-${i}`, type: 'episode', text: `episode ${i}`, score: null })),
+    ];
+    const fetchImpl = vi.fn(async () => jsonResponse(200, { object: 'search', data }));
+
+    const client = createXtraceClient({ ...OPTS, fetchImpl: fetchImpl as unknown as typeof fetch });
+    const results = await client.search({ query: 'q', limit: 8, episodeSlots: 2 });
+
+    expect(results).toHaveLength(8);
+    expect(results.filter((m) => m.type === 'episode')).toHaveLength(2);
+    expect(results.filter((m) => m.type === 'fact')).toHaveLength(6);
+  });
+
+  it('without episodeSlots a flat slice drops every episode (documents the trap)', async () => {
+    const data = [
+      ...Array.from({ length: 9 }, (_, i) => ({ id: `f-${i}`, type: 'fact', text: `fact ${i}`, score: null })),
+      { id: 'e-0', type: 'episode', text: 'episode 0', score: null },
+    ];
+    const fetchImpl = vi.fn(async () => jsonResponse(200, { object: 'search', data }));
+
+    const client = createXtraceClient({ ...OPTS, fetchImpl: fetchImpl as unknown as typeof fetch });
+    const results = await client.search({ query: 'q', limit: 8 });
+
+    expect(results.filter((m) => m.type === 'episode')).toHaveLength(0);
+  });
+
+  it('backfills unused episode slots when episodes are scarce', async () => {
+    const data = [
+      ...Array.from({ length: 9 }, (_, i) => ({ id: `f-${i}`, type: 'fact', text: `fact ${i}`, score: null })),
+      { id: 'e-0', type: 'episode', text: 'episode 0', score: null },
+    ];
+    const fetchImpl = vi.fn(async () => jsonResponse(200, { object: 'search', data }));
+
+    const client = createXtraceClient({ ...OPTS, fetchImpl: fetchImpl as unknown as typeof fetch });
+    const results = await client.search({ query: 'q', limit: 8, episodeSlots: 3 });
+
+    // Only one episode exists; the other two reserved slots go back to facts rather than
+    // returning a short list.
+    expect(results).toHaveLength(8);
+    expect(results.filter((m) => m.type === 'episode')).toHaveLength(1);
+  });
+
+  it('searchContext requests compose mode and returns the assembled context block', async () => {
+    let captured: RequestInit | undefined;
+    const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+      captured = init;
+      return jsonResponse(200, {
+        object: 'search',
+        data: [{ id: 'f-0', type: 'fact', text: 'fact 0', score: null }],
+        context: '## Memories\n### Heading\n- fact 0',
+      });
+    });
+
+    const client = createXtraceClient({ ...OPTS, fetchImpl: fetchImpl as unknown as typeof fetch });
+    const { memories, context } = await client.searchContext({ query: 'q', userId: 'profile-1' });
+
+    expect(JSON.parse(captured!.body as string)).toMatchObject({ mode: 'compose' });
+    expect(memories).toHaveLength(1);
+    expect(context).toContain('### Heading');
+  });
+
+  it('searchContext degrades to empty context on failure', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(500, {}));
+    const client = createXtraceClient({ ...OPTS, fetchImpl: fetchImpl as unknown as typeof fetch });
+    const { memories, context } = await client.searchContext({ query: 'q' });
+    expect(memories).toEqual([]);
+    expect(context).toBeNull();
+  });
+
   it('returns [] without retrying on malformed JSON', async () => {
     let calls = 0;
     const fetchImpl = vi.fn(async () => {

@@ -17,9 +17,12 @@ export const xtraceMemorySchema = z
   .passthrough();
 export type XtraceMemoryWire = z.infer<typeof xtraceMemorySchema>;
 
+// `context` is only populated by `mode: 'compose'` — an assembled markdown block that groups
+// memories under generated headings and can include items absent from `data`.
 export const xtraceSearchResponseSchema = z
   .object({
     data: z.array(xtraceMemorySchema),
+    context: z.string().nullable().optional(),
   })
   .passthrough();
 export type XtraceSearchResponse = z.infer<typeof xtraceSearchResponseSchema>;

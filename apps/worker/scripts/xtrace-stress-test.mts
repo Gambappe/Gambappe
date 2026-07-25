@@ -39,6 +39,21 @@
 import { xtraceClientFromEnv, type XtraceMemory } from '@receipts/companion';
 import { connect } from '@receipts/db';
 
+/** Minimal local wire shapes — this harness talks to both APIs directly and only reads these
+ * fields. Kept here rather than imported so the scratch harness stays self-contained. */
+interface AnthropicMessageResponse {
+  content?: Array<{ text?: string }>;
+}
+interface XtraceSearchWire {
+  data?: Array<{ type: string; text: string; score?: number | null }>;
+  context?: string | null;
+}
+/** Structural subset of `pg`'s Pool that this harness uses. */
+interface PgPool {
+  query(text: string, values?: unknown[]): Promise<{ rows: unknown[] }>;
+  end(): Promise<void>;
+}
+
 const TOP_K = 5;
 const SETTLE_MS = 90_000;
 const JUDGE_MODEL = 'claude-haiku-4-5-20251001';
@@ -182,9 +197,9 @@ async function xtraceCreateGroup(name: string, prompt?: string): Promise<string>
     },
   );
   if (!res.ok) throw new Error(`group create failed: ${res.status}`);
-  const json: any = await res.json();
+  const json = (await res.json()) as { id?: string };
   if (!json.id) throw new Error('group create: no id in response');
-  return json.id as string;
+  return json.id;
 }
 
 // Group-prompt tagging experiment (v3/v4 of this harness) concluded: prompted tagging traded
@@ -269,8 +284,8 @@ async function cleanConversationBatch(author: string, week: number, msgs: Msg[])
     console.warn(`clean: status ${res.status} for ${author} week ${week}`);
     return [];
   }
-  const json: any = await res.json();
-  const text: string = json.content?.[0]?.text ?? '';
+  const json = (await res.json()) as AnthropicMessageResponse;
+  const text = json.content?.[0]?.text ?? '';
   const match = text.match(/\[[\s\S]*\]/);
   if (!match) return [];
   try {
@@ -319,7 +334,7 @@ async function ingestXtraceCleaned(runId: string, corpus: Msg[], cleanedGrpId: s
   );
 }
 
-async function ingestFts(pool: any, runId: string, corpus: Msg[]): Promise<void> {
+async function ingestFts(pool: PgPool, runId: string, corpus: Msg[]): Promise<void> {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS stress_fts (
       run_id text NOT NULL,
@@ -374,8 +389,8 @@ async function relevanceRate(retrieved: string[]): Promise<number | null> {
     }),
   });
   if (!res.ok) return null;
-  const json: any = await res.json();
-  const text: string = json.content?.[0]?.text ?? '';
+  const json = (await res.json()) as AnthropicMessageResponse;
+  const text = json.content?.[0]?.text ?? '';
   const match = text.match(/\[[^\]]*\]/);
   if (!match) return null;
   try {
@@ -444,9 +459,9 @@ async function searchXtraceDirect(opts: {
     console.warn(`xtrace search (${opts.mode}): status ${res.status}`);
     return { rows: [], context: null };
   }
-  const json: any = await res.json();
+  const json = (await res.json()) as XtraceSearchWire;
   return {
-    rows: (json.data ?? []).map((m: any) => ({ type: m.type, text: m.text, score: m.score ?? null })),
+    rows: (json.data ?? []).map((m) => ({ type: m.type, text: m.text, score: m.score ?? null })),
     context: json.context ?? null,
   };
 }
@@ -501,7 +516,7 @@ async function searchXtraceUserCompose(runId: string, q: Query): Promise<string[
 /** OR-semantics FTS: websearch_to_tsquery ANDs terms, which zeroes recall the moment one
  * query word is missing from the row ("who WON the rematch"). Rank-by-any-matching-term is
  * the fair "normal db" baseline. */
-async function searchFts(pool: any, runId: string, q: Query): Promise<string[]> {
+async function searchFts(pool: PgPool, runId: string, q: Query): Promise<string[]> {
   const { rows } = await pool.query(
     `WITH tq AS (
        SELECT to_tsquery('english', replace(plainto_tsquery('english', $2)::text, ' & ', ' | ')) AS q
@@ -514,8 +529,8 @@ async function searchFts(pool: any, runId: string, q: Query): Promise<string[]> 
       ORDER BY rank DESC
       LIMIT $3`,
     [runId, q.query, TOP_K],
-  );
-  return rows.map((r: any) => r.t);
+  ) as { rows: Array<{ t: string }> };
+  return rows.map((r) => r.t);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -560,8 +575,8 @@ async function judge(q: Query, retrieved: string[]): Promise<boolean | null> {
       await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
       continue;
     }
-    const json: any = await res.json();
-    const text: string = json.content?.[0]?.text ?? '';
+    const json = (await res.json()) as AnthropicMessageResponse;
+    const text = json.content?.[0]?.text ?? '';
     const match = text.match(/\{[^}]*\}/);
     if (match) {
       try {

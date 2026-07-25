@@ -179,13 +179,47 @@ single fact. **Passing `userId` alone is therefore not sufficient** for any play
 it needs `mode: 'compose'`, or a type-balanced selection (e.g. 5 facts + 3 episodes), or a raised
 limit.
 
+## The filler is not noise — it is the color
+
+Worth recording, because it contradicts an assumption two earlier harness versions were built on.
+
+The stress corpus is ~90% deliberate filler (refs, wings, pad thai, "coffee number four"). v5
+tried cleaning that away with an LLM pass before ingestion, on the theory that xTrace would
+extract better from pure signal. That lane scored **worst of all — 2/10**, below even the
+unmodified group lane.
+
+The v6 episode lanes explain why. xTrace builds episodes by summarizing whole conversations, and
+those summaries carry the planted facts *wrapped in the texture around them*:
+
+> ...side comments about a broken sleep schedule, missing leftovers, and celebrating seven in a
+> row like a crown-worthy streak.
+
+The streak (a planted fact) is in there, but so is the voice. Strip the filler and you do not get
+a cleaner fact — you get no episode worth retrieving, because there is no conversation left to
+summarize. Cleaning removed exactly the material episodes are made of.
+
+This matters directly for generation quality, not just retrieval: "celebrating seven in a row
+like a crown-worthy streak" gives a writer something to work with in a way that
+`streak_length: 7` never will. The banter and recap surfaces want the mess.
+
+Practical consequence: **do not pre-clean conversational input**, and prefer prose over structured
+notation (which is the same lesson as raw PGN scoring 0 facts across 8 complete games). Clean up
+input only where it is genuinely unparseable, not where it is merely informal.
+
 ## Suggested follow-ups
 
-1. Make `banter.ts` and `callout-draft.ts:83` pass `userId` so they can actually see episodes —
-   ingest already writes `user_id: profileId` (`companion-ingest.ts:202`), so the scope exists.
-   Banter needs the *opponent's* memories, so this is likely two scoped calls rather than one.
-2. Prefer prose over structured notation at ingest.
+1. ~~Make `banter.ts` and `callout-draft.ts:83` pass `userId`~~ — **done**. `banter.ts` now runs
+   both legs (group for shared pairing facts, user for episodes) and `callout-draft.ts` /
+   `companion-season-recap.ts` reserve `episodeSlots`. One correction to the original suggestion:
+   the user leg is scoped to the **viewer's own** profile, not the opponent's. A profile's
+   user-scoped memories span all of their rivalries, so reading the opponent's would surface
+   their other matchups to this viewer — the group leg is the correct channel for shared context.
+2. Prefer prose over structured notation at ingest, and do not pre-clean it (see above).
 3. Re-voice retrieved memories before use — xTrace returns second-person advice, and the
    `RECORD`-authoritative rule in `packages/companion/src/prompts.ts` still applies.
-4. Revisit `mode: 'compose'` now that there's a concrete reason to (episode headings and the
-   assembled context block), rather than the blanket "always retrieve" choice from XH-T2.
+4. `mode: 'compose'` is now available via `XtraceClient.searchContext` but **no production
+   surface uses it yet**. It measured best (8/10 on the stress corpus, and best on insight and
+   broadcast quality in the blind A/B), so it is the obvious next step — but it adds a
+   server-side LLM pass and has not been validated end-to-end in-app. `companion-season-recap`
+   is the natural first adopter: batch job, no request-path latency, and the surface that most
+   needs season-spanning material.

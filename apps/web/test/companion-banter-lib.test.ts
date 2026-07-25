@@ -197,9 +197,40 @@ describe('generateAndCacheBanter — memory scoping (XH-T6 AC)', () => {
     const [, calledWithPairingIds] = mockListXtraceGroupIdsForPairings.mock.calls[0]!;
     expect(new Set(calledWithPairingIds)).toEqual(new Set([PAIRING_ID, priorPairingId]));
 
-    expect(searchCalls).toHaveLength(1);
-    const call = searchCalls[0] as { groupIds: string[] };
-    expect(call.groupIds).toEqual(['grp_current', 'grp_prior']); // exactly what the (mocked) repo returned
+    // Two legs: group-scoped (facts, shared pairing context) and user-scoped (the only way to
+    // reach episodes, which xTrace creates with an empty group_ids).
+    expect(searchCalls).toHaveLength(2);
+    const groupCall = searchCalls.find((c) => (c as { groupIds?: string[] }).groupIds) as {
+      groupIds: string[];
+    };
+    expect(groupCall.groupIds).toEqual(['grp_current', 'grp_prior']); // exactly what the (mocked) repo returned
+  });
+
+  it('scopes the user-scoped leg to the VIEWER, never the opponent, and reserves episode slots', async () => {
+    defaultDbMocks();
+    mockListXtraceGroupIdsForPairings.mockResolvedValue(['grp_current']);
+    const { client: xtrace, searchCalls } = fakeXtrace();
+    const generator = {
+      banter: vi.fn().mockResolvedValue(['line']),
+      calloutDrafts: vi.fn(),
+      seasonRecap: vi.fn(),
+    };
+    mockInsertArtifactIdempotent.mockResolvedValue({
+      content: { lines: ['line'], model: 'test', promptVersion: 1 },
+      createdAt: AT,
+    });
+
+    await generateAndCacheBanter({} as never, xtrace, generator, PAIRING, VIEWER_ID, ET_DAY, AT);
+
+    const userCall = searchCalls.find((c) => (c as { userId?: string }).userId) as {
+      userId: string;
+      episodeSlots?: number;
+    };
+    // A profile's user-scoped memories span every rivalry they have, so reading the OPPONENT's
+    // would surface their other matchups to this viewer.
+    expect(userCall.userId).toBe(VIEWER_ID);
+    expect(userCall.episodeSlots).toBeGreaterThan(0);
+    expect(searchCalls.every((c) => (c as { userId?: string }).userId !== OPPONENT_ID)).toBe(true);
   });
 
   it('MEMORY degrades to [] with a null xTrace client, without skipping generation', async () => {

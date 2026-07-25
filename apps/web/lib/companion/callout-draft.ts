@@ -86,7 +86,16 @@ async function searchDraftMemory(
           include: ['fact', 'episode'],
         })
       : Promise.resolve([]),
-    xtrace.search({ query, userId: challengerProfileId, include: ['fact', 'episode'] }),
+    // `episodeSlots`: xTrace returns every fact before any episode, so without a reservation a
+    // challenger with 8+ facts gets a fact-only top-k and loses the cross-week synthesis
+    // entirely (docs/xtrace-episode-retrieval-findings.md). The group leg above needs no
+    // reservation — episodes are created with an empty group_ids and never appear there.
+    xtrace.search({
+      query,
+      userId: challengerProfileId,
+      include: ['fact', 'episode'],
+      episodeSlots: 2,
+    }),
   ]);
 
   const seen = new Set<string>();

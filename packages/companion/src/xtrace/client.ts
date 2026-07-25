@@ -53,6 +53,18 @@ export interface SearchArgs {
   groupIds?: string[];
   include?: Array<'fact' | 'artifact' | 'episode'>;
   limit?: number;
+  /**
+   * `'retrieve'` (default) returns ranked rows. `'compose'` additionally runs a server-side
+   * context-selection pass and returns an assembled `context` block — see `searchContext`.
+   */
+  mode?: 'retrieve' | 'compose';
+  /**
+   * Reserve slots for episodes in the returned top-k. xTrace returns EVERY fact before ANY
+   * episode, so a flat `limit` slice is fact-only for any subject with `limit`-many facts —
+   * which silently discards the cross-record synthesis that episodes carry. See
+   * docs/xtrace-episode-retrieval-findings.md.
+   */
+  episodeSlots?: number;
 }
 
 export interface XtraceMemory {
@@ -69,6 +81,16 @@ export interface CreateGroupArgs {
 export interface XtraceClient {
   ingest(args: IngestArgs): Promise<boolean>;
   search(args: SearchArgs): Promise<XtraceMemory[]>;
+  /**
+   * `mode: 'compose'` search returning the assembled `context` block alongside the rows.
+   * Degrades to `{ memories: [], context: null }` on any failure, like `search`.
+   *
+   * OPTIONAL on the interface on purpose: no production surface consumes compose yet (the
+   * measured win is real — see docs/xtrace-episode-retrieval-findings.md — but it adds a
+   * server-side LLM pass and has not been validated end-to-end in-app). Making it required
+   * would force every test fake to stub a method nothing calls. Callers must feature-check.
+   */
+  searchContext?(args: SearchArgs): Promise<{ memories: XtraceMemory[]; context: string | null }>;
   createGroup(args: CreateGroupArgs): Promise<string | null>;
 }
 
@@ -86,7 +108,12 @@ function jitteredBackoff(attempt: number, baseDelayMs: number): number {
   return Math.random() * cap;
 }
 
-export function createXtraceClient(opts: XtraceClientOptions): XtraceClient {
+/** The real client always implements `searchContext`; only fakes may omit it. */
+export interface FullXtraceClient extends XtraceClient {
+  searchContext(args: SearchArgs): Promise<{ memories: XtraceMemory[]; context: string | null }>;
+}
+
+export function createXtraceClient(opts: XtraceClientOptions): FullXtraceClient {
   const apiBase = opts.apiBase;
   const timeoutMs = opts.timeoutMs ?? XTRACE_TIMEOUT_MS;
   const maxRetries = opts.maxRetries ?? XTRACE_MAX_RETRIES;
@@ -167,30 +194,65 @@ export function createXtraceClient(opts: XtraceClientOptions): XtraceClient {
     return true;
   }
 
-  async function search(args: SearchArgs): Promise<XtraceMemory[]> {
+  /**
+   * Truncate to `limit` while reserving `episodeSlots` for episodes, so abundant facts cannot
+   * crowd them out. Unused reserved slots are backfilled from whatever remains, in the server's
+   * own order, so a caller is never short-changed when one type is scarce. With `episodeSlots`
+   * unset this is exactly the previous flat slice.
+   */
+  function selectTopK(rows: XtraceMemory[], limit: number, episodeSlots?: number): XtraceMemory[] {
+    if (!episodeSlots) return rows.slice(0, limit);
+    const episodes = rows.filter((m) => m.type === 'episode');
+    const rest = rows.filter((m) => m.type !== 'episode');
+    const takenEpisodes = episodes.slice(0, Math.min(episodeSlots, limit));
+    const picked = [...rest.slice(0, limit - takenEpisodes.length), ...takenEpisodes];
+    if (picked.length < limit) {
+      const used = new Set(picked.map((m) => m.id));
+      picked.push(...rows.filter((m) => !used.has(m.id)).slice(0, limit - picked.length));
+    }
+    return picked;
+  }
+
+  async function runSearch(
+    args: SearchArgs,
+  ): Promise<{ memories: XtraceMemory[]; context: string | null }> {
     const body = await postWithRetry('/v1/memories/search', {
       query: args.query,
-      mode: 'retrieve',
+      mode: args.mode ?? 'retrieve',
       user_id: args.userId ?? null,
       group_ids: args.groupIds ?? [],
       app_id: opts.appId,
       include: args.include,
     });
-    if (body === undefined) return [];
+    if (body === undefined) return { memories: [], context: null };
 
     const parsed = xtraceSearchResponseSchema.safeParse(body);
     if (!parsed.success) {
       logger('xtrace POST /v1/memories/search: response failed schema validation', parsed.error);
-      return [];
+      return { memories: [], context: null };
     }
 
     const limit = args.limit ?? COMPANION_SEARCH_LIMIT;
-    return parsed.data.data.slice(0, limit).map((m) => ({
+    const rows: XtraceMemory[] = parsed.data.data.map((m) => ({
       id: m.id,
       type: m.type,
       text: m.text,
       score: m.score ?? null,
     }));
+    return {
+      memories: selectTopK(rows, limit, args.episodeSlots),
+      context: parsed.data.context ?? null,
+    };
+  }
+
+  async function search(args: SearchArgs): Promise<XtraceMemory[]> {
+    return (await runSearch(args)).memories;
+  }
+
+  async function searchContext(
+    args: SearchArgs,
+  ): Promise<{ memories: XtraceMemory[]; context: string | null }> {
+    return runSearch({ ...args, mode: 'compose' });
   }
 
   async function createGroup(args: CreateGroupArgs): Promise<string | null> {
@@ -208,7 +270,7 @@ export function createXtraceClient(opts: XtraceClientOptions): XtraceClient {
     return parsed.data.id;
   }
 
-  return { ingest, search, createGroup };
+  return { ingest, search, searchContext, createGroup };
 }
 
 export function xtraceClientFromEnv(env: NodeJS.ProcessEnv = process.env): XtraceClient | null {
