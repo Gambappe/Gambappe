@@ -192,7 +192,11 @@ jobs:
 
   deploy-staging:
     name: deploy staging (main only)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # ⛔ OFF (owner request, 2026-07-25) — see auto-deploy.yml's header. This job never did
+    # more than echo a placeholder (real deploys ran from auto-deploy.yml), but the gate is
+    # pinned false so no deploy path can wake up by accident. Restore the push/ref condition
+    # below to re-enable.
+    if: false && github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [verify, integration, e2e]
     runs-on: ubuntu-latest
     environment: staging
