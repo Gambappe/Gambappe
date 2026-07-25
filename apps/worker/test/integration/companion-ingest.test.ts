@@ -76,6 +76,11 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  // Pin the clock to the fixture's `at`: `pastDeadline` compares core `now()` against the
+  // run's `at`, so an unpinned (real) clock turns the whole suite into a time bomb — every
+  // test silently aborted on "deadline exceeded" once the real date passed AT + 5 minutes
+  // (first tripped 2026-07-25). The deadline test advances the clock itself.
+  setTestClock(AT);
   await db.execute(
     sql`TRUNCATE companion_artifacts, companion_ingest_log, companion_xtrace_groups, posts, nemesis_pairings, seasons, profiles RESTART IDENTITY CASCADE`,
   );
